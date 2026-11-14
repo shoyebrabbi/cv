@@ -401,7 +401,7 @@ export default function App() {
         void signOutOwner();
         setAuthUser(null);
         setAuthError(
-          `দুঃখিত, ${user.email} অনুমোদিত ওনার নয়। শুধুমাত্র ${OWNER_ADMIN_EMAIL} স্টুডিও আনলক করতে পারবে।`
+          `Access denied: ${user.email} is not authorized. Only ${OWNER_ADMIN_EMAIL} can unlock the Studio.`
         );
         return;
       }
@@ -578,27 +578,27 @@ export default function App() {
     const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code?: unknown }).code) : '';
     switch (code) {
       case 'auth/unauthorized-owner-email':
-        return `নিরাপত্তা লক: শুধুমাত্র ${OWNER_ADMIN_EMAIL} অ্যাকাউন্ট অনুমোদিত।`;
+        return `Security lock: only ${OWNER_ADMIN_EMAIL} is authorized to access this studio.`;
       case 'auth/invalid-credential':
       case 'auth/wrong-password':
       case 'auth/user-not-found':
-        return 'ইমেইল বা পাসওয়ার্ড সঠিক নয়। প্রথমবার ব্যবহার করলে "প্রথমবার সেটআপ" ট্যাব থেকে পাসওয়ার্ড তৈরি করুন।';
+        return 'Incorrect email or password. If this is your first time, switch to "First-Time Setup" to create your password.';
       case 'auth/email-already-in-use':
-        return 'এই ইমেইলে আগেই পাসওয়ার্ড সেট করা আছে। "লগইন" ট্যাবে পাসওয়ার্ড দিন অথবা "পাসওয়ার্ড রিসেট" ব্যবহার করুন।';
+        return 'A password is already configured for this email. Use "Sign In" or "Reset Password".';
       case 'auth/weak-password':
-        return 'পাসওয়ার্ডটি খুবই দুর্বল — কমপক্ষে ৮ অক্ষরের শক্তিশালী পাসওয়ার্ড দিন।';
+        return 'Password is too weak. Please choose a stronger password with at least 8 characters.';
       case 'auth/too-many-requests':
-        return 'অতিরিক্ত ভুল চেষ্টার কারণে সাময়িকভাবে ব্লক করা হয়েছে। কিছুক্ষণ পর চেষ্টা করুন বা পাসওয়ার্ড রিসেট করুন।';
+        return 'Temporarily blocked due to repeated failed attempts. Please wait a moment or reset your password.';
       case 'auth/operation-not-allowed':
-        return `Firebase Console (${FIREBASE_PROJECT_ID}) → Authentication → Sign-in method-এ গিয়ে "Email/Password" অপশনটি Enable করুন।`;
+        return `Enable "Email/Password" in Firebase Console (${FIREBASE_PROJECT_ID}) → Authentication → Sign-in method.`;
       case 'auth/requires-recent-login':
-        return 'নিরাপত্তার জন্য আবার লগইন করে পাসওয়ার্ড পরিবর্তন করুন।';
+        return 'For your security, please sign in again before updating your password.';
       case 'auth/popup-closed-by-user':
       case 'auth/cancelled-popup-request':
-        return 'লগইন পপআপ বন্ধ করা হয়েছিল। অনুগ্রহ করে আবার চেষ্টা করুন।';
+        return 'Sign-in popup was closed. Please try again.';
       case 'auth/unauthorized-domain': {
         const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'this domain';
-        return `Google পপআপের জন্য ডোমেইন (${currentHost}) Firebase Console (${FIREBASE_PROJECT_ID}) → Authorized domains-এ যুক্ত নেই। তার বদলে উপরের Email + Password দিয়ে সহজেই লগইন করুন!`;
+        return `Domain (${currentHost}) is not listed in Firebase Authorized Domains (${FIREBASE_PROJECT_ID}). Use Email & Password above, or add this domain in Firebase Console.`;
       }
       default:
         return fallback;
@@ -613,10 +613,10 @@ export default function App() {
       const user = await signInOwnerWithEmailPassword(email, password);
       if (!user.emailVerified) {
         setAuthError('');
-        setAuthSuccess('লগইন সফল হয়েছে! এখন শুধুমাত্র আপনার ইমেইল ভেরিফিকেশন লিংকে ক্লিক করে নিশ্চিত করুন।');
+        setAuthSuccess('Credentials accepted. Please click the verification link sent to your email to continue.');
       }
     } catch (err: unknown) {
-      setAuthError(mapFirebaseAuthError(err, 'লগইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।'));
+      setAuthError(mapFirebaseAuthError(err, 'Unable to sign in. Please verify your credentials and try again.'));
       throw err;
     }
   }
@@ -627,10 +627,10 @@ export default function App() {
     try {
       await registerOwnerWithEmailPassword(email, password);
       setAuthSuccess(
-        `${OWNER_ADMIN_EMAIL} ঠিকানায় একটি ভেরিফিকেশন লিংক পাঠানো হয়েছে। Gmail ইনবক্স (বা Spam) থেকে লিংকটি ক্লিক করে নিচের "আমি ইমেইল ভেরিফাই করেছি" বোতামে চাপুন।`
+        `Verification link sent to ${OWNER_ADMIN_EMAIL}. Open your Gmail inbox (or Spam folder), click the link, then press "I've Verified My Email" below.`
       );
     } catch (err: unknown) {
-      setAuthError(mapFirebaseAuthError(err, 'অ্যাকাউন্ট সেটআপ করা যায়নি।'));
+      setAuthError(mapFirebaseAuthError(err, 'Unable to complete initial setup.'));
     }
   }
 
@@ -640,10 +640,10 @@ export default function App() {
     try {
       await sendOwnerPasswordReset(email);
       setAuthSuccess(
-        `${OWNER_ADMIN_EMAIL} ঠিকানায় পাসওয়ার্ড রিসেট ইমেইল পাঠানো হয়েছে। ইমেইলের লিংক দিয়ে নতুন পাসওয়ার্ড সেট করুন।`
+        `Password reset email sent to ${OWNER_ADMIN_EMAIL}. Follow the link in your inbox to choose a new password.`
       );
     } catch (err: unknown) {
-      setAuthError(mapFirebaseAuthError(err, 'পাসওয়ার্ড রিসেট ইমেইল পাঠানো যায়নি।'));
+      setAuthError(mapFirebaseAuthError(err, 'Failed to send password reset email.'));
     }
   }
 
@@ -652,9 +652,9 @@ export default function App() {
     setAuthSuccess('');
     try {
       await resendOwnerVerificationEmail();
-      setAuthSuccess(`${OWNER_ADMIN_EMAIL} ঠিকানায় নতুন ভেরিফিকেশন লিংক পাঠানো হয়েছে।`);
+      setAuthSuccess(`A new verification link has been sent to ${OWNER_ADMIN_EMAIL}.`);
     } catch (err: unknown) {
-      setAuthError(mapFirebaseAuthError(err, 'ভেরিফিকেশন লিংক পাঠানো যায়নি।'));
+      setAuthError(mapFirebaseAuthError(err, 'Unable to send verification link right now.'));
     }
   }
 
@@ -667,12 +667,12 @@ export default function App() {
         setAuthUser(refreshed);
         setLoginModalOpen(false);
         setSettings((prev) => ({ ...prev, portfolioMode: false }));
-        showToast('ইমেইল ভেরিফাই সম্পন্ন! CV Studio আনলক হয়েছে।', 'success');
+        showToast('Email verified! CV Studio unlocked.', 'success');
       } else {
-        setAuthError('এখনো ইমেইল ভেরিফাই সম্পন্ন হয়নি। Gmail-এ আসা লিংকে ক্লিক করে আবার চাপুন।');
+        setAuthError('Email is not verified yet. Please click the link in your Gmail inbox and try again.');
       }
     } catch (err: unknown) {
-      setAuthError(mapFirebaseAuthError(err, 'স্ট্যাটাস যাচাই করা যায়নি।'));
+      setAuthError(mapFirebaseAuthError(err, 'Unable to check verification status.'));
     }
   }
 
@@ -683,11 +683,11 @@ export default function App() {
       const user = await signInOwnerWithGoogle();
       if (!isAuthorizedOwner(user)) {
         setAuthError(
-          `এই অ্যাকাউন্টটি (${user.email || 'Unknown'}) অনুমোদিত নয়। অনুগ্রহ করে ${OWNER_ADMIN_EMAIL} দিয়ে সাইন ইন করুন।`
+          `This account (${user.email || 'Unknown'}) is not authorized. Please sign in with ${OWNER_ADMIN_EMAIL}.`
         );
       }
     } catch (err: unknown) {
-      setAuthError(mapFirebaseAuthError(err, 'Google লগইন সম্পন্ন করা যায়নি।'));
+      setAuthError(mapFirebaseAuthError(err, 'Google sign-in could not be completed.'));
     }
   }
 
