@@ -30,6 +30,7 @@ import {
   Printer,
   Maximize2,
   Keyboard,
+  KeyRound,
 } from 'lucide-react';
 import { CVTemplateKey, PhotoPosition } from '../types/cv';
 
@@ -75,6 +76,7 @@ interface NavbarProps {
   zenMode?: boolean;
   onToggleZenMode?: () => void;
   onOpenShortcuts?: () => void;
+  onOpenSecuritySettings?: () => void;
 }
 
 export function Navbar({
@@ -119,6 +121,7 @@ export function Navbar({
   zenMode,
   onToggleZenMode,
   onOpenShortcuts,
+  onOpenSecuritySettings,
 }: NavbarProps) {
   const [insertMenuOpen, setInsertMenuOpen] = useState(false);
   const insertRef = useRef<HTMLDivElement>(null);
@@ -310,6 +313,17 @@ export function Navbar({
                 title="Zen Focus Mode (সব সাইডবার লুকিয়ে নিরিবিলি এডিট করুন)"
               >
                 <Maximize2 className="w-4 h-4" />
+              </button>
+            )}
+
+            {onOpenSecuritySettings && (
+              <button
+                type="button"
+                onClick={onOpenSecuritySettings}
+                className="p-1.5 rounded-lg bg-[#0F172A] hover:bg-emerald-950/60 border border-slate-800 hover:border-emerald-500/40 text-slate-300 hover:text-emerald-300 transition"
+                title="পাসওয়ার্ড পরিবর্তন ও সিকিউরিটি সেটিংস"
+              >
+                <KeyRound className="w-4 h-4" />
               </button>
             )}
 

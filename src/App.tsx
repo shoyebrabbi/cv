@@ -6,9 +6,17 @@ import { INITIAL_CV_DATA, INITIAL_SETTINGS, INITIAL_PROFILES } from './data/init
 import {
   FIREBASE_PROJECT_ID,
   OWNER_ADMIN_EMAIL,
+  isOwnerEmail,
   isAuthorizedOwner,
   subscribeAuth,
   signInOwnerWithGoogle,
+  signInOwnerWithEmailPassword,
+  registerOwnerWithEmailPassword,
+  resendOwnerVerificationEmail,
+  refreshOwnerVerificationStatus,
+  sendOwnerPasswordReset,
+  changeOwnerPassword,
+  linkOwnerPassword,
   signOutOwner,
   subscribePublicSite,
   subscribePublicProfiles,
@@ -236,12 +244,16 @@ export default function App() {
   );
   const [isUnifiedToolsOpen, setIsUnifiedToolsOpen] = useState(false);
 
-  // Public-first Firebase Google Owner Auth Gate (visitors see Live Website immediately)
+  // Public-first Firebase Single-Owner Auth Gate (visitors see Live Website immediately)
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string>('');
+  const [authSuccess, setAuthSuccess] = useState<string>('');
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const isStudioUnlocked = isAuthorizedOwner(authUser);
   const ownerUid = isStudioUnlocked && authUser ? authUser.uid : null;
+  const hasPasswordProvider = Boolean(
+    authUser?.providerData?.some((p) => p.providerId === 'password')
+  );
 
   const suppressCloudSyncRef = useRef(false);
   const hasCloudHydratedRef = useRef(false);
@@ -257,6 +269,7 @@ export default function App() {
 
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [exportHubOpen, setExportHubOpen] = useState(false);
+  const [exportHubTab, setExportHubTab] = useState<'all' | 'docs' | 'data' | 'security'>('all');
   const [profileManagerOpen, setProfileManagerOpen] = useState(false);
   const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
   const [jdHighlightKeywords, setJdHighlightKeywords] = useState<string[]>([]);
@@ -383,18 +396,25 @@ export default function App() {
   // 1. Firebase Auth Listener
   useEffect(() => {
     const unsub = subscribeAuth((user) => {
-      setAuthUser(user);
-      if (isAuthorizedOwner(user)) {
-        setAuthError('');
-        if (loginModalOpenRef.current) {
-          setLoginModalOpen(false);
-          setSettings((prev) => ({ ...prev, portfolioMode: false }));
-          showToast('স্বাগতম! Google Verified ওনার হিসেবে Document CV Studio আনলক হয়েছে।', 'success');
-        }
-      } else if (user && user.email) {
+      if (user && user.email && !isOwnerEmail(user.email)) {
+        // Immediately sign out any non-owner account for strict single-owner lock
+        void signOutOwner();
+        setAuthUser(null);
         setAuthError(
           `দুঃখিত, ${user.email} অনুমোদিত ওনার নয়। শুধুমাত্র ${OWNER_ADMIN_EMAIL} স্টুডিও আনলক করতে পারবে।`
         );
+        return;
+      }
+
+      setAuthUser(user);
+      if (isAuthorizedOwner(user)) {
+        setAuthError('');
+        setAuthSuccess('');
+        if (loginModalOpenRef.current) {
+          setLoginModalOpen(false);
+          setSettings((prev) => ({ ...prev, portfolioMode: false }));
+          showToast('স্বাগতম! Verified ওনার হিসেবে Document CV Studio আনলক হয়েছে।', 'success');
+        }
       }
     });
     return () => unsub();
@@ -554,9 +574,111 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [cvData, settings, activeProfileId, isStudioUnlocked, ownerUid]);
 
-  // Firebase Google Owner Auth Handlers
+  function mapFirebaseAuthError(err: unknown, fallback: string): string {
+    const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code?: unknown }).code) : '';
+    switch (code) {
+      case 'auth/unauthorized-owner-email':
+        return `নিরাপত্তা লক: শুধুমাত্র ${OWNER_ADMIN_EMAIL} অ্যাকাউন্ট অনুমোদিত।`;
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return 'ইমেইল বা পাসওয়ার্ড সঠিক নয়। প্রথমবার ব্যবহার করলে "প্রথমবার সেটআপ" ট্যাব থেকে পাসওয়ার্ড তৈরি করুন।';
+      case 'auth/email-already-in-use':
+        return 'এই ইমেইলে আগেই পাসওয়ার্ড সেট করা আছে। "লগইন" ট্যাবে পাসওয়ার্ড দিন অথবা "পাসওয়ার্ড রিসেট" ব্যবহার করুন।';
+      case 'auth/weak-password':
+        return 'পাসওয়ার্ডটি খুবই দুর্বল — কমপক্ষে ৮ অক্ষরের শক্তিশালী পাসওয়ার্ড দিন।';
+      case 'auth/too-many-requests':
+        return 'অতিরিক্ত ভুল চেষ্টার কারণে সাময়িকভাবে ব্লক করা হয়েছে। কিছুক্ষণ পর চেষ্টা করুন বা পাসওয়ার্ড রিসেট করুন।';
+      case 'auth/operation-not-allowed':
+        return `Firebase Console (${FIREBASE_PROJECT_ID}) → Authentication → Sign-in method-এ গিয়ে "Email/Password" অপশনটি Enable করুন।`;
+      case 'auth/requires-recent-login':
+        return 'নিরাপত্তার জন্য আবার লগইন করে পাসওয়ার্ড পরিবর্তন করুন।';
+      case 'auth/popup-closed-by-user':
+      case 'auth/cancelled-popup-request':
+        return 'লগইন পপআপ বন্ধ করা হয়েছিল। অনুগ্রহ করে আবার চেষ্টা করুন।';
+      case 'auth/unauthorized-domain': {
+        const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'this domain';
+        return `Google পপআপের জন্য ডোমেইন (${currentHost}) Firebase Console (${FIREBASE_PROJECT_ID}) → Authorized domains-এ যুক্ত নেই। তার বদলে উপরের Email + Password দিয়ে সহজেই লগইন করুন!`;
+      }
+      default:
+        return fallback;
+    }
+  }
+
+  // Firebase Owner Auth Handlers (Email/Password + Optional Google)
+  async function handleEmailPasswordLogin(email: string, password: string) {
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      const user = await signInOwnerWithEmailPassword(email, password);
+      if (!user.emailVerified) {
+        setAuthError('');
+        setAuthSuccess('লগইন সফল হয়েছে! এখন শুধুমাত্র আপনার ইমেইল ভেরিফিকেশন লিংকে ক্লিক করে নিশ্চিত করুন।');
+      }
+    } catch (err: unknown) {
+      setAuthError(mapFirebaseAuthError(err, 'লগইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।'));
+      throw err;
+    }
+  }
+
+  async function handleFirstTimeSetup(email: string, password: string) {
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      await registerOwnerWithEmailPassword(email, password);
+      setAuthSuccess(
+        `${OWNER_ADMIN_EMAIL} ঠিকানায় একটি ভেরিফিকেশন লিংক পাঠানো হয়েছে। Gmail ইনবক্স (বা Spam) থেকে লিংকটি ক্লিক করে নিচের "আমি ইমেইল ভেরিফাই করেছি" বোতামে চাপুন।`
+      );
+    } catch (err: unknown) {
+      setAuthError(mapFirebaseAuthError(err, 'অ্যাকাউন্ট সেটআপ করা যায়নি।'));
+    }
+  }
+
+  async function handleSendPasswordReset(email: string) {
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      await sendOwnerPasswordReset(email);
+      setAuthSuccess(
+        `${OWNER_ADMIN_EMAIL} ঠিকানায় পাসওয়ার্ড রিসেট ইমেইল পাঠানো হয়েছে। ইমেইলের লিংক দিয়ে নতুন পাসওয়ার্ড সেট করুন।`
+      );
+    } catch (err: unknown) {
+      setAuthError(mapFirebaseAuthError(err, 'পাসওয়ার্ড রিসেট ইমেইল পাঠানো যায়নি।'));
+    }
+  }
+
+  async function handleResendVerification() {
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      await resendOwnerVerificationEmail();
+      setAuthSuccess(`${OWNER_ADMIN_EMAIL} ঠিকানায় নতুন ভেরিফিকেশন লিংক পাঠানো হয়েছে।`);
+    } catch (err: unknown) {
+      setAuthError(mapFirebaseAuthError(err, 'ভেরিফিকেশন লিংক পাঠানো যায়নি।'));
+    }
+  }
+
+  async function handleRefreshVerification() {
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      const refreshed = await refreshOwnerVerificationStatus();
+      if (refreshed && isAuthorizedOwner(refreshed)) {
+        setAuthUser(refreshed);
+        setLoginModalOpen(false);
+        setSettings((prev) => ({ ...prev, portfolioMode: false }));
+        showToast('ইমেইল ভেরিফাই সম্পন্ন! CV Studio আনলক হয়েছে।', 'success');
+      } else {
+        setAuthError('এখনো ইমেইল ভেরিফাই সম্পন্ন হয়নি। Gmail-এ আসা লিংকে ক্লিক করে আবার চাপুন।');
+      }
+    } catch (err: unknown) {
+      setAuthError(mapFirebaseAuthError(err, 'স্ট্যাটাস যাচাই করা যায়নি।'));
+    }
+  }
+
   async function handleGoogleLogin() {
     setAuthError('');
+    setAuthSuccess('');
     try {
       const user = await signInOwnerWithGoogle();
       if (!isAuthorizedOwner(user)) {
@@ -565,17 +687,27 @@ export default function App() {
         );
       }
     } catch (err: unknown) {
-      const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code?: unknown }).code) : '';
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        setAuthError('লগইন পপআপ বন্ধ করা হয়েছিল। অনুগ্রহ করে আবার চেষ্টা করুন।');
-      } else if (code === 'auth/unauthorized-domain') {
-        const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'this domain';
-        setAuthError(
-          `ডোমেইন (${currentHost}) এখনো Firebase Authorized Domains-এ যুক্ত নেই। Firebase Console (${FIREBASE_PROJECT_ID}) → Authentication → Settings → Authorized domains-এ "${currentHost}" যুক্ত করুন।`
-        );
-      } else {
-        setAuthError('Google লগইন সম্পন্ন করা যায়নি। পপআপ ব্লকার বন্ধ আছে কি না দেখে আবার চেষ্টা করুন।');
-      }
+      setAuthError(mapFirebaseAuthError(err, 'Google লগইন সম্পন্ন করা যায়নি।'));
+    }
+  }
+
+  async function handleChangePassword(currentPassword: string, newPassword: string) {
+    try {
+      await changeOwnerPassword(currentPassword, newPassword);
+      showToast('পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!', 'success');
+    } catch (err: unknown) {
+      throw new Error(mapFirebaseAuthError(err, 'বর্তমান পাসওয়ার্ড সঠিক নয় বা পরিবর্তন করা যায়নি।'));
+    }
+  }
+
+  async function handleLinkPassword(newPassword: string) {
+    try {
+      await linkOwnerPassword(newPassword);
+      const refreshed = await refreshOwnerVerificationStatus();
+      if (refreshed) setAuthUser(refreshed);
+      showToast('অ্যাকাউন্টে নতুন লগইন পাসওয়ার্ড যুক্ত হয়েছে!', 'success');
+    } catch (err: unknown) {
+      throw new Error(mapFirebaseAuthError(err, 'পাসওয়ার্ড সেট করা যায়নি।'));
     }
   }
 
@@ -583,6 +715,7 @@ export default function App() {
     try {
       await signOutOwner();
       setAuthError('');
+      setAuthSuccess('');
     } catch (e) {
       console.error(e);
     }
@@ -1834,7 +1967,14 @@ export default function App() {
               showToast('নতুন প্রজেক্ট যুক্ত হয়েছে', 'success');
             }}
             onExportPDF={handleDownloadPDF}
-            onOpenExportHub={() => setExportHubOpen(true)}
+            onOpenExportHub={() => {
+              setExportHubTab('all');
+              setExportHubOpen(true);
+            }}
+            onOpenSecuritySettings={() => {
+              setExportHubTab('security');
+              setExportHubOpen(true);
+            }}
             onLockStudio={handleLockStudio}
             onFormatDoc={handleFormatDoc}
             onInsertSymbol={handleInsertSymbol}
@@ -2254,16 +2394,24 @@ export default function App() {
       <OwnerLoginModal
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
+        onEmailPasswordLogin={handleEmailPasswordLogin}
+        onFirstTimeSetup={handleFirstTimeSetup}
+        onSendPasswordReset={handleSendPasswordReset}
+        onResendVerification={handleResendVerification}
+        onRefreshVerification={handleRefreshVerification}
         onGoogleLogin={handleGoogleLogin}
         onSignOut={handleSignOutOwner}
         signedInEmail={authUser?.email || null}
+        isEmailVerified={Boolean(authUser?.emailVerified)}
         isAuthorized={isStudioUnlocked}
         authError={authError}
+        authSuccess={authSuccess}
       />
 
       <ExportHubModal
         isOpen={exportHubOpen}
         onClose={() => setExportHubOpen(false)}
+        initialTab={exportHubTab}
         onExportPDF={handleDownloadPDF}
         onExportPNG={handleDownloadPNG}
         onPrint={() => window.print()}
@@ -2304,6 +2452,10 @@ export default function App() {
         cloudSyncStatus={cloudSyncStatus}
         onSyncCloudNow={handleSyncCloudNow}
         onLockStudio={handleLockStudio}
+        hasPasswordProvider={hasPasswordProvider}
+        onChangePassword={handleChangePassword}
+        onLinkPassword={handleLinkPassword}
+        onSendPasswordReset={() => handleSendPasswordReset(OWNER_ADMIN_EMAIL)}
       />
 
       {/* Studio Modals */}

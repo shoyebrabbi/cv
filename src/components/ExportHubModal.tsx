@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   FileDown,
@@ -16,6 +16,13 @@ import {
   Check,
   RefreshCw,
   Image as ImageIcon,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  Send,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ExportHubModalProps {
@@ -37,6 +44,11 @@ interface ExportHubModalProps {
   cloudSyncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
   onSyncCloudNow?: () => Promise<void>;
   onLockStudio: () => void;
+  initialTab?: 'all' | 'docs' | 'data' | 'security';
+  hasPasswordProvider?: boolean;
+  onChangePassword?: (currentPassword: string, newPassword: string) => Promise<void>;
+  onLinkPassword?: (newPassword: string) => Promise<void>;
+  onSendPasswordReset?: () => Promise<void>;
 }
 
 export function ExportHubModal({
@@ -58,10 +70,32 @@ export function ExportHubModal({
   cloudSyncStatus = 'synced',
   onSyncCloudNow,
   onLockStudio,
+  initialTab = 'all',
+  hasPasswordProvider = true,
+  onChangePassword,
+  onLinkPassword,
+  onSendPasswordReset,
 }: ExportHubModalProps) {
-  const [activeTab, setActiveTab] = useState<'all' | 'docs' | 'data' | 'security'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'docs' | 'data' | 'security'>(initialTab);
   const [manualSynced, setManualSynced] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+      setPwMsg(null);
+      setPwLoading(false);
+    }
+  }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
@@ -431,6 +465,177 @@ export function ExportHubModal({
                 <p className="text-[10.5px] text-slate-400">
                   সব এডিট স্বয়ংক্রিয়ভাবে Firebase Firestore-এ সেভ হয়ে বিশ্বব্যাপী লাইভ ওয়েবসাইটে আপডেট হয়।
                 </p>
+              </div>
+
+              {/* Owner Password Control Panel */}
+              <div className="md:col-span-2 bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="font-bold text-emerald-300 flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4" />
+                    {hasPasswordProvider
+                      ? 'যেকোনো সময় পাসওয়ার্ড পরিবর্তন করুন (Change Password)'
+                      : 'অ্যাকাউন্টে পাসওয়ার্ড সেট করুন (Link Login Password)'}
+                  </h4>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-semibold">
+                    <ShieldCheck className="w-3 h-3" /> Locked to {ownerEmail || 'Owner'}
+                  </span>
+                </div>
+
+                {pwMsg && (
+                  <div
+                    className={`rounded-lg p-2.5 text-[11.5px] flex items-start gap-2 border ${
+                      pwMsg.type === 'success'
+                        ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                        : 'bg-rose-950/60 border-rose-500/40 text-rose-200'
+                    }`}
+                  >
+                    {pwMsg.type === 'success' ? (
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    )}
+                    <span>{pwMsg.text}</span>
+                  </div>
+                )}
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setPwMsg(null);
+                    if (newPw.length < 8) {
+                      setPwMsg({ type: 'error', text: 'নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।' });
+                      return;
+                    }
+                    if (newPw !== confirmPw) {
+                      setPwMsg({ type: 'error', text: 'নতুন পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মেলেনি।' });
+                      return;
+                    }
+                    setPwLoading(true);
+                    try {
+                      if (hasPasswordProvider && onChangePassword) {
+                        await onChangePassword(currentPw, newPw);
+                        setPwMsg({
+                          type: 'success',
+                          text: 'পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে! পরের বার থেকে নতুন পাসওয়ার্ড দিয়ে লগইন করতে পারবেন।',
+                        });
+                      } else if (!hasPasswordProvider && onLinkPassword) {
+                        await onLinkPassword(newPw);
+                        setPwMsg({
+                          type: 'success',
+                          text: 'অ্যাকাউন্টে লগইন পাসওয়ার্ড যুক্ত হয়েছে! এখন থেকে Email ও পাসওয়ার্ড দিয়েও লগইন করতে পারবেন।',
+                        });
+                      }
+                      setCurrentPw('');
+                      setNewPw('');
+                      setConfirmPw('');
+                    } catch (err: unknown) {
+                      const msg =
+                        err instanceof Error ? err.message : 'পাসওয়ার্ড পরিবর্তন করা যায়নি।';
+                      setPwMsg({ type: 'error', text: msg });
+                    } finally {
+                      setPwLoading(false);
+                    }
+                  }}
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end"
+                >
+                  {hasPasswordProvider && (
+                    <div>
+                      <label className="block text-[10.5px] font-semibold text-slate-300 mb-1">
+                        বর্তমান পাসওয়ার্ড
+                      </label>
+                      <input
+                        type={showPw ? 'text' : 'password'}
+                        value={currentPw}
+                        onChange={(e) => setCurrentPw(e.target.value)}
+                        required
+                        autoComplete="current-password"
+                        placeholder="Current password"
+                        className="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10.5px] font-semibold text-slate-300 mb-1">
+                      নতুন পাসওয়ার্ড (৮+ অক্ষর)
+                    </label>
+                    <input
+                      type={showPw ? 'text' : 'password'}
+                      value={newPw}
+                      onChange={(e) => setNewPw(e.target.value)}
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                      placeholder="New password"
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10.5px] font-semibold text-slate-300 mb-1">
+                      নতুন পাসওয়ার্ড নিশ্চিত করুন
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPw ? 'text' : 'password'}
+                        value={confirmPw}
+                        onChange={(e) => setConfirmPw(e.target.value)}
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        placeholder="Confirm password"
+                        className="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-lg pl-3 pr-9 py-2 text-xs text-white focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPw((s) => !s)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+                        aria-label={showPw ? 'Hide passwords' : 'Show passwords'}
+                      >
+                        {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={pwLoading}
+                      className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs flex items-center gap-1.5 transition"
+                    >
+                      {pwLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
+                      <span>{hasPasswordProvider ? 'Update Password' : 'Save Login Password'}</span>
+                    </button>
+
+                    {onSendPasswordReset && (
+                      <button
+                        type="button"
+                        disabled={pwLoading}
+                        onClick={async () => {
+                          setPwMsg(null);
+                          setPwLoading(true);
+                          try {
+                            await onSendPasswordReset();
+                            setPwMsg({
+                              type: 'success',
+                              text: `${ownerEmail} ঠিকানায় পাসওয়ার্ড রিসেট ইমেইল পাঠানো হয়েছে।`,
+                            });
+                          } catch (err: unknown) {
+                            const msg =
+                              err instanceof Error ? err.message : 'রিসেট ইমেইল পাঠানো যায়নি।';
+                            setPwMsg({ type: 'error', text: msg });
+                          } finally {
+                            setPwLoading(false);
+                          }
+                        }}
+                        className="px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-[11px] flex items-center gap-1.5 transition"
+                      >
+                        <Send className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Send Reset Email</span>
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
             </div>
           )}

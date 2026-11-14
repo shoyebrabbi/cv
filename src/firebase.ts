@@ -2,7 +2,15 @@ import { initializeApp } from 'firebase/app';
 import {
   getAuth,
   GoogleAuthProvider,
+  EmailAuthProvider,
   signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  updatePassword,
+  reauthenticateWithCredential,
+  linkWithCredential,
   signOut,
   onAuthStateChanged,
   User,
@@ -32,7 +40,7 @@ import {
   StudioSettings,
 } from './types/cv';
 
-export const OWNER_ADMIN_EMAIL = 'ibrahim.muntaqim@gmail.com';
+export const OWNER_ADMIN_EMAIL = 'md.shoyeb.rabbi@gmail.com';
 export const FIREBASE_PROJECT_ID = firebaseConfig.projectId;
 
 const app = initializeApp(firebaseConfig);
@@ -105,9 +113,14 @@ async function testConnection() {
 }
 void testConnection();
 
+export function isOwnerEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return email.trim().toLowerCase() === OWNER_ADMIN_EMAIL.toLowerCase();
+}
+
 export function isAuthorizedOwner(user: User | null | undefined): boolean {
   if (!user || !user.email || !user.emailVerified) return false;
-  return user.email.toLowerCase() === OWNER_ADMIN_EMAIL.toLowerCase();
+  return isOwnerEmail(user.email);
 }
 
 export function subscribeAuth(callback: (user: User | null) => void): Unsubscribe {
@@ -116,7 +129,77 @@ export function subscribeAuth(callback: (user: User | null) => void): Unsubscrib
 
 export async function signInOwnerWithGoogle(): Promise<User> {
   const result = await signInWithPopup(auth, googleProvider);
+  if (!isOwnerEmail(result.user.email)) {
+    await signOut(auth);
+    throw Object.assign(new Error('Unauthorized owner email'), { code: 'auth/unauthorized-owner-email' });
+  }
   return result.user;
+}
+
+export async function signInOwnerWithEmailPassword(email: string, password: string): Promise<User> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!isOwnerEmail(normalizedEmail)) {
+    throw Object.assign(new Error('Unauthorized owner email'), { code: 'auth/unauthorized-owner-email' });
+  }
+  const result = await signInWithEmailAndPassword(auth, OWNER_ADMIN_EMAIL, password);
+  if (!isOwnerEmail(result.user.email)) {
+    await signOut(auth);
+    throw Object.assign(new Error('Unauthorized owner email'), { code: 'auth/unauthorized-owner-email' });
+  }
+  return result.user;
+}
+
+export async function registerOwnerWithEmailPassword(email: string, password: string): Promise<User> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!isOwnerEmail(normalizedEmail)) {
+    throw Object.assign(new Error('Unauthorized owner email'), { code: 'auth/unauthorized-owner-email' });
+  }
+  const result = await createUserWithEmailAndPassword(auth, OWNER_ADMIN_EMAIL, password);
+  await sendEmailVerification(result.user);
+  return result.user;
+}
+
+export async function resendOwnerVerificationEmail(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user || !isOwnerEmail(user.email)) {
+    throw Object.assign(new Error('Unauthorized owner email'), { code: 'auth/unauthorized-owner-email' });
+  }
+  await sendEmailVerification(user);
+}
+
+export async function refreshOwnerVerificationStatus(): Promise<User | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+  await user.reload();
+  await user.getIdToken(true);
+  return auth.currentUser;
+}
+
+export async function sendOwnerPasswordReset(email: string): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!isOwnerEmail(normalizedEmail)) {
+    throw Object.assign(new Error('Unauthorized owner email'), { code: 'auth/unauthorized-owner-email' });
+  }
+  await sendPasswordResetEmail(auth, OWNER_ADMIN_EMAIL);
+}
+
+export async function changeOwnerPassword(currentPassword: string, newPassword: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user || !user.email || !isAuthorizedOwner(user)) {
+    throw Object.assign(new Error('Not authorized'), { code: 'auth/unauthorized-owner-email' });
+  }
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+  await updatePassword(user, newPassword);
+}
+
+export async function linkOwnerPassword(newPassword: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user || !user.email || !isAuthorizedOwner(user)) {
+    throw Object.assign(new Error('Not authorized'), { code: 'auth/unauthorized-owner-email' });
+  }
+  const credential = EmailAuthProvider.credential(user.email, newPassword);
+  await linkWithCredential(user, credential);
 }
 
 export async function signOutOwner(): Promise<void> {
