@@ -1,0 +1,6 @@
+{
+  "name": "Unified CV Master Studio",
+  "description": "An executive, ATS-optimized master CV builder, style combiner, and career toolset with multi-format export and GitHub Pages deployment.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
