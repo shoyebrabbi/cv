@@ -1,0 +1,230 @@
+{
+  "entities": {
+    "PublicSiteState": {
+      "title": "PublicSiteState",
+      "description": "Published live website and active CV configuration visible to all visitors.",
+      "type": "object",
+      "properties": {
+        "activeProfileId": {
+          "type": "string",
+          "description": "Currently selected default profile ID",
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "activeData": {
+          "type": "object",
+          "description": "Native structured CV content map (name, title, summary, contacts, skills, experiences, projects, education, certifications, customSections)"
+        },
+        "activeSettings": {
+          "type": "object",
+          "description": "Studio visual theme, template, typography, QR, signature, and portfolio configuration map"
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner who published the site",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last-modified timestamp"
+        }
+      },
+      "required": ["activeProfileId", "activeData", "activeSettings", "ownerUid", "createdAt", "updatedAt"]
+    },
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Role-tailored CV profile and shareable ?role= lens for recruiters.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Profile identifier",
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display label of the role profile",
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "description": "Role emphasis description",
+          "maxLength": 320
+        },
+        "rolePreset": {
+          "type": "string",
+          "enum": ["master", "data", "sqa", "netops", "custom"],
+          "description": "Role lens preset key"
+        },
+        "isPublished": {
+          "type": "boolean",
+          "description": "Whether this profile is visible on the public website"
+        },
+        "sortOrder": {
+          "type": "number",
+          "description": "Display order index"
+        },
+        "data": {
+          "type": "object",
+          "description": "Structured CV data snapshot for this role"
+        },
+        "settings": {
+          "type": "object",
+          "description": "Studio visual and layout settings for this role"
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "Owner UID",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "description", "rolePreset", "isPublished", "sortOrder", "data", "settings", "ownerUid", "createdAt", "updatedAt"]
+    },
+    "JobApplicationRecord": {
+      "title": "JobApplicationRecord",
+      "description": "Private owner job application tracker record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "company": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "role": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "profileName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Applied", "Shortlisted", "Technical Test", "Interview", "Offer", "Rejected"]
+        },
+        "appliedDate": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "ownerUid", "company", "role", "status", "appliedDate", "createdAt", "updatedAt"]
+    },
+    "CustomTemplatePresetRecord": {
+      "title": "CustomTemplatePresetRecord",
+      "description": "Private owner custom Studio template preset.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "settingsSnapshot": {
+          "type": "object"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "ownerUid", "name", "description", "settingsSnapshot", "createdAt", "updatedAt"]
+    },
+    "AdminMarker": {
+      "title": "AdminMarker",
+      "description": "Optional additional admin account marker.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/public_site/{siteId}": {
+      "schema": { "$ref": "#/entities/PublicSiteState" },
+      "description": "Published default website portfolio and CV state (document ID: main)."
+    },
+    "/public_profiles/{profileId}": {
+      "schema": { "$ref": "#/entities/PublicProfile" },
+      "description": "Published role-specific CV profiles for ?role= recruiter lenses."
+    },
+    "/owner_workspaces/{ownerId}/job_applications/{appId}": {
+      "schema": { "$ref": "#/entities/JobApplicationRecord" },
+      "description": "Owner-private job application tracker records."
+    },
+    "/owner_workspaces/{ownerId}/custom_templates/{tplId}": {
+      "schema": { "$ref": "#/entities/CustomTemplatePresetRecord" },
+      "description": "Owner-private saved custom Studio templates."
+    },
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminMarker" },
+      "description": "Admin role verification markers."
+    }
+  }
+}

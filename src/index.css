@@ -26,10 +26,28 @@
 }
 
 body {
-  font-family: 'Inter', 'Hind Siliguri', sans-serif;
-  background-color: #070b14;
+  font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
+  background-color: #060911;
   color: #1e293b;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.studio-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* A4 Canvas Container */
@@ -514,6 +532,30 @@ body:not(.edit-active) .builder-control {
   display: none !important;
 }
 
+/* Touch & Tablet Accessibility: reveal inline/floating builder controls smoothly without mouse hover */
+.edit-active [class*="group/"]:focus-within > .builder-control {
+  opacity: 1 !important;
+}
+.edit-active [class*="group/"]:focus-within > .builder-control.hidden {
+  display: inline-flex !important;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .edit-active .builder-control.opacity-0:not(.photo-hover-overlay) {
+    opacity: 0.92 !important;
+  }
+  .edit-active .photo-touch-badge {
+    display: inline-flex !important;
+  }
+  .edit-active .builder-control.hidden:not(.photo-touch-badge) {
+    display: inline-flex !important;
+  }
+  .edit-active .builder-control button {
+    min-width: 24px;
+    min-height: 24px;
+  }
+}
+
 /* Strict Page-by-Page & Template-Safe Print Engine */
 @media print {
   @page {
@@ -534,6 +576,31 @@ body:not(.edit-active) .builder-control {
   }
   .no-print, .builder-control {
     display: none !important;
+  }
+  html,
+  body,
+  #root,
+  .print-shell-reset {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .print-only-cv-host,
+  .cv-zoom-frame {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    overflow: visible !important;
   }
   .cv-document-wrapper {
     padding: 0 !important;

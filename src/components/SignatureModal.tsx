@@ -46,37 +46,48 @@ export function SignatureModal({
 
   if (!isOpen) return null;
 
+  function getCanvasCoordinates(
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
+    canvas: HTMLCanvasElement
+  ) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || canvas.width);
+    const scaleY = canvas.height / (rect.height || canvas.height);
+    const clientX = 'touches' in e ? e.touches[0]?.clientX ?? 0 : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0]?.clientY ?? 0 : e.clientY;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  }
+
   function startDrawing(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    if ('touches' in e && e.touches.length === 0) return;
     setIsDrawing(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
+    const { x, y } = getCanvasCoordinates(e, canvas);
     ctx.beginPath();
-    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    ctx.moveTo(x, y);
   }
 
   function draw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
     if (!isDrawing) return;
+    if ('touches' in e && e.touches.length === 0) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
+    const { x, y } = getCanvasCoordinates(e, canvas);
     ctx.strokeStyle = penColor;
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.lineTo(x, y);
     ctx.stroke();
   }
 
@@ -122,19 +133,23 @@ export function SignatureModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 text-white shadow-2xl">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-4 sm:p-6 text-white shadow-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
               <PenTool className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white">ডিজিটাল ই-স্বাক্ষর (Touch Signature Pad)</h3>
-              <p className="text-[11px] text-slate-400">মাউস বা স্ক্রিনে আঙুল দিয়ে স্বাক্ষর আঁকুন</p>
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-bold text-white truncate">
+                ডিজিটাল ই-স্বাক্ষর (Touch Signature Pad)
+              </h3>
+              <p className="text-[11px] text-slate-400 truncate">
+                মাউস বা স্ক্রিনে আঙুল দিয়ে স্বাক্ষর আঁকুন
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -146,7 +161,7 @@ export function SignatureModal({
               ref={canvasRef}
               width={460}
               height={140}
-              className="w-full h-36 cursor-crosshair touch-none"
+              className="w-full aspect-[460/140] cursor-crosshair touch-none block"
               onMouseDown={startDrawing}
               onMouseMove={draw}
               onMouseUp={stopDrawing}
@@ -161,7 +176,7 @@ export function SignatureModal({
           </div>
 
           {/* Canvas controls */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-slate-400">রঙ:</span>
               <button
@@ -186,11 +201,11 @@ export function SignatureModal({
               <button
                 type="button"
                 onClick={clearCanvas}
-                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 flex items-center gap-1 text-[11px]"
+                className="px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-rose-300 flex items-center gap-1 text-[11px] whitespace-nowrap"
               >
                 <Trash2 className="w-3 h-3" /> Clear
               </button>
-              <label className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 flex items-center gap-1 text-[11px] cursor-pointer">
+              <label className="px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 flex items-center gap-1 text-[11px] cursor-pointer whitespace-nowrap">
                 <Upload className="w-3 h-3" /> Upload Image
                 <input
                   ref={fileInputRef}
@@ -204,7 +219,7 @@ export function SignatureModal({
           </div>
 
           {/* Name & Date fields */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div>
               <label className="text-slate-300 block mb-1">স্বাক্ষরকারীর নাম:</label>
               <input
@@ -226,18 +241,18 @@ export function SignatureModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-5 pt-3 border-t border-slate-800">
+        <div className="flex flex-wrap-reverse sm:flex-nowrap justify-end gap-2 mt-5 pt-3 border-t border-slate-800">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300"
+            className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap"
           >
             বাতিল
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1"
+            className="flex-1 sm:flex-initial justify-center px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 whitespace-nowrap"
           >
             <Check className="w-3.5 h-3.5" /> সিভিতে যুক্ত করুন (Apply Signature)
           </button>

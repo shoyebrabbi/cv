@@ -1,7 +1,25 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import type { User } from 'firebase/auth';
 import confetti from 'canvas-confetti';
 import { CVData, StudioSettings, CVTemplateKey, PhotoPosition, CVProfile, CustomTemplatePreset } from './types/cv';
 import { INITIAL_CV_DATA, INITIAL_SETTINGS, INITIAL_PROFILES } from './data/initialCV';
+import {
+  FIREBASE_PROJECT_ID,
+  OWNER_ADMIN_EMAIL,
+  isAuthorizedOwner,
+  subscribeAuth,
+  signInOwnerWithGoogle,
+  signOutOwner,
+  subscribePublicSite,
+  subscribePublicProfiles,
+  savePublicSiteState,
+  upsertPublicProfile,
+  deletePublicProfileCloud,
+  seedCloudWorkspaceIfEmpty,
+  subscribeCustomTemplates,
+  upsertCustomTemplateCloud,
+  deleteCustomTemplateCloud,
+} from './firebase';
 import {
   exportDirectPDF,
   exportHighResPNG,
@@ -25,6 +43,7 @@ import { ExportHubModal } from './components/ExportHubModal';
 import { ProfileManagerModal } from './components/ProfileManagerModal';
 import { TemplateGalleryModal } from './components/TemplateGalleryModal';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
+import { StudioRightRail, ShortcutsModal } from './components/StudioRightRail';
 import {
   HyperlinkModal,
   ATSAuditModal,
@@ -40,6 +59,8 @@ import {
   Minimize2,
   Printer,
   Columns2,
+  PanelRightOpen,
+  Ruler,
 } from 'lucide-react';
 
 interface Toast {
@@ -48,12 +69,65 @@ interface Toast {
   type: 'info' | 'success' | 'error';
 }
 
+function mergeCVData(raw?: Partial<CVData> | null): CVData {
+  if (!raw || typeof raw !== 'object') return INITIAL_CV_DATA;
+  return {
+    ...INITIAL_CV_DATA,
+    ...raw,
+    contacts: Array.isArray(raw.contacts) ? raw.contacts : INITIAL_CV_DATA.contacts,
+    skills: Array.isArray(raw.skills) ? raw.skills : INITIAL_CV_DATA.skills,
+    experiences: Array.isArray(raw.experiences) ? raw.experiences : INITIAL_CV_DATA.experiences,
+    projects: Array.isArray(raw.projects) ? raw.projects : INITIAL_CV_DATA.projects,
+    certifications: Array.isArray(raw.certifications) ? raw.certifications : INITIAL_CV_DATA.certifications,
+    customSections: Array.isArray(raw.customSections) ? raw.customSections : [],
+    education: {
+      ...INITIAL_CV_DATA.education,
+      ...(raw.education || {}),
+    },
+  };
+}
+
+function mergeStudioSettings(raw?: Partial<StudioSettings> | null): StudioSettings {
+  if (!raw || typeof raw !== 'object') return INITIAL_SETTINGS;
+  return {
+    ...INITIAL_SETTINGS,
+    ...raw,
+    qrCode: {
+      ...INITIAL_SETTINGS.qrCode!,
+      ...(raw.qrCode || {}),
+    },
+    signature: {
+      ...INITIAL_SETTINGS.signature!,
+      ...(raw.signature || {}),
+    },
+    portfolio: {
+      ...INITIAL_SETTINGS.portfolio!,
+      ...(raw.portfolio || {}),
+      metrics:
+        Array.isArray(raw.portfolio?.metrics) && raw.portfolio.metrics.length > 0
+          ? raw.portfolio.metrics
+          : INITIAL_SETTINGS.portfolio!.metrics,
+    },
+    hiddenSections: Array.isArray(raw.hiddenSections) ? raw.hiddenSections : INITIAL_SETTINGS.hiddenSections,
+    sidebarSections: Array.isArray(raw.sidebarSections) ? raw.sidebarSections : INITIAL_SETTINGS.sidebarSections,
+  };
+}
+
 export default function App() {
   // Multi-Profile Versions (loaded early to support ?role= shareable URLs)
   const [profiles, setProfiles] = useState<CVProfile[]>(() => {
     try {
       const saved = localStorage.getItem('shoyeb_cv_master_v3_profiles');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((p: CVProfile) => ({
+            ...p,
+            data: mergeCVData(p.data),
+            settings: mergeStudioSettings(p.settings),
+          }));
+        }
+      }
     } catch (e) {
       console.error(e);
     }
@@ -81,10 +155,10 @@ export default function App() {
 
   // Load CV data from ?role= profile, localStorage, or initial
   const [cvData, setCvData] = useState<CVData>(() => {
-    if (initialRoleMatch) return initialRoleMatch.data;
+    if (initialRoleMatch) return mergeCVData(initialRoleMatch.data);
     try {
       const saved = localStorage.getItem('shoyeb_cv_master_v3_data');
-      if (saved) return JSON.parse(saved);
+      if (saved) return mergeCVData(JSON.parse(saved));
     } catch (e) {
       console.error(e);
     }
@@ -93,10 +167,10 @@ export default function App() {
 
   // Load Settings from ?role= profile, localStorage, or initial
   const [settings, setSettings] = useState<StudioSettings>(() => {
-    if (initialRoleMatch) return initialRoleMatch.settings;
+    if (initialRoleMatch) return mergeStudioSettings(initialRoleMatch.settings);
     try {
       const saved = localStorage.getItem('shoyeb_cv_master_v3_settings');
-      if (saved) return JSON.parse(saved);
+      if (saved) return mergeStudioSettings(JSON.parse(saved));
     } catch (e) {
       console.error(e);
     }
@@ -153,29 +227,33 @@ export default function App() {
     showToast('পরবর্তী CV স্টেটে এগিয়ে যাওয়া হয়েছে (Redo)', 'info');
   }, [historyFuture, showToast]);
 
-  // Drawer toggles
-  const [isStudioOpen, setIsStudioOpen] = useState(true);
+  // Drawer toggles (Closed by default below lg/1024px so mobile & tablet show CV canvas immediately)
+  const [isStudioOpen, setIsStudioOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+  const [isRightRailOpen, setIsRightRailOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1440 : false
+  );
   const [isUnifiedToolsOpen, setIsUnifiedToolsOpen] = useState(false);
 
-  // Public-first Owner Access Gate (defaults to locked Live Website Mode for visitors)
-  const [isStudioUnlocked, setIsStudioUnlocked] = useState<boolean>(() => {
-    try {
-      return (
-        sessionStorage.getItem('shoyeb_studio_unlocked') === 'true' ||
-        localStorage.getItem('shoyeb_studio_remember') === 'true'
-      );
-    } catch {
-      return false;
-    }
-  });
+  // Public-first Firebase Google Owner Auth Gate (visitors see Live Website immediately)
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authError, setAuthError] = useState<string>('');
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const isStudioUnlocked = isAuthorizedOwner(authUser);
+  const ownerUid = isStudioUnlocked && authUser ? authUser.uid : null;
 
-  const [ownerPasscode, setOwnerPasscode] = useState<string>(() => {
+  const suppressCloudSyncRef = useRef(false);
+  const hasCloudHydratedRef = useRef(false);
+  const hasSeededCloudRef = useRef(false);
+  const hasVisitorPickedLensRef = useRef(false);
+  const urlRoleParam = useMemo(() => {
     try {
-      return localStorage.getItem('shoyeb_studio_passcode') || '2026';
+      return new URLSearchParams(window.location.search).get('role')?.trim().toLowerCase() || '';
     } catch {
-      return '2026';
+      return '';
     }
-  });
+  }, []);
 
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [exportHubOpen, setExportHubOpen] = useState(false);
@@ -214,16 +292,22 @@ export default function App() {
   );
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [zenMode, setZenMode] = useState(false);
   const [sideBySideSpread, setSideBySideSpread] = useState(false);
   const spreadPage1Ref = useRef<HTMLDivElement>(null);
   const spreadPage2Ref = useRef<HTMLDivElement>(null);
+  const canvasHostRef = useRef<HTMLElement>(null);
+  const [canvasWidth, setCanvasWidth] = useState<number>(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
   const [docHeight, setDocHeight] = useState<number>(1120);
   const [showPageGuide, setShowPageGuide] = useState(true);
+  const [showRulerGuides, setShowRulerGuides] = useState(true);
 
   const showPublicWebsite = !isStudioUnlocked || Boolean(settings.portfolioMode);
 
-  // Keyboard shortcuts: Ctrl/Cmd+Z / Ctrl+Y Undo/Redo, Ctrl/Cmd+P -> A4 Print Preview, Esc -> Exit Focus Mode
+  // Keyboard shortcuts: Ctrl/Cmd+Z / Ctrl+Y Undo/Redo, Ctrl/Cmd+P Print Preview, Ctrl+\ Toggle Inspector, Ctrl+E Edit/Preview, ? Shortcuts HUD, Esc Exit Focus Mode
   useEffect(() => {
     if (showPublicWebsite) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -232,9 +316,25 @@ export default function App() {
         setPrintPreviewOpen(true);
         return;
       }
-      if (e.key === 'Escape' && zenMode && !printPreviewOpen) {
-        setZenMode(false);
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault();
+        setIsStudioOpen((o) => !o);
         return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        setSettings((prev) => ({ ...prev, isEditMode: !prev.isEditMode }));
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (shortcutsModalOpen) {
+          setShortcutsModalOpen(false);
+          return;
+        }
+        if (zenMode && !printPreviewOpen) {
+          setZenMode(false);
+          return;
+        }
       }
 
       const target = e.target as HTMLElement | null;
@@ -245,6 +345,11 @@ export default function App() {
           target.tagName === 'TEXTAREA' ||
           target.tagName === 'SELECT')
       ) {
+        return;
+      }
+      if (e.key === '?') {
+        e.preventDefault();
+        setShortcutsModalOpen((s) => !s);
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -261,50 +366,264 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showPublicWebsite, zenMode, printPreviewOpen, handleUndoCV, handleRedoCV]);
+  }, [showPublicWebsite, zenMode, printPreviewOpen, shortcutsModalOpen, handleUndoCV, handleRedoCV]);
 
-  // Owner Passcode Auth Handlers
-  function handleVerifyPasscode(pass: string, remember: boolean): boolean {
-    if (pass !== ownerPasscode) return false;
-    setIsStudioUnlocked(true);
-    try {
-      sessionStorage.setItem('shoyeb_studio_unlocked', 'true');
-      if (remember) {
-        localStorage.setItem('shoyeb_studio_remember', 'true');
-      } else {
-        localStorage.removeItem('shoyeb_studio_remember');
+  // Keep live refs for async Firebase sync without stale closures
+  const settingsRef = useRef<StudioSettings>(settings);
+  settingsRef.current = settings;
+  const profilesRef = useRef<CVProfile[]>(profiles);
+  profilesRef.current = profiles;
+  const activeProfileIdRef = useRef<string>(activeProfileId);
+  activeProfileIdRef.current = activeProfileId;
+  const isStudioUnlockedRef = useRef<boolean>(isStudioUnlocked);
+  isStudioUnlockedRef.current = isStudioUnlocked;
+  const loginModalOpenRef = useRef<boolean>(loginModalOpen);
+  loginModalOpenRef.current = loginModalOpen;
+
+  // 1. Firebase Auth Listener
+  useEffect(() => {
+    const unsub = subscribeAuth((user) => {
+      setAuthUser(user);
+      if (isAuthorizedOwner(user)) {
+        setAuthError('');
+        if (loginModalOpenRef.current) {
+          setLoginModalOpen(false);
+          setSettings((prev) => ({ ...prev, portfolioMode: false }));
+          showToast('স্বাগতম! Google Verified ওনার হিসেবে Document CV Studio আনলক হয়েছে।', 'success');
+        }
+      } else if (user && user.email) {
+        setAuthError(
+          `দুঃখিত, ${user.email} অনুমোদিত ওনার নয়। শুধুমাত্র ${OWNER_ADMIN_EMAIL} স্টুডিও আনলক করতে পারবে।`
+        );
       }
+    });
+    return () => unsub();
+  }, [showToast]);
+
+  // 2. Public Real-Time Firestore Subscription (Live Website & ?role= Profiles)
+  useEffect(() => {
+    let publicSiteMissing = false;
+
+    const unsubSite = subscribePublicSite(
+      (cloudSite) => {
+        if (!cloudSite) {
+          publicSiteMissing = true;
+          hasCloudHydratedRef.current = true;
+          return;
+        }
+        publicSiteMissing = false;
+        setCloudSyncStatus('synced');
+
+        // On visitor view, stay on ?role= lens if URL specifies one
+        if (urlRoleParam && !isStudioUnlockedRef.current) {
+          hasCloudHydratedRef.current = true;
+          return;
+        }
+        // Once owner has already hydrated cloud state and is editing live, avoid overwriting cursor
+        if (isStudioUnlockedRef.current && hasCloudHydratedRef.current) {
+          return;
+        }
+
+        suppressCloudSyncRef.current = true;
+        const mergedData = mergeCVData(cloudSite.activeData);
+        const mergedSettings = mergeStudioSettings(cloudSite.activeSettings);
+        cvDataRef.current = mergedData;
+        setCvData(mergedData);
+        setSettings((prev) => ({
+          ...mergedSettings,
+          portfolioMode: isStudioUnlockedRef.current ? prev.portfolioMode : mergedSettings.portfolioMode,
+        }));
+        setActiveProfileId(cloudSite.activeProfileId || 'prof_master');
+        hasCloudHydratedRef.current = true;
+      },
+      () => {
+        setCloudSyncStatus('error');
+      }
+    );
+
+    const unsubProfiles = subscribePublicProfiles(
+      (cloudProfiles) => {
+        if (cloudProfiles.length === 0) return;
+        const normalized = cloudProfiles.map((p) => ({
+          ...p,
+          data: mergeCVData(p.data),
+          settings: mergeStudioSettings(p.settings),
+        }));
+        setProfiles(normalized);
+
+        if (urlRoleParam && !hasVisitorPickedLensRef.current && !isStudioUnlockedRef.current) {
+          const matched = normalized.find(
+            (p) =>
+              p.id.toLowerCase() === urlRoleParam ||
+              p.id.toLowerCase() === `prof_${urlRoleParam}` ||
+              p.rolePreset.toLowerCase() === urlRoleParam
+          );
+          if (matched) {
+            suppressCloudSyncRef.current = true;
+            cvDataRef.current = matched.data;
+            setCvData(matched.data);
+            setSettings(matched.settings);
+            setActiveProfileId(matched.id);
+            setActiveRoleLabel(matched.id === 'prof_master' ? undefined : matched.name);
+          }
+        }
+      },
+      () => {
+        setCloudSyncStatus('error');
+      }
+    );
+
+    void publicSiteMissing;
+    return () => {
+      unsubSite();
+      unsubProfiles();
+    };
+  }, [urlRoleParam]);
+
+  // 3. When Owner Signs In: Seed Cloud Workspace if Empty & Sync Custom Templates
+  useEffect(() => {
+    if (!ownerUid) return;
+    let active = true;
+
+    if (!hasSeededCloudRef.current) {
+      hasSeededCloudRef.current = true;
+      seedCloudWorkspaceIfEmpty(ownerUid, {
+        activeProfileId: activeProfileIdRef.current,
+        activeData: cvDataRef.current,
+        activeSettings: settingsRef.current,
+        profiles: profilesRef.current,
+      })
+        .then((didSeed) => {
+          if (!active) return;
+          if (didSeed) {
+            setCloudSyncStatus('synced');
+            showToast('প্রথমবার Firebase ক্লাউড ডাটাবেজ ইনিশিয়ালাইজ ও সিঙ্ক সম্পন্ন হয়েছে!', 'success');
+          }
+        })
+        .catch(() => {
+          if (active) setCloudSyncStatus('error');
+        });
+    }
+
+    const unsubTpls = subscribeCustomTemplates(ownerUid, (cloudTpls) => {
+      if (cloudTpls.length > 0) {
+        setCustomTemplates(cloudTpls);
+      }
+    });
+
+    return () => {
+      active = false;
+      unsubTpls();
+    };
+  }, [ownerUid, showToast]);
+
+  // 4. Debounced Cloud Auto-Sync whenever Verified Owner Edits CV, Design Settings, or Active Profile
+  useEffect(() => {
+    if (!isStudioUnlocked || !ownerUid) return;
+    if (suppressCloudSyncRef.current) {
+      suppressCloudSyncRef.current = false;
+      return;
+    }
+
+    setCloudSyncStatus('syncing');
+    const timer = window.setTimeout(async () => {
+      try {
+        await savePublicSiteState(ownerUid, {
+          activeProfileId: activeProfileIdRef.current,
+          activeData: cvDataRef.current,
+          activeSettings: settingsRef.current,
+        });
+
+        const currentIdx = profilesRef.current.findIndex((p) => p.id === activeProfileIdRef.current);
+        if (currentIdx >= 0) {
+          const updatedProfile: CVProfile = {
+            ...profilesRef.current[currentIdx],
+            data: cvDataRef.current,
+            settings: settingsRef.current,
+            updatedAt: new Date().toISOString(),
+          };
+          await upsertPublicProfile(ownerUid, updatedProfile, currentIdx);
+        }
+        setCloudSyncStatus('synced');
+      } catch (err) {
+        console.error('Auto-sync failed:', err);
+        setCloudSyncStatus('error');
+      }
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [cvData, settings, activeProfileId, isStudioUnlocked, ownerUid]);
+
+  // Firebase Google Owner Auth Handlers
+  async function handleGoogleLogin() {
+    setAuthError('');
+    try {
+      const user = await signInOwnerWithGoogle();
+      if (!isAuthorizedOwner(user)) {
+        setAuthError(
+          `এই অ্যাকাউন্টটি (${user.email || 'Unknown'}) অনুমোদিত নয়। অনুগ্রহ করে ${OWNER_ADMIN_EMAIL} দিয়ে সাইন ইন করুন।`
+        );
+      }
+    } catch (err: unknown) {
+      const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code?: unknown }).code) : '';
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setAuthError('লগইন পপআপ বন্ধ করা হয়েছিল। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      } else if (code === 'auth/unauthorized-domain') {
+        const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'this domain';
+        setAuthError(
+          `ডোমেইন (${currentHost}) এখনো Firebase Authorized Domains-এ যুক্ত নেই। Firebase Console (${FIREBASE_PROJECT_ID}) → Authentication → Settings → Authorized domains-এ "${currentHost}" যুক্ত করুন।`
+        );
+      } else {
+        setAuthError('Google লগইন সম্পন্ন করা যায়নি। পপআপ ব্লকার বন্ধ আছে কি না দেখে আবার চেষ্টা করুন।');
+      }
+    }
+  }
+
+  async function handleSignOutOwner() {
+    try {
+      await signOutOwner();
+      setAuthError('');
     } catch (e) {
       console.error(e);
     }
-    setSettings((prev) => ({ ...prev, portfolioMode: false }));
-    setLoginModalOpen(false);
-    showToast('স্বাগতম! Document CV Studio আনলক হয়েছে।', 'success');
-    return true;
   }
 
-  function handleLockStudio() {
-    setIsStudioUnlocked(false);
+  async function handleLockStudio() {
     setIsUnifiedToolsOpen(false);
     setExportHubOpen(false);
     setProfileManagerOpen(false);
-    try {
-      sessionStorage.removeItem('shoyeb_studio_unlocked');
-      localStorage.removeItem('shoyeb_studio_remember');
-    } catch (e) {
-      console.error(e);
-    }
-    showToast('স্টুডিও লক করা হয়েছে — এখন শুধু আপনার লাইভ ওয়েবসাইট দেখা যাবে।', 'info');
+    await handleSignOutOwner();
+    showToast('সাইন আউট সম্পন্ন ও স্টুডিও লক করা হয়েছে — এখন শুধু লাইভ ওয়েবসাইট দেখা যাবে।', 'info');
   }
 
-  function handleUpdatePasscode(newPass: string) {
-    setOwnerPasscode(newPass);
+  async function handleSyncCloudNow() {
+    if (!ownerUid) return;
+    setCloudSyncStatus('syncing');
     try {
-      localStorage.setItem('shoyeb_studio_passcode', newPass);
-    } catch (e) {
-      console.error(e);
+      await savePublicSiteState(ownerUid, {
+        activeProfileId: activeProfileIdRef.current,
+        activeData: cvDataRef.current,
+        activeSettings: settingsRef.current,
+      });
+      await Promise.all(
+        profilesRef.current.map((p, idx) =>
+          upsertPublicProfile(
+            ownerUid,
+            p.id === activeProfileIdRef.current
+              ? { ...p, data: cvDataRef.current, settings: settingsRef.current }
+              : p,
+            idx
+          )
+        )
+      );
+      await Promise.all(customTemplates.map((tpl) => upsertCustomTemplateCloud(ownerUid, tpl)));
+      setCloudSyncStatus('synced');
+      showToast('সমস্ত প্রোফাইল ও ডিজাইন সফলভাবে ক্লাউডে পাবলিশ হয়েছে!', 'success');
+    } catch (err) {
+      console.error(err);
+      setCloudSyncStatus('error');
+      showToast('ক্লাউড সিঙ্কে সমস্যা হয়েছে — কনসোল চেক করুন।', 'error');
     }
-    showToast('ওনার পাসকোড সফলভাবে আপডেট হয়েছে!', 'success');
   }
 
   // Auto-Save to localStorage (only when Document CV Studio is unlocked so public visitors never overwrite owner data)
@@ -342,18 +661,36 @@ export default function App() {
     }
   }, [customTemplates]);
 
-  // Document Height Meter & Overflow Observer
+  // Document Height Meter & Responsive Canvas Width Observer
   useEffect(() => {
     const el = document.getElementById('cvDocument');
-    if (!el) return;
-    const updateHeight = () => {
-      if (el.scrollHeight > 0) setDocHeight(el.scrollHeight);
+    const host = canvasHostRef.current;
+    const updateMetrics = () => {
+      if (el && el.scrollHeight > 0) setDocHeight(el.scrollHeight);
+      if (host && host.clientWidth > 0) setCanvasWidth(host.clientWidth);
     };
-    updateHeight();
-    const obs = new ResizeObserver(updateHeight);
-    obs.observe(el);
+    updateMetrics();
+    const obs = new ResizeObserver(updateMetrics);
+    if (el) obs.observe(el);
+    if (host) obs.observe(host);
     return () => obs.disconnect();
-  }, [cvData, settings, showPublicWebsite]);
+  }, [cvData, settings, showPublicWebsite, isStudioOpen, isRightRailOpen, zenMode]);
+
+  const viewportFitScale = useMemo(() => {
+    if (!canvasWidth || canvasWidth >= 836) return 1;
+    const horizontalPad = canvasWidth < 640 ? 20 : 48;
+    return Math.max(0.38, Math.min(1, (canvasWidth - horizontalPad) / 794));
+  }, [canvasWidth]);
+
+  const effectiveZoomScale = Math.round(viewportFitScale * (settings.zoomLevel || 1) * 1000) / 1000;
+
+  const spreadMetrics = useMemo(() => {
+    const avail = Math.max(700, canvasWidth - 88);
+    const cardWidth = Math.min(532, Math.max(330, Math.floor(avail / 2)));
+    const scale = Math.round((cardWidth / 794) * 1000) / 1000;
+    const cardHeight = Math.round(1123 * scale);
+    return { cardWidth, scale, cardHeight };
+  }, [canvasWidth]);
 
   // Synchronize CSS Variables, Dynamic Print @page Rule & Body classes
   useEffect(() => {
@@ -560,6 +897,8 @@ export default function App() {
     if (newProfileId === activeProfileId) return;
     const target = profiles.find((p) => p.id === newProfileId);
     if (!target) return;
+    hasVisitorPickedLensRef.current = true;
+    suppressCloudSyncRef.current = true;
     cvDataRef.current = target.data;
     setCvData(target.data);
     setSettings((prev) => ({
@@ -577,14 +916,19 @@ export default function App() {
   function handleSelectProfile(newProfileId: string) {
     if (newProfileId === activeProfileId) return;
 
+    const currentIdx = profiles.findIndex((p) => p.id === activeProfileId);
+    const updatedPrev =
+      currentIdx >= 0
+        ? { ...profiles[currentIdx], data: cvData, settings, updatedAt: new Date().toISOString() }
+        : null;
+
     // Save current active profile state before switching
     setProfiles((prev) =>
-      prev.map((p) =>
-        p.id === activeProfileId
-          ? { ...p, data: cvData, settings, updatedAt: new Date().toISOString() }
-          : p
-      )
+      prev.map((p) => (p.id === activeProfileId && updatedPrev ? updatedPrev : p))
     );
+    if (ownerUid && updatedPrev && currentIdx >= 0) {
+      void upsertPublicProfile(ownerUid, updatedPrev, currentIdx).catch(console.error);
+    }
 
     const target = profiles.find((p) => p.id === newProfileId);
     if (target) {
@@ -615,29 +959,36 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
 
-    setProfiles((prev) => [
-      ...prev.map((p) =>
+    const nextList = [
+      ...profiles.map((p) =>
         p.id === activeProfileId
           ? { ...p, data: cvData, settings, updatedAt: new Date().toISOString() }
           : p
       ),
       newProfile,
-    ]);
+    ];
+    setProfiles(nextList);
     cvDataRef.current = newProfile.data;
     setCvData(newProfile.data);
     setSettings(newProfile.settings);
     setActiveProfileId(newProfile.id);
     setHistoryPast([]);
     setHistoryFuture([]);
+
+    if (ownerUid) {
+      void upsertPublicProfile(ownerUid, newProfile, nextList.length - 1).catch(console.error);
+    }
     showToast(`নতুন কাস্টম প্রোফাইল "${name}" তৈরি ও লোড হয়েছে!`, 'success');
   }
 
   function handleRenameProfile(id: string, newName: string) {
-    setProfiles((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, name: newName, updatedAt: new Date().toISOString() } : p
-      )
-    );
+    const idx = profiles.findIndex((p) => p.id === id);
+    const updated =
+      idx >= 0 ? { ...profiles[idx], name: newName, updatedAt: new Date().toISOString() } : null;
+    setProfiles((prev) => prev.map((p) => (p.id === id && updated ? updated : p)));
+    if (ownerUid && updated && idx >= 0) {
+      void upsertPublicProfile(ownerUid, updated, idx).catch(console.error);
+    }
     showToast(`প্রোফাইলের নাম পরিবর্তন করে "${newName}" করা হয়েছে!`, 'success');
   }
 
@@ -645,6 +996,9 @@ export default function App() {
     if (id === 'prof_master') return;
     const remaining = profiles.filter((p) => p.id !== id);
     setProfiles(remaining);
+    if (ownerUid) {
+      void deletePublicProfileCloud(id).catch(console.error);
+    }
     if (activeProfileId === id) {
       const fallback = remaining.find((p) => p.id === 'prof_master') || remaining[0];
       if (fallback) {
@@ -716,6 +1070,37 @@ export default function App() {
     setSettings((prev) => ({ ...prev, zoomLevel: 1 }));
   }
 
+  function handleFitHeight() {
+    if (typeof window === 'undefined') return;
+    const availH = Math.max(400, window.innerHeight - 195);
+    const ratio = Math.max(0.5, Math.min(1, Math.round((availH / 1123) * 20) / 20));
+    setSettings((prev) => ({ ...prev, zoomLevel: ratio }));
+  }
+
+  function handleToggleSpread() {
+    setSideBySideSpread((prev) => {
+      const next = !prev;
+      if (next && typeof window !== 'undefined' && window.innerWidth < 1480) {
+        setIsStudioOpen(false);
+        setIsRightRailOpen(false);
+      }
+      return next;
+    });
+  }
+
+  function handleJumpToSection(sectionId: string) {
+    const host = canvasHostRef.current;
+    if (!host) return;
+    if (sectionId === 'cvHeader') {
+      host.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const target = host.querySelector(`[data-section-id="${sectionId}"]`) as HTMLElement | null;
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   // Custom Template Builder & Manager handlers
   function handleSaveCustomTemplate(name: string, description: string) {
     const snapshot: Partial<StudioSettings> = {
@@ -763,6 +1148,9 @@ export default function App() {
     };
     setCustomTemplates((prev) => [preset, ...prev]);
     setSettings((prev) => ({ ...prev, customTemplateId: preset.id }));
+    if (ownerUid) {
+      void upsertCustomTemplateCloud(ownerUid, preset).catch(console.error);
+    }
     showToast(`নতুন কাস্টম টেমপ্লেট "${name}" গ্যালারিতে সেভ হয়েছে!`, 'success');
   }
 
@@ -777,6 +1165,9 @@ export default function App() {
 
   function handleDeleteCustomTemplate(id: string) {
     setCustomTemplates((prev) => prev.filter((c) => c.id !== id));
+    if (ownerUid) {
+      void deleteCustomTemplateCloud(ownerUid, id).catch(console.error);
+    }
     if (settings.customTemplateId === id) {
       setSettings((prev) => ({ ...prev, customTemplateId: undefined }));
     }
@@ -785,6 +1176,11 @@ export default function App() {
 
   function handleImportCustomTemplates(imported: CustomTemplatePreset[]) {
     setCustomTemplates((prev) => [...imported, ...prev]);
+    if (ownerUid) {
+      imported.forEach((tpl) => {
+        void upsertCustomTemplateCloud(ownerUid, tpl).catch(console.error);
+      });
+    }
     showToast(`${imported.length}টি নতুন টেমপ্লেট ইমপোর্ট হয়েছে!`, 'success');
   }
 
@@ -1264,8 +1660,8 @@ export default function App() {
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        if (parsed.data) applyCVUpdate(parsed.data);
-        if (parsed.settings) setSettings(parsed.settings);
+        if (parsed.data) applyCVUpdate(mergeCVData(parsed.data));
+        if (parsed.settings) setSettings(mergeStudioSettings(parsed.settings));
         showToast('JSON প্রজেক্ট সফলভাবে রিস্টোর হয়েছে!', 'success');
       } catch {
         showToast('JSON ফাইলটি পড়া যায়নি', 'error');
@@ -1276,9 +1672,13 @@ export default function App() {
 
   async function handleDownloadPDF() {
     showToast('পিডিএফ তৈরি হচ্ছে...', 'info');
-    await exportDirectPDF('cvDocument', cvData.name);
-    confetti({ particleCount: 50, spread: 60 });
-    showToast('PDF ডাউনলোড সম্পন্ন হয়েছে!', 'success');
+    const result = await exportDirectPDF('cvDocument', cvData.name);
+    if (result === 'downloaded') {
+      confetti({ particleCount: 50, spread: 60 });
+      showToast('PDF ডাউনলোড সম্পন্ন হয়েছে!', 'success');
+    } else {
+      showToast('প্রিন্ট ডায়ালগ থেকে "Save as PDF" বেছে নিন।', 'info');
+    }
   }
 
   async function handleDownloadPNG() {
@@ -1292,7 +1692,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div
+      className={`print-shell-reset min-h-screen flex flex-col bg-[#060911] text-slate-100 ${
+        !showPublicWebsite ? 'h-[100dvh] overflow-hidden' : ''
+      }`}
+    >
       {showPublicWebsite ? (
         <>
           <WebPortfolioView
@@ -1314,8 +1718,9 @@ export default function App() {
             onExportPDF={handleDownloadPDF}
             onOpenPrintPreview={() => setPrintPreviewOpen(true)}
           />
-          {/* Offscreen clean A4 document for 1-click PDF download directly from Live Website */}
+          {/* Offscreen clean A4 document for 1-click PDF & Print directly from Live Website */}
           <div
+            className="print-only-cv-host"
             style={{
               position: 'fixed',
               left: '-12000px',
@@ -1452,6 +1857,7 @@ export default function App() {
               onOpenPrintPreview={() => setPrintPreviewOpen(true)}
               zenMode={zenMode}
               onToggleZenMode={() => setZenMode((z) => !z)}
+              onOpenShortcuts={() => setShortcutsModalOpen(true)}
             />
           )}
 
@@ -1460,25 +1866,21 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setPrintPreviewOpen(true)}
-                className="px-3 py-1.5 rounded-lg bg-[#0B1120]/95 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 shadow-xl backdrop-blur"
+                className="px-3 py-1.5 rounded-lg bg-[#0B1120]/95 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 shadow-xl backdrop-blur whitespace-nowrap"
               >
                 <Printer className="w-3.5 h-3.5 text-cyan-400" /> Preview
               </button>
               <button
                 type="button"
                 onClick={() => setZenMode(false)}
-                className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xl"
+                className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xl whitespace-nowrap"
               >
                 <Minimize2 className="w-3.5 h-3.5" /> Exit Focus Mode
               </button>
             </div>
           )}
 
-          <div
-            className={`flex-1 flex relative overflow-hidden ${
-              zenMode ? 'h-screen' : 'md:h-[calc(100vh-92px)]'
-            }`}
-          >
+          <div className="print-shell-reset flex-1 min-h-0 flex relative overflow-hidden">
             {/* Left Design Inspector Drawer (Hidden in Zen Focus Mode) */}
             {!zenMode && (
               <StyleCombinerDrawer
@@ -1496,18 +1898,21 @@ export default function App() {
             )}
 
             {/* Center Live A4 Canvas */}
-            <main className="flex-1 py-6 px-3 sm:px-8 overflow-y-auto overflow-x-auto bg-[#060911]">
+            <main
+              ref={canvasHostRef}
+              className="print-shell-reset flex-1 py-4 sm:py-6 px-2.5 sm:px-6 overflow-y-auto overflow-x-auto bg-[#060911]"
+            >
               {/* Clean Floating Canvas Bar */}
-              <div className="no-print max-w-[210mm] mx-auto mb-4 bg-[#0B1120] border border-slate-800/90 rounded-lg px-3.5 py-2 flex flex-wrap items-center justify-between gap-3 text-xs shadow-lg">
-                <div className="flex items-center gap-2.5">
-                  <span className="font-medium text-slate-300">
+              <div className="no-print max-w-[210mm] mx-auto mb-3 sm:mb-4 bg-[#090E1A] border border-slate-800/90 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs shadow-lg">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <span className="font-semibold text-slate-200 tabular-nums whitespace-nowrap text-[11px] sm:text-xs">
                     {estimatedPages} {estimatedPages > 1 ? 'Pages' : 'Page'} · {Math.round(docHeight * 0.264583)}mm
                   </span>
 
                   {overflowPx > 0 ? (
-                    <div className="flex items-center gap-1.5 text-amber-300 bg-amber-950/50 border border-amber-500/40 px-2 py-0.5 rounded text-[11px] font-medium">
+                    <div className="flex items-center gap-1.5 text-amber-300 bg-amber-950/50 border border-amber-500/40 px-2 sm:px-2.5 py-0.5 rounded-md text-[11px] font-medium whitespace-nowrap">
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>
+                      <span className="tabular-nums">
                         +{Math.round(overflowPx)}px overflow on Page {estimatedPages - 1}
                       </span>
                       <button
@@ -1519,46 +1924,59 @@ export default function App() {
                       </button>
                     </div>
                   ) : (
-                    <span className="flex items-center gap-1 text-emerald-400 text-[11px] font-medium">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Clean Fit
+                    <span className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-semibold whitespace-nowrap">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      Clean A4 Fit
                     </span>
                   )}
                 </div>
 
-                {/* Canvas Zoom, Page Break Guide & 2-Page Spread Toggle */}
-                <div className="flex items-center gap-1 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                {/* Canvas Zoom, Page Break Guide, Ruler, 2-Page Spread & Right Rail Toggle */}
+                <div className="flex items-center gap-1 bg-[#0D1424] px-2 py-1 rounded-lg border border-slate-800 ml-auto overflow-x-auto no-scrollbar max-w-full">
                   {estimatedPages >= 2 && (
                     <>
                       <button
                         type="button"
-                        onClick={() => setSideBySideSpread((s) => !s)}
-                        className={`hidden xl:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition ${
+                        onClick={handleToggleSpread}
+                        className={`hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap ${
                           sideBySideSpread
                             ? 'bg-emerald-600/25 text-emerald-300'
-                            : 'text-slate-400 hover:text-slate-200'
+                            : 'text-slate-300 hover:text-white'
                         }`}
-                        title="Page 1 এবং Page 2 পাশাপাশি দেখুন"
+                        title="Page 1 এবং Page 2 পাশাপাশি দেখুন (অটো-ফিট)"
                       >
-                        <Columns2 className="w-3 h-3" />
+                        <Columns2 className="w-3.5 h-3.5" />
                         <span>{sideBySideSpread ? 'Back to Edit' : '2-Page Spread'}</span>
                       </button>
-                      <div className="hidden xl:block h-3 w-px bg-slate-800 mx-0.5" />
+                      <div className="hidden lg:block h-3.5 w-px bg-slate-800 mx-0.5" />
                     </>
                   )}
                   <button
                     type="button"
+                    onClick={() => setShowRulerGuides(!showRulerGuides)}
+                    className={`hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap ${
+                      showRulerGuides
+                        ? 'bg-slate-800 text-cyan-300'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="A4 Millimeter Ruler & Margin Frame চালু/বন্ধ করুন"
+                  >
+                    <Ruler className="w-3 h-3" />
+                    <span>Ruler</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setShowPageGuide(!showPageGuide)}
-                    className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${
+                    className={`px-2 sm:px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap ${
                       showPageGuide
                         ? 'bg-blue-600/25 text-blue-300'
-                        : 'text-slate-400 hover:text-slate-200'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                     title="A4 পেজ ব্রেক লাইন অন/অফ করুন"
                   >
                     {showPageGuide ? 'Guides: On' : 'Guides: Off'}
                   </button>
-                  <div className="h-3 w-px bg-slate-800 mx-0.5" />
+                  <div className="h-3.5 w-px bg-slate-800 mx-0.5" />
                   <button
                     type="button"
                     onClick={() => handleZoomChange(-0.1)}
@@ -1567,8 +1985,8 @@ export default function App() {
                   >
                     <ZoomOut className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[11px] font-semibold text-slate-200 min-w-[36px] text-center">
-                    {Math.round((settings.zoomLevel || 1) * 100)}%
+                  <span className="text-[11px] font-mono tabular-nums font-semibold text-slate-200 min-w-[38px] text-center">
+                    {Math.round(effectiveZoomScale * 100)}%
                   </span>
                   <button
                     type="button"
@@ -1580,32 +1998,58 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={handleResetZoom}
-                    className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-[10.5px] font-medium text-slate-400 hover:text-white"
-                    title="Reset 100%"
+                    onClick={handleFitHeight}
+                    className="hidden lg:inline-block px-1.5 py-0.5 rounded hover:bg-slate-800 text-[11px] font-semibold text-slate-400 hover:text-white whitespace-nowrap"
+                    title="পুরো A4 পাতা ল্যাপটপ স্ক্রিনের উচ্চতা অনুযায়ী ফিট করুন"
                   >
-                    1:1
+                    Fit H
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleResetZoom}
+                    className="px-1.5 sm:px-2 py-0.5 rounded hover:bg-slate-800 text-[11px] font-semibold text-slate-400 hover:text-white whitespace-nowrap"
+                    title={viewportFitScale < 1 ? 'Fit to Screen' : 'Reset 100%'}
+                  >
+                    {viewportFitScale < 1 ? 'Fit' : 'Reset'}
+                  </button>
+
+                  {!isRightRailOpen && !zenMode && (
+                    <>
+                      <div className="hidden lg:block h-3.5 w-px bg-slate-800 mx-0.5" />
+                      <button
+                        type="button"
+                        onClick={() => setIsRightRailOpen(true)}
+                        className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-blue-300 transition whitespace-nowrap"
+                        title="Open Live Studio Monitor & Section Navigator"
+                      >
+                        <PanelRightOpen className="w-3 h-3" />
+                        <span>Live Audit</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* Desktop 2-Page Side-by-Side Spread Preview (when toggled) */}
+              {/* Laptop & Desktop 2-Page Side-by-Side Spread Preview (dynamically fitted to viewport) */}
               {sideBySideSpread && estimatedPages >= 2 && (
                 <div className="no-print max-w-[1160px] mx-auto mb-6">
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 justify-items-center">
+                  <div className="flex flex-wrap justify-center gap-5">
                     <div className="space-y-2">
                       <div className="text-[11px] font-mono font-semibold text-slate-400 text-center">
                         Page 1 of {estimatedPages}
                       </div>
                       <div
                         className="rounded-lg shadow-2xl border border-slate-800 overflow-hidden bg-white"
-                        style={{ width: '532px', height: '752px' }}
+                        style={{
+                          width: `${spreadMetrics.cardWidth}px`,
+                          height: `${spreadMetrics.cardHeight}px`,
+                        }}
                       >
                         <div
                           ref={spreadPage1Ref}
                           style={{
                             width: '794px',
-                            transform: 'scale(0.67)',
+                            transform: `scale(${spreadMetrics.scale})`,
                             transformOrigin: 'top left',
                           }}
                         />
@@ -1618,13 +2062,16 @@ export default function App() {
                       </div>
                       <div
                         className="rounded-lg shadow-2xl border border-slate-800 overflow-hidden bg-white"
-                        style={{ width: '532px', height: '752px' }}
+                        style={{
+                          width: `${spreadMetrics.cardWidth}px`,
+                          height: `${spreadMetrics.cardHeight}px`,
+                        }}
                       >
                         <div
                           ref={spreadPage2Ref}
                           style={{
                             width: '794px',
-                            transform: 'scale(0.67)',
+                            transform: `scale(${spreadMetrics.scale})`,
                             transformOrigin: 'top left',
                           }}
                         />
@@ -1634,63 +2081,118 @@ export default function App() {
                 </div>
               )}
 
-              {/* Document wrapper with Zoom scaling (stays mounted cleanly when spread mode active) */}
+              {/* Desktop & Laptop A4 Millimeter Top Ruler (Hidden on small phones) */}
+              {showRulerGuides && !sideBySideSpread && (
+                <div
+                  className="no-print hidden md:flex items-end justify-between mx-auto mb-1 text-[9px] studio-mono text-slate-500 border-b border-slate-800/80 pb-0.5 select-none"
+                  style={{ width: `${Math.round(794 * effectiveZoomScale)}px` }}
+                  aria-hidden="true"
+                >
+                  {[0, 30, 60, 90, 120, 150, 180, 210].map((mm) => (
+                    <span key={mm} className="flex flex-col items-center leading-none">
+                      <span>{mm}</span>
+                      <span className="w-px h-1.5 bg-slate-700 mt-0.5" />
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Document wrapper with Responsive Auto-Fit + Zoom scaling (never clips left edge on mobile/tablet) */}
               <div
-                className={`cv-document-wrapper relative transition-transform duration-200 ${
+                className={`cv-zoom-frame mx-auto relative ${
                   sideBySideSpread && estimatedPages >= 2
                     ? 'fixed left-[-12000px] top-0 opacity-0 pointer-events-none'
                     : ''
                 }`}
                 style={{
-                  transform: `scale(${settings.zoomLevel || 1})`,
-                  transformOrigin: 'top center',
-                  marginBottom:
-                    settings.zoomLevel && settings.zoomLevel < 1
-                      ? `-${Math.round((1 - settings.zoomLevel) * (docHeight || 1120))}px`
-                      : undefined,
+                  width: `${Math.round(794 * effectiveZoomScale)}px`,
+                  height: `${Math.round((docHeight || 1120) * effectiveZoomScale)}px`,
                 }}
               >
-                {/* Visual A4 Page Break Guidelines (Non-printable) */}
-                {showPageGuide && (
-                  <div
-                    className="no-print absolute left-[-16px] right-[-16px] pointer-events-none flex items-center justify-between z-30"
-                    style={{ top: '1123px' }}
-                  >
-                    <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
-                    <span className="bg-rose-950 border border-rose-500/80 text-rose-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap mx-2">
-                      ✂️ A4 Page 1 End (297mm) / Page 2 Start
-                    </span>
-                    <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
-                  </div>
-                )}
+                <div
+                  className="cv-document-wrapper relative transition-transform duration-150"
+                  style={{
+                    width: '794px',
+                    transform: `scale(${effectiveZoomScale})`,
+                    transformOrigin: 'top left',
+                  }}
+                >
+                  {/* Visual A4 Print Safe-Margin Frame (Non-printable) */}
+                  {showRulerGuides && settings.isEditMode && (
+                    <div
+                      className="no-print absolute pointer-events-none border border-dashed border-blue-400/25 z-20"
+                      style={{
+                        top: `${settings.pagePadding}mm`,
+                        left: `${settings.pagePadding}mm`,
+                        right: `${settings.pagePadding}mm`,
+                        bottom: '40px',
+                      }}
+                    />
+                  )}
 
-                {showPageGuide && docHeight > 2246 && (
-                  <div
-                    className="no-print absolute left-[-16px] right-[-16px] pointer-events-none flex items-center justify-between z-30"
-                    style={{ top: '2246px' }}
-                  >
-                    <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
-                    <span className="bg-rose-950 border border-rose-500/80 text-rose-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap mx-2">
-                      ✂️ A4 Page 2 End (594mm) / Page 3 Start
-                    </span>
-                    <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
-                  </div>
-                )}
+                  {/* Visual A4 Page Break Guidelines (Non-printable) */}
+                  {showPageGuide && (
+                    <div
+                      className="no-print absolute left-0 right-0 pointer-events-none flex items-center justify-between z-30"
+                      style={{ top: '1123px' }}
+                    >
+                      <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
+                      <span className="bg-rose-950 border border-rose-500/80 text-rose-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap mx-2">
+                        A4 Page 1 End (297mm) / Page 2 Start
+                      </span>
+                      <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
+                    </div>
+                  )}
 
-                <CVDocument
-                  cvData={cvData}
-                  settings={settings}
-                  estimatedPages={estimatedPages}
-                  jdHighlightKeywords={jdHighlightKeywords}
-                  onClearJDHighlight={() => setJdHighlightKeywords([])}
-                  onUpdateCVData={applyCVUpdate}
-                  onUpdateSettings={(newVals) => setSettings((prev) => ({ ...prev, ...newVals }))}
-                  onOpenLinkModalForContact={handleOpenLinkModalForContact}
-                  onOpenLinkModalForProject={handleOpenLinkModalForProject}
-                  onOpenSignatureModal={() => setSignatureModalOpen(true)}
-                />
+                  {showPageGuide && docHeight > 2246 && (
+                    <div
+                      className="no-print absolute left-0 right-0 pointer-events-none flex items-center justify-between z-30"
+                      style={{ top: '2246px' }}
+                    >
+                      <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
+                      <span className="bg-rose-950 border border-rose-500/80 text-rose-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap mx-2">
+                        A4 Page 2 End (594mm) / Page 3 Start
+                      </span>
+                      <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
+                    </div>
+                  )}
+
+                  <CVDocument
+                    cvData={cvData}
+                    settings={settings}
+                    estimatedPages={estimatedPages}
+                    jdHighlightKeywords={jdHighlightKeywords}
+                    onClearJDHighlight={() => setJdHighlightKeywords([])}
+                    onUpdateCVData={applyCVUpdate}
+                    onUpdateSettings={(newVals) => setSettings((prev) => ({ ...prev, ...newVals }))}
+                    onOpenLinkModalForContact={handleOpenLinkModalForContact}
+                    onOpenLinkModalForProject={handleOpenLinkModalForProject}
+                    onOpenSignatureModal={() => setSignatureModalOpen(true)}
+                  />
+                </div>
               </div>
             </main>
+
+            {/* Right Desktop 3-Pane Studio Workbench Rail */}
+            {!zenMode && (
+              <StudioRightRail
+                isOpen={isRightRailOpen}
+                onClose={() => setIsRightRailOpen(false)}
+                cvData={cvData}
+                settings={settings}
+                atsScoreData={atsScoreData}
+                wordCount={wordCount}
+                readTimeSeconds={readTimeSeconds}
+                estimatedPages={estimatedPages}
+                docHeightPx={docHeight}
+                overflowPx={overflowPx}
+                onOpenATSModal={() => setAtsModalOpen(true)}
+                onAutoFit1Page={handleAutoFit1Page}
+                onAutoFit2Pages={handleAutoFit2Pages}
+                onJumpToSection={handleJumpToSection}
+                onOpenShortcuts={() => setShortcutsModalOpen(true)}
+              />
+            )}
           </div>
 
           {/* Right Unified Tools Drawer */}
@@ -1700,6 +2202,7 @@ export default function App() {
             cvData={cvData}
             settings={settings}
             score={score}
+            ownerUid={ownerUid}
             activeProfileName={profiles.find((p) => p.id === activeProfileId)?.name}
             jdHighlightKeywords={jdHighlightKeywords}
             onToggleJDHighlight={(kws) => {
@@ -1751,7 +2254,11 @@ export default function App() {
       <OwnerLoginModal
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
-        onVerify={handleVerifyPasscode}
+        onGoogleLogin={handleGoogleLogin}
+        onSignOut={handleSignOutOwner}
+        signedInEmail={authUser?.email || null}
+        isAuthorized={isStudioUnlocked}
+        authError={authError}
       />
 
       <ExportHubModal
@@ -1793,7 +2300,9 @@ export default function App() {
           await copyAllCVText(cvData, settings);
           showToast('সম্পূর্ণ সিভির টেক্সট ক্লিপবোর্ডে কপি হয়েছে!', 'success');
         }}
-        onUpdatePasscode={handleUpdatePasscode}
+        ownerEmail={authUser?.email || null}
+        cloudSyncStatus={cloudSyncStatus}
+        onSyncCloudNow={handleSyncCloudNow}
         onLockStudio={handleLockStudio}
       />
 
@@ -1858,8 +2367,13 @@ export default function App() {
         hideBrowserPrintChrome={settings.hideBrowserPrintChrome !== false}
       />
 
+      <ShortcutsModal
+        isOpen={shortcutsModalOpen}
+        onClose={() => setShortcutsModalOpen(false)}
+      />
+
       {/* Floating Toast Container */}
-      <div className="no-print fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
+      <div className="no-print fixed bottom-4 left-3 right-3 sm:left-auto sm:right-5 sm:max-w-sm z-50 flex flex-col gap-2 pointer-events-none">
         {toasts.map((t) => (
           <div
             key={t.id}

@@ -20,6 +20,11 @@ import {
 } from 'lucide-react';
 import { CVData, JobApplication, StudioSettings } from '../types/cv';
 import { exportCoverLetterPDF, exportCoverLetterDoc } from '../utils/exporters';
+import {
+  subscribeJobApplications,
+  upsertJobApplicationCloud,
+  deleteJobApplicationCloud,
+} from '../firebase';
 
 interface UnifiedToolsDrawerProps {
   isOpen: boolean;
@@ -27,6 +32,7 @@ interface UnifiedToolsDrawerProps {
   cvData: CVData;
   settings: StudioSettings;
   score: number;
+  ownerUid?: string | null;
   activeProfileName?: string;
   jdHighlightKeywords?: string[];
   onToggleJDHighlight?: (keywords: string[]) => void;
@@ -72,6 +78,7 @@ export function UnifiedToolsDrawer({
   cvData,
   settings,
   score,
+  ownerUid = null,
   activeProfileName = 'Master Executive',
   jdHighlightKeywords = [],
   onToggleJDHighlight,
@@ -84,7 +91,7 @@ export function UnifiedToolsDrawer({
   const [activeTab, setActiveTab] = useState<'ats' | 'verbs' | 'linkedin' | 'signature' | 'cover' | 'tracker' | 'pdf'>('ats');
   const [selectedRole, setSelectedRole] = useState<'master' | 'data' | 'sqa' | 'netops'>('master');
 
-  // Job Application Tracker state (persisted in localStorage)
+  // Job Application Tracker state (backed by Firestore when signed in + localStorage mirror)
   const [applications, setApplications] = useState<JobApplication[]>(() => {
     try {
       const saved = localStorage.getItem('shoyeb_job_tracker_v1');
@@ -109,6 +116,16 @@ export function UnifiedToolsDrawer({
       // ignore
     }
   }, [applications]);
+
+  useEffect(() => {
+    if (!ownerUid) return;
+    const unsub = subscribeJobApplications(ownerUid, (cloudApps) => {
+      if (cloudApps.length > 0) {
+        setApplications(cloudApps);
+      }
+    });
+    return () => unsub();
+  }, [ownerUid]);
 
   // JD state
   const [jdText, setJdText] = useState('');
@@ -268,121 +285,139 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
         className="no-print fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm"
         onClick={onClose}
       />
-      <aside className="no-print fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-slate-700 bg-slate-950 text-white shadow-2xl">
+      <aside className="no-print fixed inset-y-0 right-0 z-50 w-full max-w-2xl overflow-y-auto border-l border-slate-800 bg-[#090E1A] text-white shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-900/95 p-4 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800/90 bg-[#080D1A]/95 px-5 py-3.5 backdrop-blur">
           <div>
-            <h2 className="text-base font-extrabold flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-400" /> Shoyeb CV Career Tools
+            <h2 className="text-base font-bold flex items-center gap-2 text-white">
+              <Sparkles className="w-4 h-4 text-blue-400" /> Career &amp; ATS Toolkit
             </h2>
-            <p className="text-[11px] text-slate-400">সব টুল বর্তমান Master CV থেকে লাইভ কাজ করে</p>
+            <p className="text-[11px] text-slate-400">সব টুল বর্তমান Master CV থেকে রিয়েল-টাইমে কাজ করে</p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg bg-slate-800 p-2 text-slate-300 hover:bg-slate-700"
+            className="rounded-lg bg-slate-900 border border-slate-800 p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Tabs */}
-        <nav className="sticky top-[69px] z-10 flex flex-wrap gap-1 border-b border-slate-800 bg-slate-950 p-2">
+        {/* Clean Unclipped Tab Strip (1-row horizontal scroll on mobile, wrapped grid on tablet/desktop) */}
+        <nav className="sticky top-[65px] z-10 flex flex-nowrap overflow-x-auto no-scrollbar sm:flex-wrap gap-1.5 border-b border-slate-800/90 bg-[#0B1221] px-3 sm:px-4 py-2 sm:py-2.5">
           <button
+            type="button"
             onClick={() => setActiveTab('ats')}
-            className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition flex items-center gap-1 ${
-              activeTab === 'ats' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeTab === 'ats' ? 'bg-blue-600 text-white shadow-sm' : 'bg-[#111827] border border-slate-800 text-slate-300 hover:text-white'
             }`}
           >
-            <Target className="w-3.5 h-3.5" /> ATS & JD
+            <Target className="w-3.5 h-3.5 shrink-0" /> ATS &amp; JD Match
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('verbs')}
-            className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition flex items-center gap-1 ${
-              activeTab === 'verbs' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeTab === 'verbs' ? 'bg-blue-600 text-white shadow-sm' : 'bg-[#111827] border border-slate-800 text-slate-300 hover:text-white'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 text-amber-400" /> Action Verbs & XYZ
+            <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" /> XYZ &amp; Verbs
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('linkedin')}
-            className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition flex items-center gap-1 ${
-              activeTab === 'linkedin' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeTab === 'linkedin' ? 'bg-blue-600 text-white shadow-sm' : 'bg-[#111827] border border-slate-800 text-slate-300 hover:text-white'
             }`}
           >
-            <Linkedin className="w-3.5 h-3.5 text-blue-400" /> LinkedIn Bio
+            <Linkedin className="w-3.5 h-3.5 text-blue-400 shrink-0" /> LinkedIn Bio
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('signature')}
-            className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition flex items-center gap-1 ${
-              activeTab === 'signature' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeTab === 'signature' ? 'bg-blue-600 text-white shadow-sm' : 'bg-[#111827] border border-slate-800 text-slate-300 hover:text-white'
             }`}
           >
-            <Mail className="w-3.5 h-3.5" /> Gmail Signature
+            <Mail className="w-3.5 h-3.5 shrink-0" /> Email Signature
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('cover')}
-            className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition flex items-center gap-1 ${
-              activeTab === 'cover' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeTab === 'cover' ? 'bg-blue-600 text-white shadow-sm' : 'bg-[#111827] border border-slate-800 text-slate-300 hover:text-white'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" /> Cover Letter
+            <FileText className="w-3.5 h-3.5 shrink-0" /> Cover Letter
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('tracker')}
-            className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition flex items-center gap-1 ${
-              activeTab === 'tracker' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeTab === 'tracker' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-[#111827] border border-slate-800 text-slate-300 hover:text-white'
             }`}
           >
-            <Briefcase className="w-3.5 h-3.5" /> Job Tracker ({applications.length})
+            <Briefcase className="w-3.5 h-3.5 shrink-0" /> Job Tracker ({applications.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('pdf')}
-            className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition flex items-center gap-1 ${
-              activeTab === 'pdf' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeTab === 'pdf' ? 'bg-blue-600 text-white shadow-sm' : 'bg-[#111827] border border-slate-800 text-slate-300 hover:text-white'
             }`}
           >
-            <FileSearch className="w-3.5 h-3.5" /> PDF
+            <FileSearch className="w-3.5 h-3.5 shrink-0" /> PDF Compare
           </button>
         </nav>
 
         {/* Tab 1: ATS & JD Match */}
         {activeTab === 'ats' && (
-          <div className="space-y-4 p-4 text-xs">
+          <div className="space-y-4 p-5 text-xs">
             {/* Role Preset */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-              <h3 className="font-bold text-emerald-300 flex items-center gap-1.5">
-                <Target className="w-4 h-4" /> ATS Audit & Role Tailoring
-              </h3>
-              <p className="mt-1 text-xs text-slate-400">
-                যেকোনো Role preset প্রয়োগ করলে একই CV-এর headline ও summary তাৎক্ষণিকভাবে টার্গেট রোলে রূপান্তরিত হবে।
+            <div className="rounded-xl border border-slate-800 bg-[#0D1424] p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-bold text-slate-100 flex items-center gap-1.5 text-xs">
+                  <Target className="w-4 h-4 text-emerald-400 shrink-0" /> ATS Score &amp; Role Tailoring
+                </h3>
+                <span
+                  className={`font-mono tabular-nums text-xs font-bold ${
+                    score === 100 ? 'text-emerald-400' : 'text-blue-400'
+                  }`}
+                >
+                  {score}% {score === 100 ? '· Global Ready' : '· BD Photo Mode'}
+                </span>
+              </div>
+              <p className="text-[11.5px] text-slate-400 leading-relaxed">
+                টার্গেট রোল সিলেক্ট করে Apply করলে সিভির Headline ও Summary স্বয়ংক্রিয়ভাবে সেই রোলের অনুযায়ী সাজানো হবে।
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+
+              <div className="space-y-2.5">
                 <select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value as any)}
-                  className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
+                  className="w-full rounded-lg border border-slate-700 bg-[#080D1A] px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
                 >
-                  <option value="master">Master / All-in-One</option>
-                  <option value="data">Data Analyst & BI Developer</option>
-                  <option value="sqa">Software QA Engineer</option>
-                  <option value="netops">IT Support & Network Specialist</option>
+                  <option value="master">Master / All-in-One Executive</option>
+                  <option value="data">Data Analyst &amp; BI Developer</option>
+                  <option value="sqa">Software QA (SQA) Engineer</option>
+                  <option value="netops">IT Support &amp; Network Specialist</option>
                 </select>
-                <button
-                  onClick={() => onApplyRolePreset(selectedRole)}
-                  className="rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-bold hover:bg-blue-500 text-white"
-                >
-                  Apply Role
-                </button>
-                <button
-                  onClick={onOpenATSModal}
-                  className="rounded-lg bg-emerald-700 px-3.5 py-2 text-xs font-bold hover:bg-emerald-600 text-white"
-                >
-                  Full ATS Audit
-                </button>
-              </div>
-              <div className="mt-3 text-xs text-slate-300">
-                Current live ATS score:{' '}
-                <strong className="text-emerald-300 font-extrabold text-sm">{score}%</strong>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onApplyRolePreset(selectedRole)}
+                    className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold hover:bg-blue-500 text-white transition whitespace-nowrap"
+                  >
+                    Apply Role Preset
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onOpenATSModal}
+                    className="rounded-lg bg-emerald-600/20 border border-emerald-500/40 px-3 py-2 text-xs font-bold hover:bg-emerald-600/35 text-emerald-200 transition whitespace-nowrap"
+                  >
+                    Open ATS Scorecard
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -722,7 +757,7 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
               </div>
 
               {/* Rendered Card Preview */}
-              <div className="mt-4 rounded-xl border border-slate-700 p-4 bg-white text-slate-900 shadow-md">
+              <div className="mt-4 rounded-xl border border-slate-700 p-3 sm:p-4 bg-white text-slate-900 shadow-md overflow-x-auto">
                 <div
                   id="gmailSignatureCard"
                   style={{
@@ -1076,6 +1111,11 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
                     notes: appNotes.trim() || undefined,
                   };
                   setApplications((prev) => [entry, ...prev]);
+                  if (ownerUid) {
+                    void upsertJobApplicationCloud(ownerUid, entry).catch((err) =>
+                      console.error('Job Tracker sync failed:', err)
+                    );
+                  }
                   setAppCompany('');
                   setAppRole('');
                   setAppUrl('');
@@ -1214,14 +1254,20 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
                           <div className="flex items-center gap-1.5">
                             <select
                               value={app.status}
-                              onChange={(e) => {
-                                const next = e.target.value as JobApplication['status'];
-                                setApplications((prev) =>
-                                  prev.map((item) =>
-                                    item.id === app.id ? { ...item, status: next } : item
-                                  )
-                                );
-                              }}
+                                onChange={(e) => {
+                                  const next = e.target.value as JobApplication['status'];
+                                  const updated = { ...app, status: next };
+                                  setApplications((prev) =>
+                                    prev.map((item) =>
+                                      item.id === app.id ? updated : item
+                                    )
+                                  );
+                                  if (ownerUid) {
+                                    void upsertJobApplicationCloud(ownerUid, updated).catch((err) =>
+                                      console.error('Job status update failed:', err)
+                                    );
+                                  }
+                                }}
                               className={`rounded px-2 py-0.5 text-[10.5px] font-bold border ${
                                 app.status === 'Offer'
                                   ? 'bg-emerald-950 border-emerald-500/40 text-emerald-300'
@@ -1242,9 +1288,14 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
 
                             <button
                               type="button"
-                              onClick={() =>
-                                setApplications((prev) => prev.filter((item) => item.id !== app.id))
-                              }
+                              onClick={() => {
+                                setApplications((prev) => prev.filter((item) => item.id !== app.id));
+                                if (ownerUid) {
+                                  void deleteJobApplicationCloud(ownerUid, app.id).catch((err) =>
+                                    console.error('Job delete failed:', err)
+                                  );
+                                }
+                              }}
                               className="p-1 text-slate-500 hover:text-rose-400"
                               title="Delete entry"
                             >

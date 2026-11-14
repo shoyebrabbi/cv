@@ -63,18 +63,67 @@ function getSectionHeading(
   }
 }
 
+function prepareCaptureHost(element: HTMLElement) {
+  const wrapper = element.closest('.cv-document-wrapper') as HTMLElement | null;
+  const offscreenHost = element.closest('.print-only-cv-host, .cv-zoom-frame') as HTMLElement | null;
+
+  const prevWrapperTransform = wrapper ? wrapper.style.transform : '';
+  const prevWrapperMarginBottom = wrapper ? wrapper.style.marginBottom : '';
+  if (wrapper) {
+    wrapper.style.transform = 'scale(1)';
+    wrapper.style.marginBottom = '0px';
+  }
+
+  let restoreHost: (() => void) | null = null;
+  if (offscreenHost && getComputedStyle(offscreenHost).position === 'fixed') {
+    const prevLeft = offscreenHost.style.left;
+    const prevTop = offscreenHost.style.top;
+    const prevOpacity = offscreenHost.style.opacity;
+    const prevZIndex = offscreenHost.style.zIndex;
+    const prevWidth = offscreenHost.style.width;
+    const prevHeight = offscreenHost.style.height;
+
+    offscreenHost.style.left = '0px';
+    offscreenHost.style.top = '0px';
+    offscreenHost.style.opacity = '1';
+    offscreenHost.style.zIndex = '-1';
+    offscreenHost.style.width = '794px';
+    offscreenHost.style.height = 'auto';
+
+    restoreHost = () => {
+      offscreenHost.style.left = prevLeft;
+      offscreenHost.style.top = prevTop;
+      offscreenHost.style.opacity = prevOpacity;
+      offscreenHost.style.zIndex = prevZIndex;
+      offscreenHost.style.width = prevWidth;
+      offscreenHost.style.height = prevHeight;
+    };
+  }
+
+  return () => {
+    if (restoreHost) restoreHost();
+    if (wrapper) {
+      wrapper.style.transform = prevWrapperTransform;
+      wrapper.style.marginBottom = prevWrapperMarginBottom;
+    }
+  };
+}
+
 // 1. Direct PDF Download
-export async function exportDirectPDF(elementId = 'cvDocument', candidateName?: string) {
+export async function exportDirectPDF(
+  elementId = 'cvDocument',
+  candidateName?: string
+): Promise<'downloaded' | 'print-fallback'> {
   const element = document.getElementById(elementId);
   if (!element) {
     window.print();
-    return;
+    return 'print-fallback';
   }
 
   const html2pdf = (window as unknown as { html2pdf?: () => any }).html2pdf;
   if (!html2pdf) {
     window.print();
-    return;
+    return 'print-fallback';
   }
 
   const safeName = (candidateName || 'Professional_Resume')
@@ -82,13 +131,7 @@ export async function exportDirectPDF(elementId = 'cvDocument', candidateName?: 
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
 
-  const wrapper = element.closest('.cv-document-wrapper') as HTMLElement | null;
-  const prevTransform = wrapper ? wrapper.style.transform : '';
-  const prevMarginBottom = wrapper ? wrapper.style.marginBottom : '';
-  if (wrapper) {
-    wrapper.style.transform = 'scale(1)';
-    wrapper.style.marginBottom = '0px';
-  }
+  const restoreCapture = prepareCaptureHost(element);
 
   const opt = {
     margin: [6, 0, 6, 0],
@@ -98,7 +141,10 @@ export async function exportDirectPDF(elementId = 'cvDocument', candidateName?: 
       scale: 2,
       useCORS: true,
       letterRendering: true,
+      scrollX: 0,
       scrollY: 0,
+      x: 0,
+      y: 0,
       ignoreElements: (el: Element) =>
         el.classList?.contains('builder-control') || el.classList?.contains('no-print'),
     },
@@ -112,14 +158,13 @@ export async function exportDirectPDF(elementId = 'cvDocument', candidateName?: 
 
   try {
     await html2pdf().set(opt).from(element).save();
+    return 'downloaded';
   } catch (err) {
     console.error('Direct PDF error, falling back to print:', err);
     window.print();
+    return 'print-fallback';
   } finally {
-    if (wrapper) {
-      wrapper.style.transform = prevTransform;
-      wrapper.style.marginBottom = prevMarginBottom;
-    }
+    restoreCapture();
   }
 }
 
@@ -139,13 +184,7 @@ export async function exportHighResPNG(
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
 
-  const wrapper = element.closest('.cv-document-wrapper') as HTMLElement | null;
-  const prevTransform = wrapper ? wrapper.style.transform : '';
-  const prevMarginBottom = wrapper ? wrapper.style.marginBottom : '';
-  if (wrapper) {
-    wrapper.style.transform = 'scale(1)';
-    wrapper.style.marginBottom = '0px';
-  }
+  const restoreCapture = prepareCaptureHost(element);
 
   try {
     const canvas: HTMLCanvasElement = await html2pdf()
@@ -155,7 +194,10 @@ export async function exportHighResPNG(
           scale: 2.5,
           useCORS: true,
           letterRendering: true,
+          scrollX: 0,
           scrollY: 0,
+          x: 0,
+          y: 0,
           backgroundColor: '#ffffff',
           ignoreElements: (el: Element) =>
             el.classList?.contains('builder-control') || el.classList?.contains('no-print'),
@@ -175,10 +217,7 @@ export async function exportHighResPNG(
     console.error('High-res PNG export failed:', err);
     return false;
   } finally {
-    if (wrapper) {
-      wrapper.style.transform = prevTransform;
-      wrapper.style.marginBottom = prevMarginBottom;
-    }
+    restoreCapture();
   }
 }
 
@@ -920,8 +959,10 @@ export async function exportCoverLetterPDF(
 
   const wrapper = document.createElement('div');
   wrapper.style.position = 'fixed';
-  wrapper.style.left = '-12000px';
-  wrapper.style.top = '0';
+  wrapper.style.left = '0px';
+  wrapper.style.top = '0px';
+  wrapper.style.zIndex = '-9999';
+  wrapper.style.pointerEvents = 'none';
   wrapper.style.width = '210mm';
   wrapper.style.background = '#ffffff';
   wrapper.style.color = '#1e293b';
@@ -949,7 +990,7 @@ export async function exportCoverLetterPDF(
           margin: [8, 8, 8, 8],
           filename: `Cover_Letter_${safeCompany}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+          html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollX: 0, scrollY: 0, x: 0, y: 0 },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         })
         .from(wrapper)

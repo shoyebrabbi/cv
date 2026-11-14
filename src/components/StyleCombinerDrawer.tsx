@@ -73,94 +73,111 @@ export function StyleCombinerDrawer({
   }
 
   return (
-    <aside className="no-print fixed md:static inset-y-0 left-0 w-80 bg-[#0B1120] border-r border-slate-800 text-slate-200 flex flex-col shrink-0 z-40 md:z-30 h-full overflow-hidden shadow-2xl md:shadow-none">
-      {/* Inspector Header */}
-      <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-blue-400" />
-          <h2 className="font-bold text-xs uppercase tracking-wider text-slate-100">
-            Design Inspector
-          </h2>
+    <>
+      {/* Mobile & Tablet Backdrop Overlay (<1024px) */}
+      <div
+        className="no-print lg:hidden fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <aside className="no-print fixed lg:static inset-y-0 left-0 w-full max-w-[360px] sm:w-[356px] bg-[#090E1A] border-r border-slate-800/90 text-slate-200 flex flex-col shrink-0 z-50 lg:z-30 h-full overflow-hidden shadow-2xl lg:shadow-none">
+        {/* Inspector Header */}
+        <div className="px-4 py-3 border-b border-slate-800/90 flex items-center justify-between shrink-0 bg-[#080D1A]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-md bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+              <Sliders className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-xs tracking-wide text-slate-100">
+                Design Inspector
+              </h2>
+              <p className="text-[10.5px] text-slate-400">লেআউট, কালার ও প্রিন্ট কন্ট্রোল</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+            title="প্যানেল বন্ধ করুন"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition"
-          title="প্যানেল বন্ধ করুন"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
 
-      {/* Pinned 4-Tab Bar */}
-      <div className="grid grid-cols-4 gap-1 p-2 border-b border-slate-800 bg-[#0F172A] shrink-0 text-[11px]">
+      {/* Pinned 4-Tab Bar (Full Unclipped Labels) */}
+      <div className="grid grid-cols-4 border-b border-slate-800/90 bg-[#0B1221] shrink-0 text-[11px]">
         {(
           [
             { id: 'layout', label: 'Layout', Icon: Boxes },
             { id: 'style', label: 'Style', Icon: Palette },
             { id: 'media', label: 'Media', Icon: Camera },
-            { id: 'print', label: 'Print/Web', Icon: Printer },
+            { id: 'print', label: 'Print & Web', Icon: Printer },
           ] as Array<{ id: InspectorTab; label: string; Icon: React.FC<{ className?: string }> }>
-        ).map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActiveTab(id)}
-            className={`py-1.5 px-1 rounded-md flex flex-col items-center justify-center gap-0.5 font-semibold transition ${
-              activeTab === id
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/80'
-            }`}
-          >
-            <Icon className="w-3.5 h-3.5" />
-            <span>{label}</span>
-          </button>
-        ))}
+        ).map(({ id, label, Icon }) => {
+          const isActive = activeTab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              className={`py-2.5 px-1.5 flex flex-col items-center justify-center gap-1 font-semibold transition border-b-2 whitespace-nowrap ${
+                isActive
+                  ? 'border-blue-500 bg-blue-600/10 text-white'
+                  : 'border-transparent text-slate-400 hover:text-slate-100 hover:bg-slate-800/40'
+              }`}
+            >
+              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-400' : ''}`} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Scrollable Active Tab Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-800/75 text-xs">
         {/* ================= TAB 1: LAYOUT & SECTIONS ================= */}
         {activeTab === 'layout' && (
           <>
             {/* Quick Gallery & Save Template Action */}
-            <div className="space-y-2">
-              <div className="flex gap-1.5">
+            <div className="p-4 space-y-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 {onOpenTemplateGallery && (
                   <button
                     type="button"
                     onClick={onOpenTemplateGallery}
-                    className="flex-1 py-2 px-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100 font-semibold flex items-center justify-center gap-1.5 transition"
+                    className="py-2 px-3 rounded-lg bg-[#111827] hover:bg-slate-800 border border-slate-700/90 text-slate-100 font-semibold flex items-center justify-center gap-1.5 transition whitespace-nowrap"
                   >
-                    <LayoutGrid className="w-3.5 h-3.5 text-blue-400" /> Browse Templates
+                    <LayoutGrid className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    <span>Templates</span>
                   </button>
                 )}
                 {onSaveCustomTemplate && (
                   <button
                     type="button"
                     onClick={() => setShowSaveTpl(!showSaveTpl)}
-                    className="flex-1 py-2 px-2.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/40 text-emerald-200 font-semibold flex items-center justify-center gap-1.5 transition"
+                    className="py-2 px-3 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 font-semibold flex items-center justify-center gap-1.5 transition whitespace-nowrap"
                   >
-                    <BookmarkPlus className="w-3.5 h-3.5" /> Save Design
+                    <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
+                    <span>Save Design</span>
                   </button>
                 )}
               </div>
 
               {showSaveTpl && onSaveCustomTemplate && (
-                <div className="bg-slate-900 border border-emerald-500/40 rounded-lg p-2.5 space-y-2">
+                <div className="bg-[#111827] border border-emerald-500/40 rounded-lg p-3 space-y-2">
                   <input
                     type="text"
                     value={tplName}
                     onChange={(e) => setTplName(e.target.value)}
                     placeholder="নতুন টেমপ্লেটের নাম..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white"
+                    className="w-full bg-[#080D1A] border border-slate-700 rounded-md px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                   />
                   <input
                     type="text"
                     value={tplDesc}
                     onChange={(e) => setTplDesc(e.target.value)}
                     placeholder="সংক্ষিপ্ত বিবরণ (ঐচ্ছিক)..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white"
+                    className="w-full bg-[#080D1A] border border-slate-700 rounded-md px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                   />
                   <button
                     type="button"
@@ -171,7 +188,7 @@ export function StyleCombinerDrawer({
                       setTplDesc('');
                       setShowSaveTpl(false);
                     }}
-                    className="w-full py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                    className="w-full py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition"
                   >
                     Save to Template Gallery
                   </button>
@@ -180,13 +197,13 @@ export function StyleCombinerDrawer({
             </div>
 
             {/* Structure Controls */}
-            <div className="space-y-3 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Structure &amp; Components
+            <div className="p-4 space-y-3.5">
+              <div className="text-[11px] font-bold tracking-wide text-slate-300">
+                Structure &amp; Layout
               </div>
 
               <div>
-                <label className="text-[11px] text-slate-300 block mb-1">Header Style</label>
+                <label className="text-[11px] text-slate-400 block mb-1 font-medium">Header Style</label>
                 <select
                   value={settings.headerStyle}
                   onChange={(e) => {
@@ -196,22 +213,22 @@ export function StyleCombinerDrawer({
                       photoPosition: val === 'dark-banner' ? 'right' : val,
                     });
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                  className="w-full bg-[#111827] border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none"
                 >
                   <option value="right">Photo Right (BD Corporate Best)</option>
                   <option value="left">Photo Left (Classic)</option>
                   <option value="center">Centered Executive Header</option>
                   <option value="dark-banner">Dark Full-Width Banner</option>
-                  <option value="hide">No Photo (100% Strict ATS)</option>
+                  <option value="hide">No Photo (100% Global Strict ATS)</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-[11px] text-slate-300 block mb-1">Column Layout</label>
+                <label className="text-[11px] text-slate-400 block mb-1 font-medium">Column Layout</label>
                 <select
                   value={settings.bodyColumns}
                   onChange={(e) => onUpdateSettings({ bodyColumns: e.target.value as BodyColumns })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                  className="w-full bg-[#111827] border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none"
                 >
                   <option value="1col">1-Column Full Width (Best ATS)</option>
                   <option value="2col-left">2-Column (Left Sidebar)</option>
@@ -221,9 +238,9 @@ export function StyleCombinerDrawer({
 
               {settings.bodyColumns !== '1col' && (
                 <div className="pt-1">
-                  <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                  <div className="flex justify-between text-[11px] text-slate-400 mb-1">
                     <span>Sidebar Width</span>
-                    <span className="text-slate-200 font-mono">
+                    <span className="text-slate-100 font-mono tabular-nums">
                       {settings.sidebarWidthPercent || 33}%
                     </span>
                   </div>
@@ -242,11 +259,11 @@ export function StyleCombinerDrawer({
               )}
 
               <div>
-                <label className="text-[11px] text-slate-300 block mb-1">Section Headings</label>
+                <label className="text-[11px] text-slate-400 block mb-1 font-medium">Section Headings</label>
                 <select
                   value={settings.sectionHeading}
                   onChange={(e) => onUpdateSettings({ sectionHeading: e.target.value as SectionHeadingStyle })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                  className="w-full bg-[#111827] border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none"
                 >
                   <option value="accent-bar">Left Accent Bar + Rule</option>
                   <option value="line">Minimal Bottom Line</option>
@@ -257,11 +274,11 @@ export function StyleCombinerDrawer({
               </div>
 
               <div>
-                <label className="text-[11px] text-slate-300 block mb-1">Skills Display</label>
+                <label className="text-[11px] text-slate-400 block mb-1 font-medium">Skills Display</label>
                 <select
                   value={settings.skillsMode}
                   onChange={(e) => onUpdateSettings({ skillsMode: e.target.value as SkillsMode })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                  className="w-full bg-[#111827] border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none"
                 >
                   <option value="table">Structured Table</option>
                   <option value="pills">Stacked Cards</option>
@@ -271,11 +288,11 @@ export function StyleCombinerDrawer({
               </div>
 
               <div>
-                <label className="text-[11px] text-slate-300 block mb-1">Bullet Icon Style</label>
+                <label className="text-[11px] text-slate-400 block mb-1 font-medium">Bullet Icon Style</label>
                 <select
                   value={settings.bulletStyle}
                   onChange={(e) => onUpdateSettings({ bulletStyle: e.target.value as BulletStyle })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                  className="w-full bg-[#111827] border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none"
                 >
                   <option value="bullet-disc">• Classic Disc</option>
                   <option value="bullet-square">▪ Executive Square</option>
@@ -286,17 +303,18 @@ export function StyleCombinerDrawer({
               </div>
             </div>
 
-            {/* Section Order, Rename, Visibility & Column Placement */}
-            <div className="space-y-2.5 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
+            {/* Section Order, Rename, Visibility & Column Placement (Clean 2-Row Unclipped Cards) */}
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold tracking-wide text-slate-300 flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5 text-blue-400" /> Sections: Order &amp; Titles
                 </span>
                 {settings.bodyColumns !== '1col' && (
-                  <span className="text-[10px] font-normal text-slate-500">Sidebar / Main</span>
+                  <span className="text-[10.5px] text-slate-400">Sidebar / Main</span>
                 )}
               </div>
-              <div className="space-y-1.5">
+
+              <div className="space-y-2">
                 {(() => {
                   const defaultOrder: CVSectionId[] = [
                     'summary',
@@ -309,6 +327,13 @@ export function StyleCombinerDrawer({
                     settings.sectionOrder && settings.sectionOrder.length === 5
                       ? settings.sectionOrder
                       : defaultOrder;
+                  const shortLabels: Record<CVSectionId, string> = {
+                    summary: 'Summary',
+                    skills: 'Skills',
+                    experience: 'Experience',
+                    projects: 'Projects',
+                    credentials: 'Education & Certs',
+                  };
                   const defaultTitles: Record<CVSectionId, string> = {
                     summary: 'PROFESSIONAL SUMMARY',
                     skills: 'CORE TECHNICAL SKILLS & COMPETENCIES',
@@ -346,75 +371,97 @@ export function StyleCombinerDrawer({
                     return (
                       <div
                         key={secId}
-                        className="bg-slate-950/70 border border-slate-800/80 rounded-lg p-2 space-y-1.5"
+                        className="bg-[#111827] border border-slate-800/90 rounded-lg p-2.5 space-y-2"
                       >
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <button
-                              type="button"
-                              disabled={idx === 0}
-                              onClick={() => moveSec(-1)}
-                              className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-25"
-                              title="Move Up"
+                        {/* Row 1: Sequence, Label, Reorder, Placement & Visibility */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-[10.5px] font-mono tabular-nums text-slate-500 font-bold">
+                              0{idx + 1}
+                            </span>
+                            <span
+                              className={`text-[11px] font-semibold truncate ${
+                                hidden ? 'text-slate-500 line-through' : 'text-slate-200'
+                              }`}
                             >
-                              <ArrowUp className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={idx === order.length - 1}
-                              onClick={() => moveSec(1)}
-                              className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-25"
-                              title="Move Down"
-                            >
-                              <ArrowDown className="w-3 h-3" />
-                            </button>
+                              {shortLabels[secId]}
+                            </span>
                           </div>
 
-                          <input
-                            type="text"
-                            value={customTitle}
-                            onChange={(e) =>
-                              onUpdateSettings({
-                                sectionTitles: {
-                                  ...(settings.sectionTitles || {}),
-                                  [secId]: e.target.value,
-                                },
-                              })
-                            }
-                            placeholder={defaultTitles[secId]}
-                            className={`flex-1 min-w-0 bg-slate-900 border border-slate-800 focus:border-blue-500 rounded px-2 py-1 text-[11px] focus:outline-none ${
-                              hidden ? 'text-slate-500 line-through' : 'text-slate-100'
-                            }`}
-                          />
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center bg-[#080D1A] border border-slate-800 rounded p-0.5">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => moveSec(-1)}
+                                className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-25"
+                                title="Move Up"
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === order.length - 1}
+                                onClick={() => moveSec(1)}
+                                className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-25"
+                                title="Move Down"
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </button>
+                            </div>
 
-                          {isTwoCol && (
+                            {isTwoCol && (
+                              <button
+                                type="button"
+                                onClick={togglePlacement}
+                                className={`px-2 py-0.5 rounded text-[10.5px] font-semibold shrink-0 transition whitespace-nowrap ${
+                                  inSidebar
+                                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
+                                    : 'bg-slate-800 text-slate-300 border border-slate-700 hover:text-white'
+                                }`}
+                                title="Switch Sidebar / Main Column"
+                              >
+                                {inSidebar ? 'Sidebar' : 'Main'}
+                              </button>
+                            )}
+
                             <button
                               type="button"
-                              onClick={togglePlacement}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0 transition ${
-                                inSidebar
-                                  ? 'bg-blue-600/25 text-blue-300 border border-blue-500/40'
-                                  : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+                              onClick={() => {
+                                const cur = new Set(settings.hiddenSections || []);
+                                if (hidden) cur.delete(secId);
+                                else cur.add(secId);
+                                onUpdateSettings({ hiddenSections: Array.from(cur) });
+                              }}
+                              className={`px-2 py-0.5 rounded text-[10.5px] font-semibold border transition whitespace-nowrap ${
+                                hidden
+                                  ? 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'
+                                  : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60'
                               }`}
-                              title="Switch Sidebar / Main Column"
+                              title={hidden ? 'Show section' : 'Hide section'}
                             >
-                              {inSidebar ? 'Side' : 'Main'}
+                              {hidden ? 'Hidden' : 'Visible'}
                             </button>
-                          )}
-
-                          <input
-                            type="checkbox"
-                            checked={!hidden}
-                            onChange={() => {
-                              const cur = new Set(settings.hiddenSections || []);
-                              if (hidden) cur.delete(secId);
-                              else cur.add(secId);
-                              onUpdateSettings({ hiddenSections: Array.from(cur) });
-                            }}
-                            className="accent-blue-500 w-3.5 h-3.5 cursor-pointer shrink-0"
-                            title={hidden ? 'Show section' : 'Hide section'}
-                          />
+                          </div>
                         </div>
+
+                        {/* Row 2: Full-Width Editable Heading Title (Never Clipped) */}
+                        <input
+                          type="text"
+                          value={customTitle}
+                          onChange={(e) =>
+                            onUpdateSettings({
+                              sectionTitles: {
+                                ...(settings.sectionTitles || {}),
+                                [secId]: e.target.value,
+                              },
+                            })
+                          }
+                          placeholder={defaultTitles[secId]}
+                          className={`w-full bg-[#080D1A] border border-slate-800 focus:border-blue-500 rounded-md px-2.5 py-1.5 text-[11px] focus:outline-none ${
+                            hidden ? 'text-slate-500 line-through' : 'text-slate-100'
+                          }`}
+                        />
                       </div>
                     );
                   });
@@ -422,35 +469,38 @@ export function StyleCombinerDrawer({
               </div>
 
               {/* Sub-headings inside Credentials */}
-              <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-1.5">
-                <input
-                  type="text"
-                  value={settings.sectionTitles?.certifications ?? ''}
-                  onChange={(e) =>
-                    onUpdateSettings({
-                      sectionTitles: {
-                        ...(settings.sectionTitles || {}),
-                        certifications: e.target.value,
-                      },
-                    })
-                  }
-                  placeholder="CERTIFICATIONS"
-                  className="bg-slate-950 border border-slate-800 focus:border-blue-500 rounded px-2 py-1 text-[10.5px] text-slate-100 focus:outline-none"
-                />
-                <input
-                  type="text"
-                  value={settings.sectionTitles?.languages ?? ''}
-                  onChange={(e) =>
-                    onUpdateSettings({
-                      sectionTitles: {
-                        ...(settings.sectionTitles || {}),
-                        languages: e.target.value,
-                      },
-                    })
-                  }
-                  placeholder="LANGUAGES & CORE"
-                  className="bg-slate-950 border border-slate-800 focus:border-blue-500 rounded px-2 py-1 text-[10.5px] text-slate-100 focus:outline-none"
-                />
+              <div className="pt-2 space-y-2">
+                <div className="text-[10.5px] text-slate-400 font-medium">Credentials Sub-Headings</div>
+                <div className="grid grid-cols-1 gap-1.5">
+                  <input
+                    type="text"
+                    value={settings.sectionTitles?.certifications ?? ''}
+                    onChange={(e) =>
+                      onUpdateSettings({
+                        sectionTitles: {
+                          ...(settings.sectionTitles || {}),
+                          certifications: e.target.value,
+                        },
+                      })
+                    }
+                    placeholder="CERTIFICATIONS"
+                    className="w-full bg-[#111827] border border-slate-800 focus:border-blue-500 rounded-md px-2.5 py-1.5 text-[11px] text-slate-100 focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={settings.sectionTitles?.languages ?? ''}
+                    onChange={(e) =>
+                      onUpdateSettings({
+                        sectionTitles: {
+                          ...(settings.sectionTitles || {}),
+                          languages: e.target.value,
+                        },
+                      })
+                    }
+                    placeholder="LANGUAGES & CORE"
+                    className="w-full bg-[#111827] border border-slate-800 focus:border-blue-500 rounded-md px-2.5 py-1.5 text-[11px] text-slate-100 focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
           </>
@@ -460,11 +510,11 @@ export function StyleCombinerDrawer({
         {activeTab === 'style' && (
           <>
             {/* Preset Swatches & Custom Colors */}
-            <div className="space-y-3 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="p-4 space-y-3.5">
+              <div className="text-[11px] font-bold tracking-wide text-slate-300">
                 Color Palette
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
                 {[
                   { primary: '#0f4c81', light: '#f0f7ff', border: '#1e6091', label: 'Royal Blue' },
                   { primary: '#1e3a8a', light: '#eff6ff', border: '#1d4ed8', label: 'Navy' },
@@ -484,8 +534,8 @@ export function StyleCombinerDrawer({
                         themeBorder: c.border,
                       })
                     }
-                    className={`w-6 h-6 rounded-full transition ${
-                      settings.themePrimary === c.primary ? 'ring-2 ring-white scale-110' : 'opacity-85 hover:opacity-100'
+                    className={`w-7 h-7 rounded-full transition border border-white/15 ${
+                      settings.themePrimary === c.primary ? 'ring-2 ring-white scale-110' : 'opacity-90 hover:opacity-100'
                     }`}
                     style={{ backgroundColor: c.primary }}
                     title={c.label}
@@ -501,14 +551,14 @@ export function StyleCombinerDrawer({
                       themeBorder: e.target.value,
                     })
                   }
-                  className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+                  className="w-7 h-7 rounded cursor-pointer bg-transparent border-0"
                   title="Custom Primary Color"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5 pt-1">
-                <label className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 flex items-center justify-between cursor-pointer">
-                  <span className="text-[10.5px] text-slate-300">Text</span>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <label className="bg-[#111827] border border-slate-800 rounded-lg px-2.5 py-2 flex items-center justify-between cursor-pointer">
+                  <span className="text-[11px] text-slate-200 font-medium">Text Color</span>
                   <input
                     type="color"
                     value={settings.cvTextColor || '#1e293b'}
@@ -516,8 +566,8 @@ export function StyleCombinerDrawer({
                     className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
                   />
                 </label>
-                <label className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 flex items-center justify-between cursor-pointer">
-                  <span className="text-[10.5px] text-slate-300">Card Tint</span>
+                <label className="bg-[#111827] border border-slate-800 rounded-lg px-2.5 py-2 flex items-center justify-between cursor-pointer">
+                  <span className="text-[11px] text-slate-200 font-medium">Card Tint</span>
                   <input
                     type="color"
                     value={settings.themeLight || '#f0f7ff'}
@@ -525,8 +575,8 @@ export function StyleCombinerDrawer({
                     className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
                   />
                 </label>
-                <label className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 flex items-center justify-between cursor-pointer">
-                  <span className="text-[10.5px] text-slate-300">Paper BG</span>
+                <label className="bg-[#111827] border border-slate-800 rounded-lg px-2.5 py-2 flex items-center justify-between cursor-pointer">
+                  <span className="text-[11px] text-slate-200 font-medium">Paper BG</span>
                   <input
                     type="color"
                     value={settings.cvPaperBg || '#ffffff'}
@@ -534,8 +584,8 @@ export function StyleCombinerDrawer({
                     className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
                   />
                 </label>
-                <label className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 flex items-center justify-between cursor-pointer">
-                  <span className="text-[10.5px] text-slate-300">Sidebar BG</span>
+                <label className="bg-[#111827] border border-slate-800 rounded-lg px-2.5 py-2 flex items-center justify-between cursor-pointer">
+                  <span className="text-[11px] text-slate-200 font-medium">Sidebar BG</span>
                   <input
                     type="color"
                     value={settings.sidebarBg || settings.themeLight || '#f0f7ff'}
@@ -557,7 +607,7 @@ export function StyleCombinerDrawer({
                       sidebarTextColor: '',
                     })
                   }
-                  className="w-full py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[10.5px] text-slate-300"
+                  className="w-full py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 transition"
                 >
                   Reset Paper &amp; Sidebar Colors
                 </button>
@@ -565,17 +615,17 @@ export function StyleCombinerDrawer({
             </div>
 
             {/* Typography & Spacing Sliders */}
-            <div className="space-y-3 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="p-4 space-y-3.5">
+              <div className="text-[11px] font-bold tracking-wide text-slate-300">
                 Typography &amp; Page Spacing
               </div>
 
               <div>
-                <label className="text-[11px] text-slate-300 block mb-1">Font Family</label>
+                <label className="text-[11px] text-slate-400 block mb-1 font-medium">Document Font</label>
                 <select
                   value={settings.cvFont}
                   onChange={(e) => onUpdateSettings({ cvFont: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs"
+                  className="w-full bg-[#111827] border border-slate-800 text-slate-100 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
                 >
                   <option value="'Inter', sans-serif">Inter (Modern Executive)</option>
                   <option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans (Tech)</option>
@@ -590,9 +640,9 @@ export function StyleCombinerDrawer({
               </div>
 
               <div>
-                <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                <div className="flex justify-between text-[11px] text-slate-400 mb-1">
                   <span>Font Size</span>
-                  <span className="text-slate-200 font-mono">{settings.fontSize}px</span>
+                  <span className="text-slate-100 font-mono tabular-nums">{settings.fontSize}px</span>
                 </div>
                 <input
                   type="range"
@@ -606,9 +656,9 @@ export function StyleCombinerDrawer({
               </div>
 
               <div>
-                <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                <div className="flex justify-between text-[11px] text-slate-400 mb-1">
                   <span>Line Height</span>
-                  <span className="text-slate-200 font-mono">{settings.lineHeight}</span>
+                  <span className="text-slate-100 font-mono tabular-nums">{settings.lineHeight}</span>
                 </div>
                 <input
                   type="range"
@@ -622,9 +672,9 @@ export function StyleCombinerDrawer({
               </div>
 
               <div>
-                <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                <div className="flex justify-between text-[11px] text-slate-400 mb-1">
                   <span>Section Gap</span>
-                  <span className="text-slate-200 font-mono">{settings.sectionGap}px</span>
+                  <span className="text-slate-100 font-mono tabular-nums">{settings.sectionGap}px</span>
                 </div>
                 <input
                   type="range"
@@ -638,9 +688,9 @@ export function StyleCombinerDrawer({
               </div>
 
               <div>
-                <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                <div className="flex justify-between text-[11px] text-slate-400 mb-1">
                   <span>Page Margin</span>
-                  <span className="text-slate-200 font-mono">{settings.pagePadding}mm</span>
+                  <span className="text-slate-100 font-mono tabular-nums">{settings.pagePadding}mm</span>
                 </div>
                 <input
                   type="range"
@@ -653,28 +703,28 @@ export function StyleCombinerDrawer({
                 />
               </div>
 
-              <label className="flex items-center justify-between pt-1 border-t border-slate-800 cursor-pointer">
-                <span className="text-[11px] text-slate-300">Page-by-Page Split Guides</span>
+              <label className="flex items-center justify-between pt-2 border-t border-slate-800/80 cursor-pointer">
+                <span className="text-[11px] text-slate-200 font-medium">Page-by-Page Split Guides</span>
                 <input
                   type="checkbox"
                   checked={settings.pageSplitView}
                   onChange={(e) => onUpdateSettings({ pageSplitView: e.target.checked })}
-                  className="accent-blue-500 w-3.5 h-3.5"
+                  className="accent-blue-500 w-4 h-4 cursor-pointer"
                 />
               </label>
 
-              <div className="grid grid-cols-2 gap-1.5 pt-1">
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   type="button"
                   onClick={onAutoFit1Page}
-                  className="py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold"
+                  className="py-2 px-2.5 rounded-lg bg-[#111827] hover:bg-slate-800 border border-slate-800 text-slate-100 font-semibold transition whitespace-nowrap"
                 >
                   Auto-Fit 1 Page
                 </button>
                 <button
                   type="button"
                   onClick={onAutoFit2Pages}
-                  className="py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold"
+                  className="py-2 px-2.5 rounded-lg bg-[#111827] hover:bg-slate-800 border border-slate-800 text-slate-100 font-semibold transition whitespace-nowrap"
                 >
                   Auto-Fit 2 Pages
                 </button>
@@ -687,13 +737,13 @@ export function StyleCombinerDrawer({
         {activeTab === 'media' && (
           <>
             {/* Photo Controls */}
-            <div className="space-y-3 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3">
+            <div className="p-4 space-y-3.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-bold tracking-wide text-slate-300">
                   Profile Photo
                 </span>
-                <label className="text-[11px] bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded-md cursor-pointer font-semibold">
-                  Upload
+                <label className="text-[11px] bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-lg cursor-pointer font-semibold whitespace-nowrap">
+                  Upload Photo
                   <input
                     ref={photoInputRef}
                     type="file"
@@ -704,11 +754,11 @@ export function StyleCombinerDrawer({
                 </label>
               </div>
 
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 <input
                   type="text"
                   placeholder="অথবা ছবির লিংক দিন..."
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-md px-2 py-1 text-[11px] text-white"
+                  className="flex-1 min-w-0 bg-[#111827] border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-white focus:outline-none focus:border-blue-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       const val = (e.target as HTMLInputElement).value.trim();
@@ -724,13 +774,13 @@ export function StyleCombinerDrawer({
                       onUpdateSettings({ photoSrc: input.value.trim() });
                     }
                   }}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-md text-[11px]"
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[11px] font-semibold whitespace-nowrap shrink-0"
                 >
-                  Set
+                  Apply
                 </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-1 text-[11px]">
+              <div className="grid grid-cols-3 gap-1.5 text-[11px]">
                 {[
                   { val: '10px', label: 'Rounded' },
                   { val: '999px', label: 'Circle' },
@@ -740,10 +790,10 @@ export function StyleCombinerDrawer({
                     key={s.val}
                     type="button"
                     onClick={() => onUpdateSettings({ photoShape: s.val })}
-                    className={`py-1 rounded-md font-medium transition ${
+                    className={`py-1.5 rounded-lg font-medium transition whitespace-nowrap ${
                       settings.photoShape === s.val
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-950 border border-slate-800 text-slate-300'
+                        ? 'bg-blue-600 text-white font-semibold'
+                        : 'bg-[#111827] border border-slate-800 text-slate-300 hover:text-white'
                     }`}
                   >
                     {s.label}
@@ -752,9 +802,9 @@ export function StyleCombinerDrawer({
               </div>
 
               <div>
-                <div className="flex justify-between text-[11px] text-slate-400">
+                <div className="flex justify-between text-[11px] text-slate-400 mb-1">
                   <span>Box Size</span>
-                  <span>{settings.photoSize}px</span>
+                  <span className="font-mono tabular-nums text-slate-100">{settings.photoSize}px</span>
                 </div>
                 <input
                   type="range"
@@ -767,9 +817,9 @@ export function StyleCombinerDrawer({
               </div>
 
               <div>
-                <div className="flex justify-between text-[11px] text-slate-400">
-                  <span>Zoom</span>
-                  <span>{settings.photoScale.toFixed(2)}x</span>
+                <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                  <span>Photo Zoom</span>
+                  <span className="font-mono tabular-nums text-slate-100">{settings.photoScale.toFixed(2)}x</span>
                 </div>
                 <input
                   type="range"
@@ -782,9 +832,9 @@ export function StyleCombinerDrawer({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <span className="text-[10px] text-slate-400 block">Pan X</span>
+                  <span className="text-[11px] text-slate-400 block mb-1">Horizontal Pan</span>
                   <input
                     type="range"
                     min="0"
@@ -795,7 +845,7 @@ export function StyleCombinerDrawer({
                   />
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block">Pan Y</span>
+                  <span className="text-[11px] text-slate-400 block mb-1">Vertical Pan</span>
                   <input
                     type="range"
                     min="0"
@@ -809,9 +859,9 @@ export function StyleCombinerDrawer({
             </div>
 
             {/* QR Code Controls */}
-            <div className="space-y-2.5 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3">
+            <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <span className="text-[11px] font-bold tracking-wide text-slate-300 flex items-center gap-1.5">
                   <QrIcon className="w-3.5 h-3.5 text-blue-400" /> Dynamic QR Code
                 </span>
                 <input
@@ -822,12 +872,12 @@ export function StyleCombinerDrawer({
                       qrCode: { ...settings.qrCode, enabled: e.target.checked },
                     })
                   }
-                  className="accent-blue-500 w-3.5 h-3.5 cursor-pointer"
+                  className="accent-blue-500 w-4 h-4 cursor-pointer"
                 />
               </div>
 
               {settings.qrCode?.enabled && (
-                <div className="space-y-2 pt-1">
+                <div className="space-y-2.5 pt-1">
                   <input
                     type="text"
                     value={settings.qrCode.url}
@@ -837,9 +887,9 @@ export function StyleCombinerDrawer({
                       })
                     }
                     placeholder="QR URL..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-md px-2 py-1 text-white text-[11px]"
+                    className="w-full bg-[#111827] border border-slate-800 rounded-lg px-2.5 py-1.5 text-white text-[11px]"
                   />
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 items-center">
                     <select
                       value={settings.qrCode.position}
                       onChange={(e) =>
@@ -847,7 +897,7 @@ export function StyleCombinerDrawer({
                           qrCode: { ...settings.qrCode, position: e.target.value as any },
                         })
                       }
-                      className="bg-slate-950 border border-slate-800 rounded-md px-2 py-1 text-white text-[11px]"
+                      className="bg-[#111827] border border-slate-800 rounded-lg px-2.5 py-1.5 text-white text-[11px]"
                     >
                       <option value="header">Header (Top)</option>
                       <option value="footer">Footer (Bottom)</option>
@@ -870,9 +920,9 @@ export function StyleCombinerDrawer({
             </div>
 
             {/* Digital Signature */}
-            <div className="space-y-2.5 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3">
+            <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <span className="text-[11px] font-bold tracking-wide text-slate-300 flex items-center gap-1.5">
                   <PenTool className="w-3.5 h-3.5 text-amber-400" /> Digital Signature
                 </span>
                 <input
@@ -883,16 +933,16 @@ export function StyleCombinerDrawer({
                       signature: { ...settings.signature, enabled: e.target.checked },
                     })
                   }
-                  className="accent-blue-500 w-3.5 h-3.5 cursor-pointer"
+                  className="accent-blue-500 w-4 h-4 cursor-pointer"
                 />
               </div>
 
               {settings.signature?.enabled && (
-                <div className="space-y-2 pt-1">
+                <div className="space-y-2.5 pt-1">
                   <button
                     type="button"
                     onClick={onOpenSignatureModal}
-                    className="w-full py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center justify-center gap-1.5 text-[11px]"
+                    className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center justify-center gap-1.5 text-xs transition"
                   >
                     <PenTool className="w-3.5 h-3.5" /> Open Signature Pad
                   </button>
@@ -922,17 +972,17 @@ export function StyleCombinerDrawer({
         {activeTab === 'print' && (
           <>
             {/* Print Suppression */}
-            <div className="space-y-3 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="p-4 space-y-3">
+              <div className="text-[11px] font-bold tracking-wide text-slate-300">
                 Print &amp; Header / Footer Control
               </div>
 
-              <label className="flex items-start justify-between gap-2 bg-slate-950 p-2.5 rounded-lg border border-slate-800 cursor-pointer">
+              <label className="flex items-start justify-between gap-2.5 bg-[#111827] p-3 rounded-lg border border-slate-800 cursor-pointer">
                 <div>
-                  <span className="text-[11px] font-semibold text-emerald-300 block">
-                    Hide Print URL / Date / Title
+                  <span className="text-[11.5px] font-semibold text-emerald-300 block">
+                    Hide Browser Print URL / Date
                   </span>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10.5px] text-slate-400 leading-relaxed block mt-0.5">
                     প্রিন্ট করার সময় ব্রাউজারের উপরের/নিচের লেখা আসবে না
                   </span>
                 </div>
@@ -945,60 +995,60 @@ export function StyleCombinerDrawer({
               </label>
 
               {/* CV Header Visibility */}
-              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 space-y-2">
+              <div className="bg-[#111827] p-3 rounded-lg border border-slate-800 space-y-2.5">
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-[11px] font-semibold text-slate-200">Show Entire CV Header</span>
+                  <span className="text-[11.5px] font-semibold text-slate-100">Show Entire CV Header</span>
                   <input
                     type="checkbox"
                     checked={settings.showHeader !== false}
                     onChange={(e) => onUpdateSettings({ showHeader: e.target.checked })}
-                    className="accent-blue-500 w-3.5 h-3.5 cursor-pointer"
+                    className="accent-blue-500 w-4 h-4 cursor-pointer"
                   />
                 </label>
 
                 {settings.showHeader !== false && (
-                  <div className="space-y-2 pt-1.5 border-t border-slate-800">
-                    <div className="grid grid-cols-3 gap-1 text-[10.5px]">
-                      <label className="flex items-center gap-1 text-slate-300 cursor-pointer">
+                  <div className="space-y-2.5 pt-2 border-t border-slate-800">
+                    <div className="grid grid-cols-3 gap-2 text-[11px]">
+                      <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={settings.showTitle !== false}
                           onChange={(e) => onUpdateSettings({ showTitle: e.target.checked })}
-                          className="accent-blue-500 w-3 h-3"
+                          className="accent-blue-500 w-3.5 h-3.5"
                         />
                         Title
                       </label>
-                      <label className="flex items-center gap-1 text-slate-300 cursor-pointer">
+                      <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={settings.showContacts !== false}
                           onChange={(e) => onUpdateSettings({ showContacts: e.target.checked })}
-                          className="accent-blue-500 w-3 h-3"
+                          className="accent-blue-500 w-3.5 h-3.5"
                         />
                         Contacts
                       </label>
-                      <label className="flex items-center gap-1 text-slate-300 cursor-pointer">
+                      <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={settings.showHeaderDivider !== false}
                           onChange={(e) => onUpdateSettings({ showHeaderDivider: e.target.checked })}
-                          className="accent-blue-500 w-3 h-3"
+                          className="accent-blue-500 w-3.5 h-3.5"
                         />
                         Border
                       </label>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10.5px] text-slate-400">Header Align:</span>
+                      <span className="text-[11px] text-slate-400">Header Alignment:</span>
                       <div className="flex gap-1">
                         {(['auto', 'left', 'center'] as const).map((al) => (
                           <button
                             key={al}
                             type="button"
                             onClick={() => onUpdateSettings({ headerAlign: al })}
-                            className={`px-2 py-0.5 rounded text-[10px] capitalize ${
+                            className={`px-2.5 py-1 rounded text-[10.5px] capitalize whitespace-nowrap ${
                               (settings.headerAlign || 'auto') === al
-                                ? 'bg-blue-600 text-white font-bold'
-                                : 'bg-slate-800 text-slate-400'
+                                ? 'bg-blue-600 text-white font-semibold'
+                                : 'bg-slate-800 text-slate-300 hover:text-white'
                             }`}
                           >
                             {al}
@@ -1011,30 +1061,30 @@ export function StyleCombinerDrawer({
               </div>
 
               {/* CV Footer Visibility */}
-              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 space-y-2">
+              <div className="bg-[#111827] p-3 rounded-lg border border-slate-800 space-y-2.5">
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-[11px] font-semibold text-amber-200">
+                  <span className="text-[11.5px] font-semibold text-amber-200">
                     Show Entire CV Footer
                   </span>
                   <input
                     type="checkbox"
                     checked={settings.showFooter !== false}
                     onChange={(e) => onUpdateSettings({ showFooter: e.target.checked })}
-                    className="accent-amber-500 w-3.5 h-3.5 cursor-pointer"
+                    className="accent-amber-500 w-4 h-4 cursor-pointer"
                   />
                 </label>
 
                 {settings.showFooter !== false && (
-                  <div className="space-y-1.5 pt-1.5 border-t border-slate-800">
+                  <div className="space-y-2 pt-2 border-t border-slate-800">
                     <input
                       type="text"
                       value={settings.footerNote ?? ''}
                       onChange={(e) => onUpdateSettings({ footerNote: e.target.value })}
                       placeholder="Left Footer Text (নাম পরিবর্তন)..."
-                      className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-white"
+                      className="w-full bg-[#080D1A] border border-slate-800 rounded-md px-2.5 py-1.5 text-[11px] text-white"
                     />
                     <div className="flex items-center justify-between pt-0.5">
-                      <span className="text-[10.5px] text-slate-300">Show Right Page Label</span>
+                      <span className="text-[11px] text-slate-200">Show Right Page Label</span>
                       <input
                         type="checkbox"
                         checked={settings.showFooterPageNum !== false}
@@ -1048,7 +1098,7 @@ export function StyleCombinerDrawer({
                         value={settings.footerRightText ?? ''}
                         onChange={(e) => onUpdateSettings({ footerRightText: e.target.value })}
                         placeholder="Right Footer (Default: Page 1 / 2)..."
-                        className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-white"
+                        className="w-full bg-[#080D1A] border border-slate-800 rounded-md px-2.5 py-1.5 text-[11px] text-white"
                       />
                     )}
                   </div>
@@ -1057,10 +1107,10 @@ export function StyleCombinerDrawer({
             </div>
 
             {/* Live Website Availability & KPIs */}
-            <div className="space-y-2.5 bg-slate-900/60 border border-slate-800/90 rounded-xl p-3">
+            <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-emerald-400" /> Live Website Stats
+                <span className="text-[11px] font-bold tracking-wide text-slate-300 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-emerald-400" /> Live Website Controls
                 </span>
                 <input
                   type="checkbox"
@@ -1082,12 +1132,12 @@ export function StyleCombinerDrawer({
                       },
                     })
                   }
-                  className="accent-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                  className="accent-emerald-500 w-4 h-4 cursor-pointer"
                 />
               </div>
 
-              <label className="flex items-center justify-between bg-slate-950/70 px-2.5 py-1.5 rounded-lg border border-slate-800/80 cursor-pointer">
-                <span className="text-[11px] text-slate-300">Show Section Numbers (01, 02...)</span>
+              <label className="flex items-center justify-between bg-[#111827] px-3 py-2 rounded-lg border border-slate-800 cursor-pointer">
+                <span className="text-[11px] text-slate-200 font-medium">Show Section Numbers (01, 02...)</span>
                 <input
                   type="checkbox"
                   checked={Boolean(settings.portfolio?.showSectionNumbers)}
@@ -1109,26 +1159,26 @@ export function StyleCombinerDrawer({
                       },
                     })
                   }
-                  className="accent-blue-500 w-3.5 h-3.5 cursor-pointer"
+                  className="accent-blue-500 w-4 h-4 cursor-pointer"
                 />
               </label>
 
-              {/* Website Accent Theme Selector */}
-              <div className="bg-slate-950/70 px-2.5 py-2 rounded-lg border border-slate-800/80 space-y-1.5">
-                <div className="flex items-center justify-between text-[10.5px] text-slate-300">
-                  <span>Website Accent Theme</span>
-                  <span className="font-mono text-[10px] text-cyan-400 uppercase">
+              {/* Website Accent Theme Selector (Full Unclipped Names in 3x2 Grid) */}
+              <div className="bg-[#111827] px-3 py-2.5 rounded-lg border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-slate-300">
+                  <span className="font-medium">Website Accent Theme</span>
+                  <span className="font-mono text-[10.5px] text-cyan-400 uppercase">
                     {settings.portfolio?.accentTheme || 'cobalt'}
                   </span>
                 </div>
-                <div className="grid grid-cols-6 gap-1">
+                <div className="grid grid-cols-3 gap-1.5">
                   {(
                     [
-                      { key: 'auto', label: 'CV', color: settings.themePrimary || '#0f4c81' },
-                      { key: 'cobalt', label: 'Blue', color: '#2563eb' },
-                      { key: 'emerald', label: 'Emr', color: '#059669' },
+                      { key: 'auto', label: 'Match CV', color: settings.themePrimary || '#0f4c81' },
+                      { key: 'cobalt', label: 'Cobalt', color: '#2563eb' },
+                      { key: 'emerald', label: 'Emerald', color: '#059669' },
                       { key: 'teal', label: 'Teal', color: '#0d9488' },
-                      { key: 'indigo', label: 'Ind', color: '#4f46e5' },
+                      { key: 'indigo', label: 'Indigo', color: '#4f46e5' },
                       { key: 'rose', label: 'Rose', color: '#e11d48' },
                     ] as const
                   ).map((opt) => {
@@ -1155,15 +1205,15 @@ export function StyleCombinerDrawer({
                             },
                           })
                         }
-                        className={`py-1 rounded text-[9.5px] font-bold flex flex-col items-center gap-0.5 border transition ${
+                        className={`py-1.5 px-2 rounded-md text-[10.5px] font-semibold flex items-center gap-1.5 border transition whitespace-nowrap ${
                           active
-                            ? 'border-white bg-slate-800 text-white'
-                            : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white'
+                            ? 'border-blue-400 bg-slate-800 text-white shadow-sm'
+                            : 'border-slate-800 bg-[#080D1A] text-slate-400 hover:text-white'
                         }`}
                         title={opt.key === 'auto' ? 'Auto-match CV Theme Color' : opt.label}
                       >
                         <span
-                          className="w-2.5 h-2.5 rounded-full"
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
                           style={{ backgroundColor: opt.color }}
                         />
                         <span>{opt.label}</span>
@@ -1194,7 +1244,7 @@ export function StyleCombinerDrawer({
                     },
                   })
                 }
-                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-white"
+                className="w-full bg-[#111827] border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-white"
               />
 
               <div className="space-y-1.5">
@@ -1206,7 +1256,7 @@ export function StyleCombinerDrawer({
                     { id: 'm4', value: '100+', label: 'Enterprise Users Supported' },
                   ]
                 ).map((m, idx, arr) => (
-                  <div key={m.id} className="grid grid-cols-5 gap-1">
+                  <div key={m.id} className="grid grid-cols-5 gap-1.5">
                     <input
                       type="text"
                       value={m.value}
@@ -1225,7 +1275,7 @@ export function StyleCombinerDrawer({
                           },
                         });
                       }}
-                      className="col-span-2 bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-[10.5px] text-cyan-300 font-bold"
+                      className="col-span-2 bg-[#111827] border border-slate-800 rounded-md px-2 py-1.5 text-[11px] text-cyan-300 font-bold tabular-nums"
                     />
                     <input
                       type="text"
@@ -1245,7 +1295,7 @@ export function StyleCombinerDrawer({
                           },
                         });
                       }}
-                      className="col-span-3 bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-[10.5px] text-slate-200"
+                      className="col-span-3 bg-[#111827] border border-slate-800 rounded-md px-2 py-1.5 text-[11px] text-slate-200"
                     />
                   </div>
                 ))}
@@ -1253,16 +1303,20 @@ export function StyleCombinerDrawer({
             </div>
 
             {/* Reset to Default */}
-            <button
-              type="button"
-              onClick={onResetClick}
-              className="w-full py-2 rounded-lg bg-rose-950/30 hover:bg-rose-950/60 text-rose-300 border border-rose-500/30 font-semibold transition flex items-center justify-center gap-2"
-            >
-              <RotateCcw className="w-3.5 h-3.5" /> Reset CV to Default
-            </button>
+            <div className="p-4">
+              <button
+                type="button"
+                onClick={onResetClick}
+                className="w-full py-2.5 rounded-lg bg-rose-950/35 hover:bg-rose-950/65 text-rose-300 border border-rose-500/30 font-semibold transition flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Reset CV to Default
+              </button>
+            </div>
           </>
         )}
+        {/* End Scrollable Active Tab Content */}
       </div>
     </aside>
+    </>
   );
 }

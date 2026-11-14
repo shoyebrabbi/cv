@@ -19,6 +19,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { CVData, CVSectionId, StudioSettings } from '../types/cv';
+import { compressImageFileToDataUrl } from '../utils/imageCompress';
 
 interface CVDocumentProps {
   cvData: CVData;
@@ -111,16 +112,22 @@ export function CVDocument({
   const secHeadingClass =
     settings.sectionHeading !== 'accent-bar' ? `sec-style-${settings.sectionHeading}` : '';
 
-  function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        onUpdateSettings({ photoSrc: event.target.result });
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compactUrl = await compressImageFileToDataUrl(file);
+      onUpdateSettings({ photoSrc: compactUrl });
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (typeof event.target?.result === 'string') {
+          onUpdateSettings({ photoSrc: event.target.result });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   // Content editable blur updater helpers
@@ -412,17 +419,22 @@ export function CVDocument({
           <div
             id="photoWrapper"
             onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
+            onDrop={async (e) => {
               e.preventDefault();
               const file = e.dataTransfer?.files?.[0];
               if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                  if (typeof ev.target?.result === 'string') {
-                    onUpdateSettings({ photoSrc: ev.target.result });
-                  }
-                };
-                reader.readAsDataURL(file);
+                try {
+                  const compactUrl = await compressImageFileToDataUrl(file);
+                  onUpdateSettings({ photoSrc: compactUrl });
+                } catch {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    if (typeof ev.target?.result === 'string') {
+                      onUpdateSettings({ photoSrc: ev.target.result });
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }
               }
             }}
             className="relative group shrink-0 overflow-hidden shadow-md bg-slate-100 flex items-center justify-center transition-all"
@@ -433,7 +445,15 @@ export function CVDocument({
               alt={cvData.name}
               className="w-full h-full object-cover"
             />
-            <label className="builder-control absolute inset-0 bg-slate-900/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium cursor-pointer p-1.5 text-center">
+            {effectiveEditMode && (
+              <span
+                aria-hidden="true"
+                className="builder-control photo-touch-badge hidden absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full bg-slate-950/85 border border-blue-400/60 text-blue-300 items-center justify-center shadow-lg pointer-events-none"
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </span>
+            )}
+            <label className="builder-control photo-hover-overlay absolute inset-0 bg-slate-900/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium cursor-pointer p-1.5 text-center">
               <Camera className="w-4 h-4 mb-1 text-blue-300" />
               <span>Change / Drop Photo</span>
               <input

@@ -41,13 +41,14 @@ export function HyperlinkModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-md w-full p-6 text-slate-100 shadow-2xl">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <h3 className="text-base font-bold flex items-center gap-2 text-blue-400">
-            <LinkIcon className="w-5 h-5" /> Hyperlink Manager (লিংক যুক্ত / এডিট করুন)
+    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4">
+      <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-md w-full p-4 sm:p-6 text-slate-100 shadow-2xl">
+        <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
+          <h3 className="text-sm sm:text-base font-bold flex items-center gap-2 text-blue-400 min-w-0">
+            <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <span className="truncate">Hyperlink Manager (লিংক এডিট)</span>
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
+          <button onClick={onClose} className="text-slate-400 hover:text-white shrink-0 p-1">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -116,26 +117,26 @@ export function HyperlinkModal({
             </button>
           </div>
         </div>
-        <div className="flex justify-between items-center gap-2 mt-6 pt-3 border-t border-slate-700">
+        <div className="flex flex-wrap justify-between items-center gap-2 mt-6 pt-3 border-t border-slate-700">
           <button
             type="button"
             onClick={onRemove}
-            className="px-3 py-2 rounded-lg text-xs font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300"
+            className="px-3 py-2 rounded-lg text-xs font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 whitespace-nowrap"
           >
             Remove Link
           </button>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200"
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 whitespace-nowrap"
             >
               বাতিল
             </button>
             <button
               type="button"
               onClick={() => onApply(text, url)}
-              className="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white"
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white whitespace-nowrap"
             >
               Save Link
             </button>
@@ -218,276 +219,377 @@ export function ATSAuditModal({
     ? currentList.filter((k) => !haystack.includes(k.toLowerCase()))
     : [];
 
+  const ringRadius = 42;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const clampedScore = Math.max(0, Math.min(100, score));
+  const strokeDashoffset = ringCircumference * (1 - clampedScore / 100);
+  const ringStroke =
+    clampedScore === 100 ? '#10b981' : clampedScore >= 85 ? '#3b82f6' : '#f59e0b';
+
+  const pillars = [
+    {
+      id: 'contacts',
+      title: 'Contact & Links',
+      subtitle: 'ফোন, ইমেইল ও ক্লিকেবল লিংক',
+      pts: activeBreakdown.contacts,
+      max: 15,
+      status: activeBreakdown.contacts >= 15 ? 'Pass' : 'Needs Check',
+      ok: activeBreakdown.contacts >= 15,
+    },
+    {
+      id: 'headings',
+      title: 'ATS Section Headings',
+      subtitle: 'স্ট্যান্ডার্ড সেকশন ও কাঠামো',
+      pts: activeBreakdown.headings,
+      max: 20,
+      status: activeBreakdown.headings >= 20 ? 'Pass' : 'Needs Check',
+      ok: activeBreakdown.headings >= 20,
+    },
+    {
+      id: 'metrics',
+      title: 'Quantified Impact',
+      subtitle: 'সংখ্যা ও মেট্রিক্স (50k+, 80+)',
+      pts: activeBreakdown.metrics,
+      max: 20,
+      status: activeBreakdown.metrics >= 20 ? 'Pass' : 'Add Numbers',
+      ok: activeBreakdown.metrics >= 20,
+    },
+    {
+      id: 'keywords',
+      title: 'Domain Keywords',
+      subtitle: 'SQL, Power BI, Postman, Linux',
+      pts: activeBreakdown.keywords,
+      max: 25,
+      status: activeBreakdown.keywords >= 20 ? 'Pass' : 'Add Stack',
+      ok: activeBreakdown.keywords >= 20,
+    },
+    {
+      id: 'verbs',
+      title: 'Action Verbs',
+      subtitle: 'শক্তিশালী অ্যাকশন ভার্ব ব্যবহার',
+      pts: activeBreakdown.verbs,
+      max: 10,
+      status: activeBreakdown.verbs >= 10 ? 'Pass' : 'Strengthen',
+      ok: activeBreakdown.verbs >= 10,
+    },
+    {
+      id: 'photo',
+      title: 'Photo & Strict ATS Rule',
+      subtitle: isPhotoHidden
+        ? 'ছবি নেই — US/UK/EU ATS নিরাপদ'
+        : 'ছবি চালু আছে (BD মানদণ্ড)',
+      pts: activeBreakdown.photo,
+      max: 10,
+      status: isPhotoHidden ? '100% Safe' : 'Photo -10 pts',
+      ok: isPhotoHidden,
+    },
+  ];
+
   return (
-    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-2xl w-full p-6 text-slate-100 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <h3 className="text-base font-bold flex items-center gap-2 text-emerald-400">
-            <Bot className="w-5 h-5 text-emerald-400" /> Live ATS Diagnostic & Score Booster
-          </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
-            <X className="w-5 h-5" />
+    <div
+      className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#090E1A] border border-slate-800 rounded-2xl max-w-3xl w-full text-slate-100 shadow-2xl max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Clean Architectural Modal Header */}
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-[#080D1A] border-b border-slate-800/90 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+              <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+                ATS Parseability &amp; Compliance Scorecard
+              </h3>
+              <p className="text-[11px] sm:text-[11.5px] text-slate-400 truncate sm:whitespace-normal">
+                আন্তর্জাতিক ও বাংলাদেশি কর্পোরেট রিক্রুটিং সিস্টেমে আপনার সিভি কতটা স্পষ্ট ও রিডেবল
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition shrink-0"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Target role selector */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 bg-slate-900/90 p-3 rounded-xl border border-slate-700 text-xs">
-          <span className="font-semibold text-slate-300">Target Role Benchmark:</span>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              onClick={() => setTargetRole('hybrid')}
-              className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
-                targetRole === 'hybrid' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300'
-              }`}
-            >
-              All-in-One Hybrid
-            </button>
-            <button
-              onClick={() => setTargetRole('data')}
-              className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
-                targetRole === 'data' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300'
-              }`}
-            >
-              Data Analyst & BI
-            </button>
-            <button
-              onClick={() => setTargetRole('sqa')}
-              className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
-                targetRole === 'sqa' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300'
-              }`}
-            >
-              Software QA (SQA)
-            </button>
-            <button
-              onClick={() => setTargetRole('it')}
-              className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
-                targetRole === 'it' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300'
-              }`}
-            >
-              IT Support & Infra
-            </button>
-          </div>
-        </div>
-
-        {/* Live score box */}
-        <div className="mt-4 space-y-3 text-xs text-slate-200">
-          <div className="flex flex-wrap items-center justify-between bg-slate-900 p-4 rounded-xl border border-slate-700 gap-3">
-            <div>
-              <div className="text-slate-400 text-[11px] uppercase font-bold tracking-wider">
-                Real-Time ATS Parseability & Compliance Score
-              </div>
-              <div
-                className={`text-3xl font-extrabold ${
-                  score === 100 ? 'text-emerald-400' : 'text-blue-400'
-                } mt-0.5`}
-              >
-                {score}% {score === 100 ? '🏆 (100% Strict ATS Ready)' : '✨ (BD Corporate Standard)'}
-              </div>
-            </div>
-            <div className="text-right text-[11px] space-y-1">
-              <div>
-                Photo Mode:{' '}
-                <strong className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
-                  isPhotoHidden ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-500/40' : 'bg-blue-900/60 text-cyan-300 border border-blue-500/40'
-                }`}>
-                  {isPhotoHidden ? 'No Photo (100% ATS)' : photoPosition}
-                </strong>
-              </div>
-              <div>
-                Role Keywords Matched:{' '}
-                <strong className={missingKeywords.length === 0 ? 'text-emerald-400' : 'text-amber-300'}>
-                  {matchedKeywords.length} / {currentList.length}
-                </strong>
-              </div>
-            </div>
-          </div>
-
-          {/* Interactive Breakdown Progress Bars */}
-          <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-700/80 space-y-2.5">
-            <div className="font-bold text-slate-300 text-xs flex items-center justify-between">
-              <span>📊 ATS স্কোর ক্যাটাগরিভিত্তিক ব্রেকডাউন:</span>
-              <span className="text-[11px] text-cyan-400 font-semibold">{score} / 100 Points</span>
-            </div>
-
-            <div className="space-y-2 text-[11px]">
-              {/* 1. Contacts */}
-              <div>
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-slate-300 font-medium">📞 Contact Information & Clickable Links</span>
-                  <span className="text-emerald-400 font-bold">{activeBreakdown.contacts} / 15 pts</span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                    style={{ width: `${(activeBreakdown.contacts / 15) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* 2. Headings */}
-              <div>
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-slate-300 font-medium">📑 Headings & ATS Section Structure</span>
-                  <span className="text-emerald-400 font-bold">{activeBreakdown.headings} / 20 pts</span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                    style={{ width: `${(activeBreakdown.headings / 20) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* 3. Metrics */}
-              <div>
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-slate-300 font-medium">📊 Quantifiable Numbers & Impact (50k+, 80+, 100+)</span>
-                  <span className="text-emerald-400 font-bold">{activeBreakdown.metrics} / 20 pts</span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                    style={{ width: `${(activeBreakdown.metrics / 20) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* 4. Keywords */}
-              <div>
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-slate-300 font-medium">🔑 Domain Keywords (SQL, Power BI, Postman, Linux)</span>
-                  <span className="text-emerald-400 font-bold">{activeBreakdown.keywords} / 25 pts</span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                    style={{ width: `${(activeBreakdown.keywords / 25) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* 5. Verbs */}
-              <div>
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-slate-300 font-medium">⚡ Strong Action Verbs (Accomplishment Formula)</span>
-                  <span className="text-emerald-400 font-bold">{activeBreakdown.verbs} / 10 pts</span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                    style={{ width: `${(activeBreakdown.verbs / 10) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* 6. Photo Compliance */}
-              <div>
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-slate-300 font-medium">
-                    📷 Photo & Graphic Compliance (Strict ATS Standard)
-                  </span>
-                  <span className={isPhotoHidden ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
-                    {activeBreakdown.photo} / 10 pts
-                  </span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      isPhotoHidden ? 'bg-emerald-500' : 'bg-amber-500'
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 text-xs">
+          {/* 1. Hero Scorecard + Mode Comparison Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch bg-[#0D1424] border border-slate-800/90 rounded-xl p-4">
+            {/* Left: SVG Radial Score Gauge */}
+            <div className="md:col-span-5 flex items-center gap-4">
+              <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={ringRadius}
+                    fill="none"
+                    stroke="#1e293b"
+                    strokeWidth="8"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={ringRadius}
+                    fill="none"
+                    stroke={ringStroke}
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={ringCircumference}
+                    strokeDashoffset={strokeDashoffset}
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span
+                    className={`text-2xl font-extrabold tabular-nums leading-none ${
+                      clampedScore === 100
+                        ? 'text-emerald-400'
+                        : clampedScore >= 85
+                        ? 'text-blue-400'
+                        : 'text-amber-400'
                     }`}
-                    style={{ width: `${(activeBreakdown.photo / 10) * 100}%` }}
-                  ></div>
-                </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
-                  {isPhotoHidden
-                    ? '✅ কোনো ছবি নেই — আন্তর্জাতিক US/UK/EU ATS স্ক্যানারে ১০০% নিরাপদ ও বায়াস-মুক্ত।'
-                    : '⚠️ সিভিতে ছবি রয়েছে — বাংলাদেশে ছবি থাকা উত্তম, তবে আন্তর্জাতিক ATS-এ ১০% নম্বর কাটা যায়।'}
+                  >
+                    {clampedScore}%
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium mt-0.5 tabular-nums">
+                    / 100 pts
+                  </span>
                 </div>
               </div>
+
+              <div className="space-y-1 min-w-0">
+                <div className="text-[11px] font-semibold text-slate-400">
+                  Current Compliance
+                </div>
+                <div className="text-sm font-bold text-white leading-snug">
+                  {isPhotoHidden
+                    ? 'Global Strict ATS Ready'
+                    : 'BD Corporate Standard'}
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {isPhotoHidden
+                    ? 'US, UK, EU এবং রিমোট জবের Workday/Greenhouse স্ক্যানারে ১০০% বায়াস-মুক্ত।'
+                    : 'দেশের জবের জন্য ছবি থাকা ভালো; বিদেশি ATS-এ ছবি থাকলে ১০% নম্বর কাটা হয়।'}
+                </p>
+              </div>
+            </div>
+
+            {/* Right: 1-Click Mode Cards (Explains 90% vs 100% Instantly) */}
+            <div className="md:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={onRestoreBDCorporate}
+                className={`text-left p-3 rounded-xl border transition flex flex-col justify-between gap-2 ${
+                  !isPhotoHidden
+                    ? 'bg-blue-600/15 border-blue-500/60 text-white'
+                    : 'bg-[#080D1A] border-slate-800 hover:border-slate-700 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-xs">BD Corporate</span>
+                  <span className="text-[10.5px] font-mono tabular-nums font-bold text-blue-300">
+                    90% · Photo
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  বাংলাদেশের কর্পোরেট ও MNC আবেদনের জন্য ডানপাশে ছবি সহ আদর্শ লেআউট।
+                </p>
+                <span className="text-[10.5px] font-semibold text-blue-300">
+                  {!isPhotoHidden ? 'Active Mode' : 'Switch to BD Mode →'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onBoost100();
+                  confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
+                }}
+                className={`text-left p-3 rounded-xl border transition flex flex-col justify-between gap-2 ${
+                  isPhotoHidden
+                    ? 'bg-emerald-600/15 border-emerald-500/60 text-white'
+                    : 'bg-[#080D1A] border-slate-800 hover:border-emerald-500/50 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-xs">Global Strict ATS</span>
+                  <span className="text-[10.5px] font-mono tabular-nums font-bold text-emerald-300">
+                    100% · No Photo
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  আন্তর্জাতিক রিমোট/US/EU পোর্টালে ১-ক্লিকে ছবি লুকিয়ে ১০০% পারফেক্ট স্কোর।
+                </p>
+                <span className="text-[10.5px] font-semibold text-emerald-300 flex items-center gap-1">
+                  <Zap className="w-3 h-3" />
+                  {isPhotoHidden ? '100% Mode Active' : 'Boost to 100% Now →'}
+                </span>
+              </button>
             </div>
           </div>
 
-          {/* Explanation Box */}
-          <div
-            className={`p-3.5 rounded-xl border ${
-              isPhotoHidden
-                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
-                : 'bg-amber-950/40 border-amber-500/40 text-amber-200'
-            } leading-relaxed`}
-          >
-            <div className="font-bold text-xs mb-1">
-              {isPhotoHidden
-                ? '✅ ১০০% Strict ATS স্কোর অর্জিত হয়েছে!'
-                : '💡 ছবি থাকা অবস্থায় কেন ৯০% দেখায় এবং কীভাবে ১০০% করবেন?'}
+          {/* 2. 6-Pillar Architectural Diagnostic Matrix */}
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-xs font-bold text-slate-200">
+                ৬টি ক্যাটাগরিভিত্তিক পূর্ণাঙ্গ অডিট ব্রেকডাউন
+              </h4>
+              <span className="text-[11px] text-slate-400 tabular-nums">
+                Matched Target Keywords: <strong className="text-white">{matchedKeywords.length}/{currentList.length}</strong>
+              </span>
             </div>
-            <p className="text-[11px]">
-              {isPhotoHidden
-                ? 'আপনার সিভিতে কোনো ছবি নেই এবং সব টেক্সট ১০০% মেশিন-রিডেবল ফরম্যাটে আছে। মার্কিন যুক্তরাষ্ট্র, যুক্তরাজ্য বা রিমোট জবের ATS স্ক্যানারের (Workday, Taleo, Greenhouse) জন্য এটি ১০০% প্রস্তুত।'
-                : 'আপনার সিভির সমস্ত কন্টাক্ট, কিওয়ার্ড ও মেট্রিক্স ১০০% নিখুঁত। কিন্তু আমেরিকা ও ইউরোপের নিয়োগ নীতিমালায় (EEOC) বৈষম্য এড়াতে ছবি নিষেধ থাকে, তাই আন্তর্জাতিক ATS সিস্টেমে ছবি থাকলে ১০% কম (৯০%) দেখায়। বাংলাদেশে যেকোনো কর্পোরেট জবে আবেদন করলে ছবি ডানপাশে রেখেই আবেদন করুন (যা আদর্শ)। আর আন্তর্জাতিক জবে আবেদনের সময় নিচের "⚡ 1-Click Boost to 100% ATS" বাটনে ক্লিক করলেই স্বয়ংক্রিয়ভাবে ১০০% হয়ে যাবে।'}
-            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {pillars.map((item) => {
+                const pct = Math.min(100, Math.round((item.pts / item.max) * 100));
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-[#0D1424] border border-slate-800/90 rounded-xl p-3 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-slate-100 text-[11.5px] leading-snug">
+                          {item.title}
+                        </div>
+                        <div className="text-[10.5px] text-slate-400 mt-0.5 leading-snug">
+                          {item.subtitle}
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[10.5px] font-bold font-mono tabular-nums whitespace-nowrap shrink-0 ${
+                          item.ok ? 'text-emerald-400' : 'text-amber-400'
+                        }`}
+                      >
+                        {item.pts}/{item.max}
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          item.ok ? 'bg-emerald-500' : 'bg-amber-500'
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10.5px]">
+                      <span className={item.ok ? 'text-emerald-300 font-semibold' : 'text-amber-300 font-semibold'}>
+                        {item.status}
+                      </span>
+                      <span className="text-slate-500 tabular-nums">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Matched & Missing Keywords with 1-Click Add */}
-          <div className="space-y-3">
-            <div>
-              <div className="font-bold text-slate-300 mb-1.5">
-                ✅ Matched Role Keywords ({matchedKeywords.length} / {currentList.length}):
+          {/* 3. Target Role Benchmark & Missing Keywords Action Deck */}
+          <div className="bg-[#0D1424] border border-slate-800/90 rounded-xl p-4 space-y-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-bold text-slate-100 text-xs">Target Role Keyword Benchmark</div>
+                <div className="text-[10.5px] text-slate-400">
+                  কোন রোলের জন্য আবেদন করছেন তা বেছে নিন — অনুপস্থিত কিওয়ার্ড ১ ক্লিকেই যোগ করতে পারবেন
+                </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {matchedKeywords.map((k) => (
-                  <span
-                    key={k}
-                    className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase text-[10px] font-bold"
+                {[
+                  { id: 'hybrid', label: 'Hybrid (All)' },
+                  { id: 'data', label: 'Data & BI' },
+                  { id: 'sqa', label: 'Software QA' },
+                  { id: 'it', label: 'IT & Infra' },
+                ].map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setTargetRole(r.id as any)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition whitespace-nowrap ${
+                      targetRole === r.id
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-[#080D1A] border border-slate-800 text-slate-300 hover:text-white'
+                    }`}
                   >
-                    {k}
-                  </span>
+                    {r.label}
+                  </button>
                 ))}
               </div>
             </div>
 
-            {missingKeywords.length > 0 && (
-              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80">
-                <div className="font-bold text-amber-300 mb-1.5 text-[11px]">
-                  ⚡ Missing Target Keywords — Click to Add Instantly to Skills:
+            <div className="space-y-3 pt-1 border-t border-slate-800/80">
+              <div>
+                <div className="text-[11px] font-semibold text-emerald-300 mb-1.5">
+                  Matched in CV ({matchedKeywords.length} / {currentList.length})
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {missingKeywords.map((k) => (
-                    <button
+                  {matchedKeywords.map((k) => (
+                    <span
                       key={k}
-                      type="button"
-                      onClick={() => onAddKeyword(k)}
-                      className="px-2.5 py-1 rounded bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 uppercase text-[10px] font-bold transition flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-md bg-emerald-950/60 text-emerald-200 border border-emerald-500/30 text-[10.5px] font-semibold whitespace-nowrap"
                     >
-                      <span>+ {k}</span>
-                    </button>
+                      {k}
+                    </span>
                   ))}
                 </div>
               </div>
-            )}
+
+              {missingKeywords.length > 0 && (
+                <div className="pt-2 border-t border-slate-800/80">
+                  <div className="text-[11px] font-semibold text-amber-300 mb-1.5">
+                    Missing Keywords — ক্লিক করলে সিভির Skills সেকশনে যুক্ত হবে:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {missingKeywords.map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => onAddKeyword(k)}
+                        className="px-2.5 py-1 rounded-md bg-blue-600/20 hover:bg-blue-600 text-blue-200 hover:text-white border border-blue-500/40 text-[10.5px] font-semibold transition whitespace-nowrap"
+                      >
+                        + {k}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-wrap justify-between items-center gap-2 mt-5 pt-3 border-t border-slate-700">
+        <div className="px-6 py-3.5 bg-[#080D1A] border-t border-slate-800/90 flex flex-wrap justify-between items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={onRestoreBDCorporate}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40"
+            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 whitespace-nowrap transition"
           >
-            BD Corporate Mode (90% + Right Photo)
+            BD Corporate Mode (90%)
           </button>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => {
                 onBoost100();
                 confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
               }}
-              className="px-4 py-2 rounded-lg text-xs font-extrabold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm flex items-center gap-1.5 transition"
+              className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm flex items-center gap-1.5 transition whitespace-nowrap"
             >
-              <Zap className="w-4 h-4 fill-slate-950" /> 1-Click Boost to 100% ATS
+              <Zap className="w-4 h-4 fill-slate-950" />
+              <span>1-Click Boost to 100% ATS</span>
             </button>
             <button
+              type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200"
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 whitespace-nowrap transition"
             >
               Close
             </button>
@@ -652,7 +754,7 @@ git push -u origin main`;
               • <code className="bg-emerald-900/60 px-1 py-0.5 rounded">vite.config.ts</code>-এ{' '}
               <strong>base: './'</strong> দেওয়া আছে, ফলে গিটহাব পেজেসে কোনো ব্ল্যাঙ্ক স্ক্রিন বা 404 হবে না।<br />
               • <code className="bg-emerald-900/60 px-1 py-0.5 rounded">.github/workflows/deploy.yml</code> আগেই তৈরি করা হয়েছে, তাই পুশ করলেই স্বয়ংক্রিয়ভাবে লাইভ হবে।<br />
-              • কোনো গোপন API Key বা ব্যাকএন্ডের নির্ভরতা নেই—সব ফিচার ব্রাউজারে নিখুঁত চলে।
+              • Firebase Cloud Sync যুক্ত থাকায় লাইভ ওয়েবসাইটে বসে Google দিয়ে স্টুডিওতে এডিট করলেই সব পরিবর্তন সঙ্গে সঙ্গে গ্লোবালি আপডেট হবে (GitHub Pages-এ Google লগইনের জন্য Firebase Authorized Domains-এ <code className="bg-emerald-900/60 px-1 py-0.5 rounded">shoyebrabbi.github.io</code> যোগ রাখুন)।
             </p>
           </div>
 
@@ -712,7 +814,7 @@ git push -u origin main`;
           </div>
 
           {/* Step 3: Vercel alternative */}
-          <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60 flex items-center justify-between">
+          <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div>
               <div className="font-bold text-slate-200 text-[11.5px]">বিকল্প: ১-ক্লিকে Vercel বা Netlify-তে লাইভ</div>
               <p className="text-[10.5px] text-slate-400">গিটহাবে পুশ করার পর Vercel-এ ইমপোর্ট করলে সাথে সাথে লাইভ হবে।</p>
@@ -721,7 +823,7 @@ git push -u origin main`;
               href="https://vercel.com/new"
               target="_blank"
               rel="noreferrer"
-              className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold flex items-center gap-1 text-[11px]"
+              className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold inline-flex items-center justify-center gap-1 text-[11px] whitespace-nowrap shrink-0"
             >
               Vercel Deploy <ExternalLink className="w-3.5 h-3.5" />
             </a>

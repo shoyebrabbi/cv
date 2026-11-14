@@ -249,41 +249,41 @@ export function TemplateGalleryModal({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-5xl w-full text-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-5xl w-full text-white shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-900">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-900">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
               <LayoutGrid className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
                 Visual CV Template Gallery (১২টি ডিজাইন + আপনার কাস্টম টেমপ্লেট)
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-400 truncate sm:whitespace-normal">
                 বিল্ট-ইন টেমপ্লেট বা আপনার নিজের কাস্টম ডিজাইন সেভ করে এক ক্লিকে অ্যাপ্লাই করুন
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
             {onSaveCurrentAsTemplate && (
               <button
                 type="button"
                 onClick={() => setShowCreateForm(!showCreateForm)}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition"
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition shrink-0 whitespace-nowrap"
               >
                 <BookmarkPlus className="w-3.5 h-3.5" /> + Save Current Design
               </button>
             )}
 
-            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs max-w-full overflow-x-auto no-scrollbar order-3 sm:order-2">
               {[
                 { key: 'all', label: 'All (12)' },
                 { key: 'ats', label: '1-Col & ATS' },
@@ -295,7 +295,7 @@ export function TemplateGalleryModal({
                   key={tab.key}
                   type="button"
                   onClick={() => setFilter(tab.key as any)}
-                  className={`px-2.5 py-1 rounded-md font-semibold transition whitespace-nowrap ${
+                  className={`px-2.5 py-1 rounded-md font-semibold transition whitespace-nowrap shrink-0 ${
                     filter === tab.key
                       ? 'bg-blue-600 text-white'
                       : 'text-slate-400 hover:text-white'
@@ -309,7 +309,8 @@ export function TemplateGalleryModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+              aria-label="Close gallery"
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition shrink-0 order-2 sm:order-3"
             >
               <X className="w-5 h-5" />
             </button>
@@ -318,22 +319,22 @@ export function TemplateGalleryModal({
 
         {/* Inline Save Current Design & Import/Export Bar */}
         {(showCreateForm || filter === 'custom') && (
-          <div className="px-6 py-3 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div className="px-4 sm:px-6 py-3 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
             {showCreateForm && onSaveCurrentAsTemplate ? (
-              <div className="flex flex-wrap items-center gap-2 flex-1">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 flex-1 min-w-0">
                 <input
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="নতুন টেমপ্লেটের নাম (যেমন: Clean Minimal Indigo)..."
-                  className="flex-1 min-w-[200px] bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
+                  className="w-full sm:w-auto sm:flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
                 />
                 <input
                   type="text"
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
                   placeholder="বিবরণ (যেমন: No Footer, Custom Teal)..."
-                  className="flex-1 min-w-[180px] bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
+                  className="w-full sm:w-auto sm:flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
                 />
                 <button
                   type="button"
@@ -348,7 +349,7 @@ export function TemplateGalleryModal({
                     setShowCreateForm(false);
                     setFilter('custom');
                   }}
-                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white"
+                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white whitespace-nowrap shrink-0"
                 >
                   Save Now
                 </button>
@@ -359,18 +360,18 @@ export function TemplateGalleryModal({
               </span>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {customTemplates.length > 0 && (
                 <button
                   type="button"
                   onClick={handleExportCustomJSON}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-semibold text-slate-200 flex items-center gap-1"
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-semibold text-slate-200 flex items-center gap-1 whitespace-nowrap"
                 >
                   <Download className="w-3.5 h-3.5" /> Export JSON
                 </button>
               )}
               {onImportCustomTemplates && (
-                <label className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-semibold text-slate-200 flex items-center gap-1 cursor-pointer">
+                <label className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-semibold text-slate-200 flex items-center gap-1 cursor-pointer whitespace-nowrap">
                   <Upload className="w-3.5 h-3.5" /> Import JSON
                   <input
                     ref={importInputRef}
@@ -386,7 +387,7 @@ export function TemplateGalleryModal({
         )}
 
         {/* Visual Cards Grid */}
-        <div className="p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {(filter === 'all' || filter === 'custom') &&
             customTemplates.map((ctpl) => {
               const snap = ctpl.settingsSnapshot;

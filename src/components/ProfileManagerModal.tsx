@@ -72,19 +72,19 @@ export function ProfileManagerModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-2xl w-full text-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4">
+      <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-2xl w-full text-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-[#0B1120]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-800 flex items-center justify-between gap-3 bg-[#0B1120]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
               <Layers className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
                 Custom Profile Manager &amp; Shareable Role Links
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-400 truncate sm:whitespace-normal">
                 আলাদা কোম্পানির জন্য কাস্টম সিভি তৈরি করুন এবং ডিরেক্ট রোল-লিংক (?role=...) শেয়ার করুন
               </p>
             </div>
@@ -92,13 +92,14 @@ export function ProfileManagerModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition"
+            aria-label="Close profile manager"
+            className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-5 text-xs">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 text-xs">
           {/* Create New Version Form */}
           <form
             onSubmit={handleCreate}
@@ -205,12 +206,12 @@ export function ProfileManagerModal({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                     {!isActive && (
                       <button
                         type="button"
                         onClick={() => onSelectProfile(p.id)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-blue-600 text-white font-semibold transition"
+                        className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-blue-600 text-white font-semibold transition whitespace-nowrap"
                       >
                         Load
                       </button>
