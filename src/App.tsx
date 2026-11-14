@@ -2406,6 +2406,10 @@ export default function App() {
         isAuthorized={isStudioUnlocked}
         authError={authError}
         authSuccess={authSuccess}
+        onClearMessages={() => {
+          setAuthError('');
+          setAuthSuccess('');
+        }}
       />
 
       <ExportHubModal

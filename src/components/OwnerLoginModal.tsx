@@ -34,6 +34,7 @@ interface OwnerLoginModalProps {
   isAuthorized: boolean;
   authError?: string;
   authSuccess?: string;
+  onClearMessages?: () => void;
 }
 
 export function OwnerLoginModal({
@@ -51,6 +52,7 @@ export function OwnerLoginModal({
   isAuthorized,
   authError,
   authSuccess,
+  onClearMessages,
 }: OwnerLoginModalProps) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState(OWNER_ADMIN_EMAIL);
@@ -276,6 +278,7 @@ export function OwnerLoginModal({
                   onClick={() => {
                     setMode('login');
                     setLocalError('');
+                    onClearMessages?.();
                   }}
                   className={`py-1.5 rounded-lg font-semibold transition ${
                     mode === 'login' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
@@ -288,6 +291,7 @@ export function OwnerLoginModal({
                   onClick={() => {
                     setMode('setup');
                     setLocalError('');
+                    onClearMessages?.();
                   }}
                   className={`py-1.5 rounded-lg font-semibold transition ${
                     mode === 'setup' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
@@ -300,6 +304,7 @@ export function OwnerLoginModal({
                   onClick={() => {
                     setMode('forgot');
                     setLocalError('');
+                    onClearMessages?.();
                   }}
                   className={`py-1.5 rounded-lg font-semibold transition ${
                     mode === 'forgot' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
