@@ -532,28 +532,96 @@ body:not(.edit-active) .builder-control {
   display: none !important;
 }
 
-/* Touch & Tablet Accessibility: reveal inline/floating builder controls smoothly without mouse hover */
-.edit-active [class*="group/"]:focus-within > .builder-control {
+/* Touch & Tablet Accessibility: reveal builder controls cleanly ONLY for active/tapped item on screen */
+.edit-active [class*="group/"]:focus-within > .builder-control,
+.edit-active [class*="group/"].cv-touch-active > .builder-control,
+.edit-active .cv-touch-active > .builder-control {
   opacity: 1 !important;
 }
-.edit-active [class*="group/"]:focus-within > .builder-control.hidden {
+.edit-active [class*="group/"]:focus-within > .builder-control.hidden,
+.edit-active [class*="group/"].cv-touch-active > .builder-control.hidden,
+.edit-active .cv-touch-active > .builder-control.hidden {
   display: inline-flex !important;
 }
 
-@media (hover: none), (pointer: coarse) {
-  .edit-active .builder-control.opacity-0:not(.photo-hover-overlay) {
-    opacity: 0.92 !important;
-  }
+@media screen and (hover: none), screen and (pointer: coarse) {
   .edit-active .photo-touch-badge {
     display: inline-flex !important;
   }
-  .edit-active .builder-control.hidden:not(.photo-touch-badge) {
+  .edit-active .cv-section-header-bar > .builder-control.opacity-0,
+  .edit-active .cv-section-touch-add {
+    opacity: 0.95 !important;
     display: inline-flex !important;
   }
-  .edit-active .builder-control button {
+  .edit-active [class*="group/"]:focus-within > .builder-control button,
+  .edit-active .cv-touch-active > .builder-control button {
     min-width: 24px;
     min-height: 24px;
   }
+}
+
+/* Direct PDF / HD PNG Capture Isolation (html2canvas on mobile or desktop) */
+body.exporting-cv .no-print,
+body.exporting-cv .builder-control,
+body.exporting-cv .signature-draw-hint {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+body.exporting-cv .force-page-break {
+  border-top: none !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+body.exporting-cv .force-page-break::before,
+body.exporting-cv .force-page-break::after {
+  display: none !important;
+  content: none !important;
+}
+body.exporting-cv [contenteditable="true"],
+body.exporting-cv [contenteditable] {
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+body.exporting-cv .cv-section:hover {
+  box-shadow: none !important;
+}
+body.exporting-cv #cvHeader.cv-header-right {
+  flex-direction: row-reverse !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+}
+body.exporting-cv #cvHeader.cv-header-left {
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+}
+body.exporting-cv #cvHeader.cv-header-right #headerTextContainer,
+body.exporting-cv #cvHeader.cv-header-left #headerTextContainer {
+  text-align: left !important;
+}
+body.exporting-cv #cvHeader.cv-header-right #contactItemsList,
+body.exporting-cv #cvHeader.cv-header-left #contactItemsList {
+  justify-content: flex-start !important;
+}
+body.exporting-cv #credentialsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 1.25rem !important;
+}
+body.exporting-cv #credentialsGrid > .cred-edu {
+  grid-column: span 4 / span 4 !important;
+}
+body.exporting-cv #credentialsGrid > .cred-certs {
+  grid-column: span 5 / span 5 !important;
+}
+body.exporting-cv #credentialsGrid > .cred-lang {
+  grid-column: span 3 / span 3 !important;
+}
+body.exporting-cv .cv-references-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
 }
 
 /* Strict Page-by-Page & Template-Safe Print Engine */
@@ -562,7 +630,9 @@ body:not(.edit-active) .builder-control {
     size: A4 portrait;
     margin: 0;
   }
+  html,
   body {
+    width: 100% !important;
     background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -574,8 +644,21 @@ body:not(.edit-active) .builder-control {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  .no-print, .builder-control {
+  .no-print,
+  .builder-control,
+  body.edit-active .builder-control,
+  .edit-active .builder-control,
+  .edit-active .builder-control.hidden,
+  .edit-active .builder-control.opacity-0,
+  .edit-active .photo-touch-badge,
+  .edit-active .photo-hover-overlay,
+  .signature-draw-hint {
     display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
   }
   html,
   body,
@@ -597,12 +680,13 @@ body:not(.edit-active) .builder-control {
     top: auto !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-    width: auto !important;
+    width: 100% !important;
     height: auto !important;
     margin: 0 !important;
     overflow: visible !important;
   }
   .cv-document-wrapper {
+    width: 100% !important;
     padding: 0 !important;
     gap: 0 !important;
     transform: none !important;
@@ -643,6 +727,24 @@ body:not(.edit-active) .builder-control {
   #cvHeader.cv-header-left #contactItemsList {
     justify-content: flex-start !important;
   }
+  #credentialsGrid {
+    display: grid !important;
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    gap: 1.25rem !important;
+  }
+  #credentialsGrid > .cred-edu {
+    grid-column: span 4 / span 4 !important;
+  }
+  #credentialsGrid > .cred-certs {
+    grid-column: span 5 / span 5 !important;
+  }
+  #credentialsGrid > .cred-lang {
+    grid-column: span 3 / span 3 !important;
+  }
+  .cv-references-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
   .body-cols-left #cvSectionsContainer {
     display: grid !important;
     grid-template-columns: var(--sidebar-width, 33%) calc(97% - var(--sidebar-width, 33%)) !important;
@@ -668,8 +770,13 @@ body:not(.edit-active) .builder-control {
   .force-page-break::before,
   .force-page-break::after {
     display: none !important;
+    content: none !important;
   }
-  [contenteditable="true"] {
+  .edit-active .cv-section:hover {
+    box-shadow: none !important;
+  }
+  [contenteditable="true"],
+  [contenteditable] {
     outline: none !important;
     background: transparent !important;
     box-shadow: none !important;
@@ -681,8 +788,43 @@ body:not(.edit-active) .builder-control {
 }
 
 /* Print Preview Modal clean sheet isolation */
-.print-preview-stage .builder-control {
+.print-preview-stage .builder-control,
+.print-preview-stage .signature-draw-hint {
   display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+.print-preview-stage #cvHeader.cv-header-right {
+  flex-direction: row-reverse !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+}
+.print-preview-stage #cvHeader.cv-header-left {
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+}
+.print-preview-stage #cvHeader.cv-header-right #headerTextContainer,
+.print-preview-stage #cvHeader.cv-header-left #headerTextContainer {
+  text-align: left !important;
+}
+.print-preview-stage #cvHeader.cv-header-right #contactItemsList,
+.print-preview-stage #cvHeader.cv-header-left #contactItemsList {
+  justify-content: flex-start !important;
+}
+.print-preview-stage #credentialsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 1.25rem !important;
+}
+.print-preview-stage #credentialsGrid > .cred-edu {
+  grid-column: span 4 / span 4 !important;
+}
+.print-preview-stage #credentialsGrid > .cred-certs {
+  grid-column: span 5 / span 5 !important;
+}
+.print-preview-stage #credentialsGrid > .cred-lang {
+  grid-column: span 3 / span 3 !important;
 }
 .print-preview-stage [contenteditable] {
   pointer-events: none;
@@ -698,3 +840,25 @@ body:not(.edit-active) .builder-control {
 ::-webkit-scrollbar-track { background: #0f172a; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+@keyframes portfolioFadeRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.portfolio-reveal {
+  animation: portfolioFadeRise 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portfolio-reveal {
+    animation: none !important;
+  }
+}
+

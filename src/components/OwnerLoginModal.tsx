@@ -199,7 +199,7 @@ export function OwnerLoginModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#050811]/85 backdrop-blur-md p-4 sm:p-6"
+      className="no-print fixed inset-0 z-50 flex items-center justify-center bg-[#050811]/85 backdrop-blur-md p-3 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="owner-login-heading"

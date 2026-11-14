@@ -280,6 +280,7 @@ export const INITIAL_SETTINGS: StudioSettings = {
     availabilityActive: true,
     showSectionNumbers: false,
     accentTheme: "cobalt",
+    designStyle: "bento",
     metrics: [
       { id: "m1", value: "2+ Years", label: "Industry Experience" },
       { id: "m2", value: "50,000+", label: "Records Reconciled" },

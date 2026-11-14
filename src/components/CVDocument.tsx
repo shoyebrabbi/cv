@@ -66,6 +66,13 @@ export function CVDocument({
   }
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [activeTouchKey, setActiveTouchKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!effectiveEditMode) {
+      setActiveTouchKey(null);
+    }
+  }, [effectiveEditMode]);
 
   useEffect(() => {
     if (settings.qrCode?.enabled && settings.qrCode?.url) {
@@ -337,12 +344,12 @@ export function CVDocument({
     }));
   }
 
-  // Header alignment classes based on photoPosition and headerAlign override
+  // Header alignment classes based on photoPosition and headerAlign override (consistent across all A4 viewports)
   const headerLayoutClass =
     settings.photoPosition === 'right'
-      ? 'cv-header-right flex-col sm:flex-row-reverse items-center sm:items-start justify-between'
+      ? 'cv-header-right flex-row-reverse items-start justify-between'
       : settings.photoPosition === 'left'
-      ? 'cv-header-left flex-col sm:flex-row items-center sm:items-start justify-between'
+      ? 'cv-header-left flex-row items-start justify-between'
       : settings.photoPosition === 'center'
       ? 'flex-col items-center text-center'
       : 'flex-col items-start';
@@ -356,14 +363,12 @@ export function CVDocument({
   const textAlignmentClass =
     effectiveAlign === 'center'
       ? 'w-full text-center'
-      : 'flex-1 text-center sm:text-left';
+      : 'flex-1 text-left';
 
   const contactAlignmentClass =
     effectiveAlign === 'center'
       ? 'mt-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px]'
-      : settings.photoPosition === 'hide'
-      ? 'mt-2.5 flex flex-wrap items-center justify-start gap-x-4 gap-y-1.5 text-[12px]'
-      : 'mt-2.5 flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 text-[12px]';
+      : 'mt-2.5 flex flex-wrap items-center justify-start gap-x-4 gap-y-1.5 text-[12px]';
 
   const customTextClass =
     settings.cvTextColor && settings.cvTextColor !== '#1e293b' ? 'custom-text-color' : '';
@@ -372,9 +377,12 @@ export function CVDocument({
     <div
       id="cvDocument"
       className={`cv-document ${templateClass} ${headerDarkBanner} ${bodyColClass} ${secHeadingClass} ${customTextClass}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setActiveTouchKey(null);
+      }}
     >
       {isHighlightActive && (
-        <div className="builder-control mb-3 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-semibold flex items-center justify-between gap-2">
+        <div className="builder-control no-print mb-3 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-semibold flex items-center justify-between gap-2">
           <span>
             JD Keyword Highlight Active ({jdHighlightKeywords.length} matched terms highlighted)
           </span>
@@ -448,12 +456,12 @@ export function CVDocument({
             {effectiveEditMode && (
               <span
                 aria-hidden="true"
-                className="builder-control photo-touch-badge hidden absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full bg-slate-950/85 border border-blue-400/60 text-blue-300 items-center justify-center shadow-lg pointer-events-none"
+                className="builder-control no-print photo-touch-badge hidden absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full bg-slate-950/85 border border-blue-400/60 text-blue-300 items-center justify-center shadow-lg pointer-events-none"
               >
                 <Camera className="w-3.5 h-3.5" />
               </span>
             )}
-            <label className="builder-control photo-hover-overlay absolute inset-0 bg-slate-900/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium cursor-pointer p-1.5 text-center">
+            <label className="builder-control no-print photo-hover-overlay absolute inset-0 bg-slate-900/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium cursor-pointer p-1.5 text-center">
               <Camera className="w-4 h-4 mb-1 text-blue-300" />
               <span>Change / Drop Photo</span>
               <input
@@ -474,7 +482,7 @@ export function CVDocument({
             contentEditable={effectiveEditMode}
             suppressContentEditableWarning
             onBlur={(e) => handleTextBlur('name', e.currentTarget.innerText)}
-            className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-slate-900 uppercase leading-tight"
+            className="text-[28px] font-extrabold tracking-tight text-slate-900 uppercase leading-tight"
           >
             {cvData.name}
           </h1>
@@ -484,7 +492,7 @@ export function CVDocument({
               contentEditable={effectiveEditMode}
               suppressContentEditableWarning
               onBlur={(e) => handleTextBlur('title', e.currentTarget.innerText)}
-              className="text-xs sm:text-[13.5px] font-bold theme-text tracking-wide uppercase mt-0.5"
+              className="text-[13.5px] font-bold theme-text tracking-wide uppercase mt-0.5"
             >
               {cvData.title}
             </p>
@@ -496,7 +504,13 @@ export function CVDocument({
             {cvData.contacts.map((item, index) => (
               <div
                 key={item.id}
-                className="contact-item relative group/citem inline-flex items-center gap-1.5"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (effectiveEditMode) setActiveTouchKey(`c:${item.id}`);
+                }}
+                className={`contact-item relative group/citem inline-flex items-center gap-1.5 ${
+                  activeTouchKey === `c:${item.id}` ? 'cv-touch-active' : ''
+                }`}
                 data-type={item.type}
               >
                 <span className="contact-icon theme-text">
@@ -513,7 +527,7 @@ export function CVDocument({
                   target="_blank"
                   rel="noreferrer"
                   className="contact-link font-medium"
-                  contentEditable={settings.isEditMode}
+                  contentEditable={effectiveEditMode}
                   suppressContentEditableWarning
                   onBlur={(e) => {
                     const newText = e.currentTarget.innerText.trim();
@@ -528,7 +542,10 @@ export function CVDocument({
                 </a>
 
                 {/* Individual Contact Controls */}
-                <div className="builder-control hidden group-hover/citem:inline-flex items-center gap-0.5 bg-slate-900 text-white px-1 py-0.5 rounded text-[9px] ml-1 shadow">
+                <div
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="builder-control no-print hidden group-hover/citem:inline-flex items-center gap-0.5 bg-slate-900 text-white px-1 py-0.5 rounded text-[9px] ml-1 shadow z-20"
+                >
                   <button
                     type="button"
                     onClick={() => moveContact(index, -1)}
@@ -574,7 +591,7 @@ export function CVDocument({
       {(() => {
         const summarySection = (
           <section className="cv-section group/sec" data-section-id="summary">
-            <div className="builder-control opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
+            <div className="builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
               <span className="text-slate-400">Section 1</span>
             </div>
             <h2
@@ -614,7 +631,7 @@ export function CVDocument({
 
         const skillsSection = (
           <section className="cv-section group/sec" data-section-id="skills">
-            <div className="builder-control opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
+            <div className="cv-section-header-bar builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
               <button
                 type="button"
                 onClick={() => {
@@ -668,10 +685,17 @@ export function CVDocument({
                 }
               >
                 {cvData.skills.map((row, index) => (
-                  <tr key={row.id} className="group/row">
+                  <tr
+                    key={row.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (effectiveEditMode) setActiveTouchKey(`s:${row.id}`);
+                    }}
+                    className={`group/row ${activeTouchKey === `s:${row.id}` ? 'cv-touch-active' : ''}`}
+                  >
                     <td>
                       <div
-                        contentEditable={settings.isEditMode}
+                        contentEditable={effectiveEditMode}
                         suppressContentEditableWarning
                         onBlur={(e) => {
                           const newCat = e.currentTarget.innerText.trim();
@@ -713,7 +737,12 @@ export function CVDocument({
                         </div>
                       )}
 
-                      <div className="builder-control opacity-0 group-hover/row:opacity-100 absolute top-1 right-1 flex items-center gap-1 bg-slate-900 text-white px-1.5 py-0.5 rounded shadow text-[9px]">
+                      <div
+                        onMouseDown={(e) => e.preventDefault()}
+                        className={`builder-control no-print opacity-0 group-hover/row:opacity-100 absolute top-1 right-1 flex items-center gap-1 bg-slate-900 text-white px-1.5 py-0.5 rounded shadow text-[9px] z-20 ${
+                          activeTouchKey === `s:${row.id}` ? '!opacity-100' : ''
+                        }`}
+                      >
                         <button type="button" onClick={() => moveSkill(index, -1)} className="hover:text-blue-300" title="Move Up">
                           <ArrowUp className="w-3 h-3" />
                         </button>
@@ -737,7 +766,7 @@ export function CVDocument({
 
         const experienceSection = (
           <section className="cv-section group/sec" data-section-id="experience">
-            <div className="builder-control opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
+            <div className="cv-section-header-bar builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
               <button
                 type="button"
                 onClick={() => {
@@ -787,15 +816,19 @@ export function CVDocument({
               {cvData.experiences.map((exp, expIdx) => (
                 <div
                   key={exp.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (effectiveEditMode) setActiveTouchKey(`e:${exp.id}`);
+                  }}
                   className={`experience-item relative group/item rounded-lg transition ${
                     exp.forcePageBreak ? 'force-page-break' : ''
-                  }`}
+                  } ${activeTouchKey === `e:${exp.id}` ? 'cv-touch-active' : ''}`}
                 >
                   <div className="flex flex-wrap justify-between items-baseline gap-2">
                     <div className="font-bold text-slate-900 text-[1.05em]">
                       <span
                         className="exp-role"
-                        contentEditable={settings.isEditMode}
+                        contentEditable={effectiveEditMode}
                         suppressContentEditableWarning
                         onBlur={(e) => {
                           const newRole = e.currentTarget.innerText.trim();
@@ -811,7 +844,7 @@ export function CVDocument({
                       <span className="text-slate-400 font-normal mx-1">—</span>
                       <span
                         className="exp-company theme-text"
-                        contentEditable={settings.isEditMode}
+                        contentEditable={effectiveEditMode}
                         suppressContentEditableWarning
                         onBlur={(e) => {
                           const newCompany = e.currentTarget.innerText.trim();
@@ -827,7 +860,7 @@ export function CVDocument({
                     </div>
                     <div
                       className="exp-date text-[0.92em] font-semibold text-slate-600"
-                      contentEditable={settings.isEditMode}
+                      contentEditable={effectiveEditMode}
                       suppressContentEditableWarning
                       onBlur={(e) => {
                         const newDate = e.currentTarget.innerText.trim();
@@ -845,7 +878,16 @@ export function CVDocument({
                   {/* Bullets */}
                   <ul className="exp-bullets list-outside ml-4 mt-1.5 space-y-1 text-slate-700">
                     {exp.bullets.map((b, bIdx) => (
-                      <li key={b.id} className="relative group/bullet">
+                      <li
+                        key={b.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (effectiveEditMode) setActiveTouchKey(`b:${b.id}`);
+                        }}
+                        className={`relative group/bullet ${
+                          activeTouchKey === `b:${b.id}` ? 'cv-touch-active' : ''
+                        }`}
+                      >
                         <div
                           className="inline"
                           contentEditable={effectiveEditMode}
@@ -863,7 +905,10 @@ export function CVDocument({
                             });
                           }}
                         />
-                        <span className="builder-control hidden group-hover/bullet:inline-flex items-center gap-1 bg-slate-900 text-white px-1.5 py-0.5 rounded text-[9px] ml-1 shadow">
+                        <span
+                          onMouseDown={(e) => e.preventDefault()}
+                          className="builder-control no-print hidden group-hover/bullet:inline-flex items-center gap-1 bg-slate-900 text-white px-1.5 py-0.5 rounded text-[9px] ml-1 shadow z-20"
+                        >
                           <button type="button" onClick={() => moveBullet(expIdx, bIdx, -1)} title="Move Bullet Up">
                             <ArrowUp className="w-2.5 h-2.5" />
                           </button>
@@ -882,7 +927,12 @@ export function CVDocument({
                   </ul>
 
                   {/* Role item bar */}
-                  <div className="builder-control opacity-0 group-hover/item:opacity-100 flex items-center gap-2 mt-1 text-[10px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                  <div
+                    onMouseDown={(e) => e.preventDefault()}
+                    className={`builder-control no-print opacity-0 group-hover/item:opacity-100 flex flex-wrap items-center gap-2 mt-1 text-[10px] bg-slate-100 px-2 py-1 rounded border border-slate-200 ${
+                      activeTouchKey === `e:${exp.id}` ? '!opacity-100' : ''
+                    }`}
+                  >
                     <button type="button" onClick={() => addBullet(expIdx)} className="text-blue-600 hover:underline font-semibold">
                       + Bullet
                     </button>
@@ -907,7 +957,7 @@ export function CVDocument({
 
         const projectsSection = (
           <section className="cv-section group/sec" data-section-id="projects">
-            <div className="builder-control opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
+            <div className="cv-section-header-bar builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
               <button
                 type="button"
                 onClick={() => {
@@ -952,9 +1002,13 @@ export function CVDocument({
               {cvData.projects.map((proj, pIdx) => (
                 <div
                   key={proj.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (effectiveEditMode) setActiveTouchKey(`p:${proj.id}`);
+                  }}
                   className={`project-item relative group/proj transition ${
                     proj.forcePageBreak ? 'force-page-break' : ''
-                  }`}
+                  } ${activeTouchKey === `p:${proj.id}` ? 'cv-touch-active' : ''}`}
                 >
                   <div className="flex flex-wrap justify-between items-baseline gap-2">
                     <h3 className="proj-title font-bold text-slate-900 text-[1.03em]">
@@ -963,7 +1017,7 @@ export function CVDocument({
                         target="_blank"
                         rel="noreferrer"
                         className="proj-link underline hover:text-blue-600"
-                        contentEditable={settings.isEditMode}
+                        contentEditable={effectiveEditMode}
                         suppressContentEditableWarning
                         onBlur={(e) => {
                           const newTitle = e.currentTarget.innerText.trim();
@@ -979,7 +1033,7 @@ export function CVDocument({
                     </h3>
                     <span
                       className="proj-tech text-[0.92em] font-semibold italic theme-text"
-                      contentEditable={settings.isEditMode}
+                      contentEditable={effectiveEditMode}
                       suppressContentEditableWarning
                       onBlur={(e) => {
                         const newTech = e.currentTarget.innerText.trim();
@@ -1017,7 +1071,12 @@ export function CVDocument({
                   )}
 
                   {/* Project controls */}
-                  <div className="builder-control opacity-0 group-hover/proj:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded text-[9px] shadow">
+                  <div
+                    onMouseDown={(e) => e.preventDefault()}
+                    className={`builder-control no-print opacity-0 group-hover/proj:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded text-[9px] shadow z-20 ${
+                      activeTouchKey === `p:${proj.id}` ? '!opacity-100' : ''
+                    }`}
+                  >
                     <button type="button" onClick={() => onOpenLinkModalForProject(proj.id, proj.title, proj.url)} className="text-blue-300 hover:underline">
                       🔗 Link
                     </button>
@@ -1064,7 +1123,7 @@ export function CVDocument({
               <div
                 id="eduDegree"
                 className="font-bold text-slate-900 text-[1.04em]"
-                contentEditable={settings.isEditMode}
+                contentEditable={effectiveEditMode}
                 suppressContentEditableWarning
                 onBlur={(e) => {
                   const val = e.currentTarget.innerText.trim();
@@ -1079,7 +1138,7 @@ export function CVDocument({
               <div
                 id="eduSchool"
                 className="font-semibold theme-text"
-                contentEditable={settings.isEditMode}
+                contentEditable={effectiveEditMode}
                 suppressContentEditableWarning
                 onBlur={(e) => {
                   const val = e.currentTarget.innerText.trim();
@@ -1094,7 +1153,7 @@ export function CVDocument({
               <div
                 id="eduYear"
                 className="text-[0.9em] text-slate-500 font-medium"
-                contentEditable={settings.isEditMode}
+                contentEditable={effectiveEditMode}
                 suppressContentEditableWarning
                 onBlur={(e) => {
                   const val = e.currentTarget.innerText.trim();
@@ -1109,7 +1168,7 @@ export function CVDocument({
               <div
                 id="eduModules"
                 className="pt-1 text-slate-700"
-                contentEditable={settings.isEditMode}
+                contentEditable={effectiveEditMode}
                 suppressContentEditableWarning
                 onBlur={(e) => {
                   const val = e.currentTarget.innerText.trim();
@@ -1130,7 +1189,7 @@ export function CVDocument({
             <div className="flex items-center justify-between">
               <h2
                 className="cv-section-title flex-1"
-                contentEditable={settings.isEditMode}
+                contentEditable={effectiveEditMode}
                 suppressContentEditableWarning
                 onBlur={(e) => {
                   const val = e.currentTarget.innerText.trim();
@@ -1146,16 +1205,25 @@ export function CVDocument({
               <button
                 type="button"
                 onClick={addCert}
-                className="builder-control ml-2 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                className="builder-control no-print cv-section-touch-add ml-2 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shrink-0"
               >
                 + Add
               </button>
             </div>
             <ul id="certificationsList" className="list-disc list-outside ml-4 space-y-1 text-slate-700">
               {cvData.certifications.map((cert, cIdx) => (
-                <li key={cIdx} className="relative group/cert">
+                <li
+                  key={cIdx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (effectiveEditMode) setActiveTouchKey(`cert:${cIdx}`);
+                  }}
+                  className={`relative group/cert ${
+                    activeTouchKey === `cert:${cIdx}` ? 'cv-touch-active' : ''
+                  }`}
+                >
                   <span
-                    contentEditable={settings.isEditMode}
+                    contentEditable={effectiveEditMode}
                     suppressContentEditableWarning
                     onBlur={(e) => {
                       const val = e.currentTarget.innerText.trim();
@@ -1168,7 +1236,10 @@ export function CVDocument({
                   >
                     {cert}
                   </span>
-                  <span className="builder-control hidden group-hover/cert:inline-flex items-center gap-0.5 bg-slate-900 text-white px-1 rounded text-[9px] ml-1">
+                  <span
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="builder-control no-print hidden group-hover/cert:inline-flex items-center gap-0.5 bg-slate-900 text-white px-1 rounded text-[9px] ml-1 z-20"
+                  >
                     <button type="button" onClick={() => moveCert(cIdx, -1)}>
                       <ArrowUp className="w-2.5 h-2.5" />
                     </button>
@@ -1189,7 +1260,7 @@ export function CVDocument({
           <div>
             <h2
               className="cv-section-title"
-              contentEditable={settings.isEditMode}
+              contentEditable={effectiveEditMode}
               suppressContentEditableWarning
               onBlur={(e) => {
                 const val = e.currentTarget.innerText.trim();
@@ -1207,7 +1278,7 @@ export function CVDocument({
                 <div className="font-bold text-slate-900">Languages:</div>
                 <div
                   id="cvLanguages"
-                  contentEditable={settings.isEditMode}
+                  contentEditable={effectiveEditMode}
                   suppressContentEditableWarning
                   onBlur={(e) => handleTextBlur('languages', e.currentTarget.innerText)}
                   className="whitespace-pre-line"
@@ -1219,7 +1290,7 @@ export function CVDocument({
                 <div className="font-bold text-slate-900">Key Strengths:</div>
                 <div
                   id="cvStrengths"
-                  contentEditable={settings.isEditMode}
+                  contentEditable={effectiveEditMode}
                   suppressContentEditableWarning
                   onBlur={(e) => handleTextBlur('strengths', e.currentTarget.innerText)}
                 >
@@ -1233,9 +1304,18 @@ export function CVDocument({
         const customSectionsBlock = cvData.customSections.map((sec, secIdx) => (
           <section
             key={sec.id}
-            className={`cv-section group/sec ${sec.forcePageBreak ? 'force-page-break' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (effectiveEditMode) setActiveTouchKey(`cs:${sec.id}`);
+            }}
+            className={`cv-section group/sec ${sec.forcePageBreak ? 'force-page-break' : ''} ${
+              activeTouchKey === `cs:${sec.id}` ? 'cv-touch-active' : ''
+            }`}
           >
-            <div className="builder-control opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-2 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-20">
+            <div
+              onMouseDown={(e) => e.preventDefault()}
+              className="cv-section-header-bar builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-2 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-20"
+            >
               {sec.type !== 'paragraph' && (
                 <button
                   type="button"
@@ -1328,7 +1408,7 @@ export function CVDocument({
             </div>
             <h2
               className="cv-section-title"
-              contentEditable={settings.isEditMode}
+              contentEditable={effectiveEditMode}
               suppressContentEditableWarning
               onBlur={(e) => {
                 const val = e.currentTarget.innerText.trim();
@@ -1348,21 +1428,25 @@ export function CVDocument({
               <ul
                 className={
                   sec.type === 'references'
-                    ? 'grid grid-cols-1 sm:grid-cols-2 gap-3 list-none ml-0 text-slate-700'
+                    ? 'cv-references-grid grid grid-cols-2 gap-3 list-none ml-0 text-slate-700'
                     : 'exp-bullets list-outside ml-4 space-y-1 text-slate-700'
                 }
               >
                 {sec.content.map((item, itemIdx) => (
                   <li
                     key={itemIdx}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (effectiveEditMode) setActiveTouchKey(`csi:${sec.id}:${itemIdx}`);
+                    }}
                     className={`relative group/citem ${
                       sec.type === 'references'
                         ? 'p-2 rounded border border-slate-200 bg-slate-50/70'
                         : ''
-                    }`}
+                    } ${activeTouchKey === `csi:${sec.id}:${itemIdx}` ? 'cv-touch-active' : ''}`}
                   >
                     <span
-                      contentEditable={settings.isEditMode}
+                      contentEditable={effectiveEditMode}
                       suppressContentEditableWarning
                       dangerouslySetInnerHTML={{ __html: item }}
                       onBlur={(e) => {
@@ -1381,6 +1465,7 @@ export function CVDocument({
                     {sec.content.length > 1 && (
                       <button
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           onUpdateCVData((prev) => ({
                             ...prev,
@@ -1391,7 +1476,7 @@ export function CVDocument({
                             ),
                           }));
                         }}
-                        className="builder-control hidden group-hover/citem:inline-flex ml-1.5 text-rose-500 hover:text-rose-700 align-middle"
+                        className="builder-control no-print hidden group-hover/citem:inline-flex ml-1.5 text-rose-500 hover:text-rose-700 align-middle"
                         title="Remove Item"
                       >
                         <X className="w-3 h-3" />
@@ -1402,7 +1487,7 @@ export function CVDocument({
               </ul>
             ) : (
               <p
-                contentEditable={settings.isEditMode}
+                contentEditable={effectiveEditMode}
                 suppressContentEditableWarning
                 onBlur={(e) => {
                   const val = e.currentTarget.innerText.trim();
@@ -1470,10 +1555,10 @@ export function CVDocument({
           projects: projectsSection,
           credentials: (
             <section className="cv-section group/sec cv-keep-together" data-section-id="credentials">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-                <div className="md:col-span-4">{educationContent}</div>
-                <div className="md:col-span-5">{certificationsContent}</div>
-                <div className="md:col-span-3">{languagesContent}</div>
+              <div id="credentialsGrid" className="grid grid-cols-12 gap-5">
+                <div className="cred-edu col-span-4">{educationContent}</div>
+                <div className="cred-certs col-span-5">{certificationsContent}</div>
+                <div className="cred-lang col-span-3">{languagesContent}</div>
               </div>
             </section>
           ),
@@ -1530,10 +1615,10 @@ export function CVDocument({
                 {currentOrder.map((secId, sIdx) => {
                   const isHidden = hiddenSet.has(secId);
                   if (isHidden) {
-                    return settings.isEditMode ? (
+                    return effectiveEditMode ? (
                       <div
                         key={secId}
-                        className="builder-control my-1.5 px-3 py-1 rounded border border-dashed border-slate-300 bg-slate-50 text-[10.5px] text-slate-500 flex items-center justify-between"
+                        className="builder-control no-print my-1.5 px-3 py-1 rounded border border-dashed border-slate-300 bg-slate-50 text-[10.5px] text-slate-500 flex items-center justify-between"
                       >
                         <span>Hidden Section: {sectionLabels[secId]}</span>
                         <button
@@ -1548,8 +1633,20 @@ export function CVDocument({
                   }
 
                   return (
-                    <div key={secId} className="relative group/wrap">
-                      <div className="builder-control opacity-0 group-hover/wrap:opacity-100 absolute -left-7 top-3 flex flex-col gap-0.5 bg-slate-900 text-white p-0.5 rounded shadow z-20 text-[9px]">
+                    <div
+                      key={secId}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (effectiveEditMode) setActiveTouchKey(`wrap:${secId}`);
+                      }}
+                      className={`relative group/wrap ${
+                        activeTouchKey === `wrap:${secId}` ? 'cv-touch-active' : ''
+                      }`}
+                    >
+                      <div
+                        onMouseDown={(e) => e.preventDefault()}
+                        className="builder-control no-print opacity-0 group-hover/wrap:opacity-100 absolute right-0 -top-2 md:-left-7 md:right-auto md:top-3 flex flex-row md:flex-col gap-0.5 bg-slate-900 text-white p-0.5 rounded shadow z-20 text-[9px]"
+                      >
                         <button
                           type="button"
                           disabled={sIdx === 0}
@@ -1598,7 +1695,7 @@ export function CVDocument({
             <button
               type="button"
               onClick={onOpenSignatureModal}
-              className="builder-control text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-semibold"
+              className="builder-control no-print text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-semibold"
             >
               <PenTool className="w-3 h-3" /> Edit Signature
             </button>
@@ -1629,9 +1726,9 @@ export function CVDocument({
               ) : (
                 <div
                   onClick={onOpenSignatureModal}
-                  className="cursor-pointer border-b border-dashed border-slate-400 pb-1 mb-1 text-[11px] text-blue-600 hover:text-blue-800 italic"
+                  className="signature-draw-hint no-print cursor-pointer border-b border-dashed border-slate-400 pb-1 mb-1 text-[11px] text-blue-600 hover:text-blue-800 italic"
                 >
-                  Click to draw signature ✍️
+                  Click to draw signature
                 </div>
               )}
               <div className="font-bold text-xs text-slate-800 uppercase tracking-tight">

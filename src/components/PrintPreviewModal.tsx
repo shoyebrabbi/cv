@@ -25,19 +25,30 @@ export function PrintPreviewModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    const fitScale = Math.min(1, Math.max(0.55, (window.innerWidth - 96) / 820));
-    setScale(Math.round(fitScale * 20) / 20);
+    const computeFitScale = () => {
+      const horizontalPad = window.innerWidth < 640 ? 20 : 96;
+      const fitScale = Math.min(1, Math.max(0.35, (window.innerWidth - horizontalPad) / 794));
+      return Math.round(fitScale * 20) / 20;
+    };
+    setScale(computeFitScale());
+
+    const handleResize = () => setScale(computeFitScale());
+    window.addEventListener('resize', handleResize);
 
     const source = document.getElementById('cvDocument');
     const host = stageRef.current;
-    if (!source || !host) return;
+    if (source && host) {
+      host.innerHTML = '';
+      const clone = source.cloneNode(true) as HTMLElement;
+      clone.removeAttribute('id');
+      clone
+        .querySelectorAll('.builder-control, .no-print, .signature-draw-hint, .photo-touch-badge')
+        .forEach((el) => el.remove());
+      clone.querySelectorAll('[contenteditable]').forEach((el) => el.removeAttribute('contenteditable'));
+      host.appendChild(clone);
+    }
 
-    host.innerHTML = '';
-    const clone = source.cloneNode(true) as HTMLElement;
-    clone.removeAttribute('id');
-    clone.querySelectorAll('.builder-control').forEach((el) => el.remove());
-    clone.querySelectorAll('[contenteditable]').forEach((el) => el.removeAttribute('contenteditable'));
-    host.appendChild(clone);
+    return () => window.removeEventListener('resize', handleResize);
   }, [isOpen]);
 
   useEffect(() => {
@@ -50,6 +61,9 @@ export function PrintPreviewModal({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const scaledWidth = Math.round(794 * scale);
+  const scaledHeight = Math.round((docHeightPx || 1123) * scale);
 
   return (
     <div className="no-print fixed inset-0 z-50 bg-[#060911]/95 backdrop-blur-md flex flex-col">
@@ -153,12 +167,12 @@ export function PrintPreviewModal({
 
       {/* Mobile & Tablet Compact Zoom Bar (Always reachable on small viewports) */}
       <div className="md:hidden px-3 py-1.5 bg-[#090E1A] border-b border-slate-800/80 flex items-center justify-between text-[11px] shrink-0">
-        <span className="text-slate-400">Pinch or zoom to inspect A4 layout</span>
-        <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-1.5 py-0.5">
+        <span className="text-slate-400 truncate pr-2">A4 Paper Inspection</span>
+        <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-1.5 py-0.5 shrink-0">
           <button
             type="button"
             onClick={() => setScale((s) => Math.max(0.35, Math.round((s - 0.1) * 100) / 100))}
-            className="p-1 rounded hover:bg-slate-800 text-slate-300"
+            className="p-1.5 rounded hover:bg-slate-800 text-slate-300"
             title="Zoom Out"
           >
             <ZoomOut className="w-3.5 h-3.5" />
@@ -169,7 +183,7 @@ export function PrintPreviewModal({
           <button
             type="button"
             onClick={() => setScale((s) => Math.min(1.2, Math.round((s + 0.1) * 100) / 100))}
-            className="p-1 rounded hover:bg-slate-800 text-slate-300"
+            className="p-1.5 rounded hover:bg-slate-800 text-slate-300"
             title="Zoom In"
           >
             <ZoomIn className="w-3.5 h-3.5" />
@@ -177,27 +191,34 @@ export function PrintPreviewModal({
           <button
             type="button"
             onClick={() => {
-              const fitScale = Math.min(1, Math.max(0.38, (window.innerWidth - 32) / 800));
+              const fitScale = Math.min(1, Math.max(0.35, (window.innerWidth - 20) / 794));
               setScale(Math.round(fitScale * 20) / 20);
             }}
-            className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-blue-300 font-semibold"
+            className="px-2 py-1 rounded hover:bg-slate-800 text-blue-300 font-semibold"
           >
             Fit
           </button>
         </div>
       </div>
 
-      {/* Crisp A4 Paper Stage */}
-      <div className="flex-1 overflow-auto py-5 sm:py-8 px-2 sm:px-4 flex justify-center items-start">
+      {/* Crisp A4 Paper Stage (Outer sized box guarantees zero left/right clipping on narrow phones) */}
+      <div className="flex-1 overflow-auto py-4 sm:py-8 px-2.5 sm:px-4">
         <div
-          className="print-preview-stage origin-top transition-transform duration-150"
+          className="mx-auto shrink-0"
           style={{
-            transform: `scale(${scale})`,
-            marginBottom:
-              scale < 1 ? `-${Math.round((1 - scale) * (docHeightPx || 1120))}px` : undefined,
+            width: `${scaledWidth}px`,
+            minHeight: `${scaledHeight}px`,
           }}
         >
-          <div ref={stageRef} />
+          <div
+            className="print-preview-stage origin-top-left transition-transform duration-150"
+            style={{
+              width: '794px',
+              transform: `scale(${scale})`,
+            }}
+          >
+            <div ref={stageRef} />
+          </div>
         </div>
       </div>
     </div>

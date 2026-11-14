@@ -72,7 +72,7 @@ export function ProfileManagerModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4">
+    <div className="no-print fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4">
       <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-2xl w-full text-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-800 flex items-center justify-between gap-3 bg-[#0B1120]">

@@ -36,8 +36,19 @@ import {
   Eye,
   Menu,
   ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  LayoutGrid,
+  BookOpen,
+  Cpu,
 } from 'lucide-react';
-import { CVData, PortfolioAccentTheme, ProjectItem, StudioSettings } from '../types/cv';
+import {
+  CVData,
+  PortfolioAccentTheme,
+  PortfolioDesignStyle,
+  ProjectItem,
+  StudioSettings,
+} from '../types/cv';
 import { exportVCard } from '../utils/exporters';
 
 interface PublicProfileSummary {
@@ -60,12 +71,58 @@ interface WebPortfolioViewProps {
   onBackToEditor: () => void;
   onExportPDF: () => void;
   onOpenPrintPreview?: () => void;
+  onUpdatePortfolioStyle?: (designStyle: PortfolioDesignStyle) => void;
 }
 
-const ROLE_ROTATIONS = [
-  'Data Analyst & Power BI Specialist',
-  'Software QA & REST API Engineer',
-  'Enterprise IT & Systems Administrator',
+const ROLE_SPECIALIZATIONS = [
+  {
+    key: 'data',
+    label: 'Data & Power BI',
+    headline: 'Data Analyst & Power BI Specialist',
+    proof: 'PostgreSQL · Star Schema · Automated ETL · 50,000+ Records',
+  },
+  {
+    key: 'sqa',
+    label: 'Software QA & API',
+    headline: 'Software QA & REST API Engineer',
+    proof: 'Postman CRUD · BVA/ECP · 80+ Test Cases · Jira Triage',
+  },
+  {
+    key: 'netops',
+    label: 'Enterprise IT',
+    headline: 'Enterprise IT & Systems Administrator',
+    proof: 'Windows Server · Linux · ERP RBAC · 100+ Users Supported',
+  },
+] as const;
+
+const DESIGN_STYLE_OPTIONS: {
+  key: PortfolioDesignStyle;
+  label: string;
+  shortLabel: string;
+  desc: string;
+  icon: typeof LayoutGrid;
+}[] = [
+  {
+    key: 'bento',
+    label: 'Signature Bento',
+    shortLabel: 'Bento',
+    desc: 'Balanced executive split & structured capability cards',
+    icon: LayoutGrid,
+  },
+  {
+    key: 'editorial',
+    label: 'Executive Monograph',
+    shortLabel: 'Monograph',
+    desc: 'Editorial serif headings & publication hairline rules',
+    icon: BookOpen,
+  },
+  {
+    key: 'blueprint',
+    label: 'Systems Blueprint',
+    shortLabel: 'Blueprint',
+    desc: 'Precision architectural grid & engineering index',
+    icon: Cpu,
+  },
 ];
 
 type ResolvedAccentKey = 'cobalt' | 'emerald' | 'teal' | 'indigo' | 'rose';
@@ -81,6 +138,8 @@ const PORTFOLIO_ACCENTS: Record<
     activePill: string;
     tabActive: string;
     progress: string;
+    ringSoft: string;
+    monogramBg: string;
   }
 > = {
   cobalt: {
@@ -88,50 +147,60 @@ const PORTFOLIO_ACCENTS: Record<
     navActive: 'border-blue-600 dark:border-cyan-400 text-blue-600 dark:text-cyan-400',
     btnPrimary: 'bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white',
     dot: 'bg-blue-600 dark:bg-cyan-400',
-    hoverBorder: 'hover:border-blue-500/60',
+    hoverBorder: 'hover:border-blue-500/60 dark:hover:border-cyan-400/50',
     activePill: 'bg-blue-600 text-white border-blue-600',
     tabActive: 'bg-white dark:bg-blue-600 text-slate-900 dark:text-white shadow-sm',
     progress: 'from-blue-600 via-cyan-500 to-emerald-500',
+    ringSoft: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-cyan-300',
+    monogramBg: 'bg-blue-600/10 dark:bg-cyan-500/15 text-blue-700 dark:text-cyan-300 border-blue-200 dark:border-cyan-500/30',
   },
   emerald: {
     eyebrow: 'text-emerald-600 dark:text-emerald-400',
     navActive: 'border-emerald-600 dark:border-emerald-400 text-emerald-600 dark:text-emerald-400',
     btnPrimary: 'bg-emerald-600 hover:bg-emerald-700 dark:hover:bg-emerald-500 text-white',
     dot: 'bg-emerald-600 dark:bg-emerald-400',
-    hoverBorder: 'hover:border-emerald-500/60',
+    hoverBorder: 'hover:border-emerald-500/60 dark:hover:border-emerald-400/50',
     activePill: 'bg-emerald-600 text-white border-emerald-600',
     tabActive: 'bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-sm',
     progress: 'from-emerald-600 via-teal-500 to-cyan-500',
+    ringSoft: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+    monogramBg: 'bg-emerald-600/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30',
   },
   teal: {
     eyebrow: 'text-teal-600 dark:text-teal-400',
     navActive: 'border-teal-600 dark:border-teal-400 text-teal-600 dark:text-teal-400',
     btnPrimary: 'bg-teal-600 hover:bg-teal-700 dark:hover:bg-teal-500 text-white',
     dot: 'bg-teal-600 dark:bg-teal-400',
-    hoverBorder: 'hover:border-teal-500/60',
+    hoverBorder: 'hover:border-teal-500/60 dark:hover:border-teal-400/50',
     activePill: 'bg-teal-600 text-white border-teal-600',
     tabActive: 'bg-white dark:bg-teal-600 text-slate-900 dark:text-white shadow-sm',
     progress: 'from-teal-600 via-cyan-500 to-blue-500',
+    ringSoft: 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300',
+    monogramBg: 'bg-teal-600/10 dark:bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-500/30',
   },
   indigo: {
     eyebrow: 'text-indigo-600 dark:text-indigo-400',
     navActive: 'border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400',
     btnPrimary: 'bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-500 text-white',
     dot: 'bg-indigo-600 dark:bg-indigo-400',
-    hoverBorder: 'hover:border-indigo-500/60',
+    hoverBorder: 'hover:border-indigo-500/60 dark:hover:border-indigo-400/50',
     activePill: 'bg-indigo-600 text-white border-indigo-600',
     tabActive: 'bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-sm',
     progress: 'from-indigo-600 via-blue-500 to-cyan-500',
+    ringSoft: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300',
+    monogramBg: 'bg-indigo-600/10 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30',
   },
   rose: {
     eyebrow: 'text-rose-600 dark:text-rose-400',
     navActive: 'border-rose-600 dark:border-rose-400 text-rose-600 dark:text-rose-400',
     btnPrimary: 'bg-rose-600 hover:bg-rose-700 dark:hover:bg-rose-500 text-white',
     dot: 'bg-rose-600 dark:bg-rose-400',
-    hoverBorder: 'hover:border-rose-500/60',
+    hoverBorder: 'hover:border-rose-500/60 dark:hover:border-rose-400/50',
     activePill: 'bg-rose-600 text-white border-rose-600',
     tabActive: 'bg-white dark:bg-rose-600 text-slate-900 dark:text-white shadow-sm',
     progress: 'from-rose-600 via-amber-500 to-orange-500',
+    ringSoft: 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300',
+    monogramBg: 'bg-rose-600/10 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30',
   },
 };
 
@@ -218,12 +287,32 @@ function calculateDuration(dateStr: string): string | null {
   return chunks.join(' ') || '1 mo';
 }
 
-function ProjectBlueprintBanner({ proj }: { proj: ProjectItem }) {
+function getCompanyInitials(company: string): string {
+  const words = company
+    .replace(/[^a-zA-Z0-9\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return 'CO';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+function ProjectBlueprintBanner({
+  proj,
+  compact = false,
+}: {
+  proj: ProjectItem;
+  compact?: boolean;
+}) {
   const hay = (proj.title + ' ' + proj.technologies + ' ' + proj.description).toLowerCase();
+  const padClass = compact ? 'p-3' : 'p-3.5';
 
   if (hay.includes('power bi') || hay.includes('sql') || hay.includes('etl')) {
     return (
-      <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/90 p-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4">
+      <div
+        className={`mb-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/85 ${padClass} flex flex-wrap items-center justify-between gap-3`}
+      >
         <div className="space-y-1 min-w-0">
           <div className="text-[10px] font-['JetBrains_Mono',monospace] text-slate-500 dark:text-slate-400">
             Dimensional Analytics
@@ -231,13 +320,13 @@ function ProjectBlueprintBanner({ proj }: { proj: ProjectItem }) {
           <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-800 dark:text-slate-200">
             <span>PostgreSQL</span>
             <span className="text-slate-400">→</span>
-            <span>ETL</span>
+            <span>Power Query ETL</span>
             <span className="text-slate-400">→</span>
             <span className="text-blue-600 dark:text-cyan-400">Star Schema</span>
           </div>
         </div>
         <div className="flex items-end gap-1 h-9 shrink-0" aria-hidden="true">
-          {[38, 56, 48, 72, 64, 88, 96].map((h, i) => (
+          {[36, 54, 46, 70, 62, 86, 98].map((h, i) => (
             <div
               key={i}
               className={`w-1.5 rounded-t-sm ${
@@ -253,23 +342,21 @@ function ProjectBlueprintBanner({ proj }: { proj: ProjectItem }) {
 
   if (hay.includes('postman') || hay.includes('api') || hay.includes('json')) {
     return (
-      <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/90 p-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 font-['JetBrains_Mono',monospace]">
+      <div
+        className={`mb-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/85 ${padClass} flex flex-wrap items-center justify-between gap-3 font-['JetBrains_Mono',monospace]`}
+      >
         <div className="space-y-1 min-w-0">
           <div className="text-[10px] text-slate-500 dark:text-slate-400">API Verification</div>
           <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 break-words">
             REST CRUD · Bearer Auth · Schema
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold shrink-0">
-          <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
-            200 OK
-          </span>
-          <span className="px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300">
-            201
-          </span>
-          <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300">
-            4xx
-          </span>
+        <div className="flex flex-wrap items-center gap-2 text-[10.5px] font-bold text-slate-700 dark:text-slate-300 shrink-0 tabular-nums">
+          <span className="text-emerald-600 dark:text-emerald-400">200 OK</span>
+          <span className="text-slate-300 dark:text-slate-700">·</span>
+          <span className="text-blue-600 dark:text-blue-400">201</span>
+          <span className="text-slate-300 dark:text-slate-700">·</span>
+          <span className="text-amber-600 dark:text-amber-400">4xx</span>
         </div>
       </div>
     );
@@ -277,10 +364,14 @@ function ProjectBlueprintBanner({ proj }: { proj: ProjectItem }) {
 
   if (hay.includes('jira') || hay.includes('test') || hay.includes('bva')) {
     return (
-      <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/90 p-3 space-y-2">
+      <div
+        className={`mb-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/85 ${padClass} space-y-2`}
+      >
         <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10.5px] font-['JetBrains_Mono',monospace]">
           <span className="text-slate-500 dark:text-slate-400">QA Coverage Matrix</span>
-          <span className="font-bold text-emerald-600 dark:text-emerald-400">80+ Test Cases · BVA/ECP</span>
+          <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+            80+ Test Cases · BVA/ECP
+          </span>
         </div>
         <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden flex">
           <div className="h-full bg-emerald-500 w-[72%]" />
@@ -292,7 +383,9 @@ function ProjectBlueprintBanner({ proj }: { proj: ProjectItem }) {
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/90 p-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4">
+    <div
+      className={`mb-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/85 ${padClass} flex flex-wrap items-center justify-between gap-3`}
+    >
       <div className="space-y-1 min-w-0">
         <div className="text-[10px] font-['JetBrains_Mono',monospace] text-slate-500 dark:text-slate-400">
           Full-Stack Architecture
@@ -301,7 +394,10 @@ function ProjectBlueprintBanner({ proj }: { proj: ProjectItem }) {
           RBAC Auth · Relational DB · Cloud Deploy
         </div>
       </div>
-      <div className="w-16 h-8 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-1 flex flex-col justify-between shrink-0" aria-hidden="true">
+      <div
+        className="w-16 h-8 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-1 flex flex-col justify-between shrink-0"
+        aria-hidden="true"
+      >
         <div className="flex gap-1">
           <span className="w-1 h-1 rounded-full bg-slate-400" />
           <span className="w-1 h-1 rounded-full bg-slate-400" />
@@ -326,8 +422,8 @@ export function WebPortfolioView({
   onBackToEditor,
   onExportPDF,
   onOpenPrintPreview,
+  onUpdatePortfolioStyle,
 }: WebPortfolioViewProps) {
-  // Light / Dark Mode state (persisted locally)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       const saved = localStorage.getItem('shoyeb_portfolio_theme');
@@ -338,18 +434,35 @@ export function WebPortfolioView({
     return 'dark';
   });
 
-  // Scroll Progress, Back-to-Top, Mobile Menu & Active Section Scroll Spy
+  const configuredDesignStyle: PortfolioDesignStyle = settings.portfolio?.designStyle || 'bento';
+  const [activeStyle, setActiveStyle] = useState<PortfolioDesignStyle>(configuredDesignStyle);
+
+  useEffect(() => {
+    setActiveStyle(configuredDesignStyle);
+  }, [configuredDesignStyle]);
+
+  function handleChangeDesignStyle(next: PortfolioDesignStyle) {
+    setActiveStyle(next);
+    if (isStudioUnlocked && onUpdatePortfolioStyle) {
+      onUpdatePortfolioStyle(next);
+    }
+  }
+
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('about');
   const [copiedCoord, setCopiedCoord] = useState<'email' | 'phone' | null>(null);
+  const [portraitFailed, setPortraitFailed] = useState(false);
 
-  // Role Specialization Rotation
-  const [roleIdx, setRoleIdx] = useState(0);
-  const [roleFade, setRoleFade] = useState(true);
+  // Interactive Focus Specialization selector in Hero
+  const [focusIdx, setFocusIdx] = useState(0);
+  const [focusPaused, setFocusPaused] = useState(false);
 
-  // Interactive Filters & Modals
+  // Expandable Career Milestone controls
+  const [collapsedExpIds, setCollapsedExpIds] = useState<Record<string, boolean>>({});
+
+  // Interactive Filters & Slide-Over Case Study Drawer
   const [skillFilter, setSkillFilter] = useState<string>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
@@ -371,6 +484,10 @@ export function WebPortfolioView({
   const [contactCopied, setContactCopied] = useState(false);
 
   useEffect(() => {
+    setPortraitFailed(false);
+  }, [settings.photoSrc]);
+
+  useEffect(() => {
     try {
       localStorage.setItem('shoyeb_portfolio_theme', theme);
     } catch {
@@ -378,7 +495,6 @@ export function WebPortfolioView({
     }
   }, [theme]);
 
-  // Smooth scroll progress (compositor-only transform scaleX)
   useEffect(() => {
     const onScroll = () => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -393,7 +509,6 @@ export function WebPortfolioView({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Scroll spy via IntersectionObserver
   useEffect(() => {
     const ids = [
       'about',
@@ -412,28 +527,23 @@ export function WebPortfolioView({
           }
         });
       },
-      { rootMargin: '-35% 0px -50% 0px', threshold: 0.05 }
+      { rootMargin: '-32% 0px -52% 0px', threshold: 0.05 }
     );
     ids.forEach((id) => {
       const el = document.getElementById(id);
       if (el) observer.observe(el);
     });
     return () => observer.disconnect();
-  }, [cvData.customSections]);
+  }, [cvData.customSections, activeStyle]);
 
-  // Role rotation timer
   useEffect(() => {
+    if (focusPaused) return;
     const timer = setInterval(() => {
-      setRoleFade(false);
-      setTimeout(() => {
-        setRoleIdx((prev) => (prev + 1) % ROLE_ROTATIONS.length);
-        setRoleFade(true);
-      }, 220);
-    }, 3400);
+      setFocusIdx((prev) => (prev + 1) % ROLE_SPECIALIZATIONS.length);
+    }, 4500);
     return () => clearInterval(timer);
-  }, []);
+  }, [focusPaused]);
 
-  // Global ESC + Ctrl/Cmd+K Spotlight Command Palette shortcut
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -456,7 +566,6 @@ export function WebPortfolioView({
     }
   }, [commandOpen]);
 
-  // Generate QR Business Card when opened
   useEffect(() => {
     if (!qrModalOpen) return;
     const shareTarget = window.location.href;
@@ -484,6 +593,7 @@ export function WebPortfolioView({
     availabilityText: 'Available for Immediate Joining · Chattogram / Dhaka / Remote',
     showSectionNumbers: false,
     accentTheme: 'cobalt' as PortfolioAccentTheme,
+    designStyle: 'bento' as PortfolioDesignStyle,
     metrics: [
       { id: 'm1', value: '2+ Years', label: 'Industry Experience' },
       { id: 'm2', value: '50,000+', label: 'Records Reconciled' },
@@ -495,10 +605,16 @@ export function WebPortfolioView({
   const hasCustomSections = Boolean(cvData.customSections && cvData.customSections.length > 0);
   const accent = PORTFOLIO_ACCENTS[resolveAccentKey(portfolioConfig.accentTheme, settings.themePrimary)];
 
+  const activeFocus = ROLE_SPECIALIZATIONS[focusIdx];
+
   function handleCopyCoordinate(type: 'email' | 'phone', val: string) {
     navigator.clipboard.writeText(val);
     setCopiedCoord(type);
     setTimeout(() => setCopiedCoord(null), 1800);
+  }
+
+  function toggleExperienceCard(id: string) {
+    setCollapsedExpIds((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
   const filteredSkills = useMemo(() => {
@@ -519,7 +635,6 @@ export function WebPortfolioView({
     });
   }, [cvData.projects, projectFilter]);
 
-  // Command Palette searchable items
   const commandItems = useMemo(() => {
     const q = commandQuery.trim().toLowerCase();
     const baseActions = [
@@ -551,6 +666,13 @@ export function WebPortfolioView({
         subtitle: 'Toggle display contrast theme',
         run: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
       },
+      ...DESIGN_STYLE_OPTIONS.map((st) => ({
+        id: `layout-${st.key}`,
+        group: 'Website Design',
+        title: `Apply Layout: ${st.label}`,
+        subtitle: st.desc,
+        run: () => handleChangeDesignStyle(st.key),
+      })),
       {
         id: 'nav-skills',
         group: 'Navigate',
@@ -622,7 +744,7 @@ export function WebPortfolioView({
         item.subtitle.toLowerCase().includes(q) ||
         item.group.toLowerCase().includes(q)
     );
-  }, [commandQuery, cvData, email, phone, theme, profiles, onExportPDF, onSelectPublicProfile]);
+  }, [commandQuery, cvData, email, phone, theme, profiles, onExportPDF, onSelectPublicProfile, isStudioUnlocked]);
 
   function handleSendMailto(e: React.FormEvent) {
     e.preventDefault();
@@ -645,13 +767,43 @@ export function WebPortfolioView({
     { id: 'skills', label: 'Skills' },
     { id: 'experience', label: 'Experience' },
     { id: 'projects', label: 'Projects' },
-    ...(hasCustomSections ? [{ id: 'highlights', label: 'Highlights' }] : []),
     { id: 'contact', label: 'Contact' },
   ];
 
+  // Design-Style Semantic Tokens
+  const isEditorial = activeStyle === 'editorial';
+  const isBlueprint = activeStyle === 'blueprint';
+
+  const canvasClass = isEditorial
+    ? 'bg-[#FAF9F5] dark:bg-[#0C0D10] text-slate-900 dark:text-slate-100'
+    : isBlueprint
+    ? 'bg-[#F3F5F9] dark:bg-[#060A13] text-slate-900 dark:text-slate-100'
+    : 'bg-slate-50 dark:bg-[#070B14] text-slate-900 dark:text-slate-100';
+
+  const displayHeadingFont = isEditorial
+    ? "font-['Playfair_Display',Georgia,serif]"
+    : "font-['Outfit','Plus_Jakarta_Sans','Hind_Siliguri',sans-serif]";
+
+  const sectionBandBg = isEditorial
+    ? 'bg-white/60 dark:bg-white/[0.02] border-y border-stone-200 dark:border-stone-800/80'
+    : isBlueprint
+    ? 'bg-white dark:bg-[#090F1D] border-y border-slate-200 dark:border-slate-800'
+    : 'bg-white dark:bg-slate-900/45 border-y border-slate-200 dark:border-slate-800';
+
+  const cardSurfaceClass = isEditorial
+    ? 'bg-white dark:bg-[#12141A] border border-stone-200 dark:border-stone-800 rounded-xl'
+    : isBlueprint
+    ? 'bg-white dark:bg-[#0B1222] border border-slate-200 dark:border-slate-800 rounded-lg'
+    : 'bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl';
+
+  const sectionLabel = (num: string, title: string) =>
+    showSectionNumbers || isBlueprint ? `${num}. ${title}` : title;
+
   return (
     <div className={`${theme === 'dark' ? 'dark' : ''} no-print relative z-10`}>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white transition-colors duration-200 pb-16 md:pb-0 font-['Plus_Jakarta_Sans','Hind_Siliguri',sans-serif]">
+      <div
+        className={`min-h-screen ${canvasClass} selection:bg-blue-600 selection:text-white transition-colors duration-200 pb-24 md:pb-0 font-['Plus_Jakarta_Sans','Hind_Siliguri',sans-serif]`}
+      >
         {/* Top Reading Scroll Progress Bar */}
         <div className="fixed top-0 left-0 right-0 h-[2.5px] z-50 bg-transparent pointer-events-none">
           <div
@@ -661,10 +813,16 @@ export function WebPortfolioView({
         </div>
 
         {/* Clean 3-Zone Top Bar Contract */}
-        <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800/80">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-8">
-            {/* Zone 1: Mobile Menu Trigger + Unclipped Brand Wordmark */}
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+        <header
+          className={`sticky top-0 z-40 backdrop-blur-xl border-b ${
+            isEditorial
+              ? 'bg-[#FAF9F5]/90 dark:bg-[#0C0D10]/90 border-stone-200 dark:border-stone-800/80'
+              : 'bg-white/90 dark:bg-[#070B14]/90 border-slate-200 dark:border-slate-800/80'
+          }`}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-4 sm:gap-8">
+            {/* Zone 1: Mobile Menu Trigger + Single Clean Brand Wordmark */}
+            <div className="flex items-center gap-2.5 min-w-0">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((o) => !o)}
@@ -675,21 +833,21 @@ export function WebPortfolioView({
               </button>
               <a
                 href="#about"
-                className="text-[15px] sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white whitespace-nowrap truncate"
+                className={`text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white whitespace-nowrap shrink-0 truncate max-w-[175px] sm:max-w-none ${displayHeadingFont}`}
               >
                 {cvData.name}
               </a>
             </div>
 
-            {/* Zone 2: Clean Single-Line Nav Links */}
-            <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            {/* Zone 2: 5 Clean Single-Line Nav Links */}
+            <nav className="hidden lg:flex items-center gap-7 text-xs font-semibold text-slate-600 dark:text-slate-300">
               {navItems.map((item) => {
                 const isActive = activeSection === item.id;
                 return (
                   <a
                     key={item.id}
                     href={`#${item.id}`}
-                    className={`py-1 border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+                    className={`py-1.5 border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                       isActive
                         ? accent.navActive
                         : 'border-transparent hover:text-slate-900 dark:hover:text-white'
@@ -701,8 +859,8 @@ export function WebPortfolioView({
               })}
             </nav>
 
-            {/* Zone 3: Quick Actions + Primary Download Action */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Zone 3: Quick Utility Triggers + 1 Primary Action */}
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setCommandOpen(true)}
@@ -723,68 +881,49 @@ export function WebPortfolioView({
                 title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                 aria-label="Toggle Light or Dark Theme"
               >
-                {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+                {theme === 'dark' ? (
+                  <Sun className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-700" />
+                )}
               </button>
 
-              {onOpenPrintPreview && (
+              {isStudioUnlocked ? (
                 <button
                   type="button"
-                  onClick={onOpenPrintPreview}
-                  className="hidden sm:flex px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 text-xs font-semibold transition-colors items-center gap-1.5 whitespace-nowrap shrink-0"
-                  title="Inspect formatted A4 CV right in browser"
+                  onClick={onBackToEditor}
+                  className="hidden sm:flex px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-600/20 hover:bg-emerald-100 dark:hover:bg-emerald-600/35 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/40 text-xs font-bold transition-colors items-center gap-1.5 whitespace-nowrap shrink-0"
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>View CV</span>
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>CV Studio</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
+                  className="hidden sm:flex px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 text-xs font-semibold transition-colors items-center gap-1.5 whitespace-nowrap shrink-0"
+                  title="Owner Login (Open CV Studio)"
+                >
+                  <Unlock className={`w-3.5 h-3.5 ${accent.eyebrow}`} />
+                  <span>Studio</span>
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={onExportPDF}
-                className={`px-2.5 sm:px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${accent.btnPrimary}`}
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${accent.btnPrimary}`}
               >
                 <Download className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Download CV</span>
                 <span className="sm:hidden">CV PDF</span>
               </button>
-
-              {isStudioUnlocked ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={onBackToEditor}
-                    className="hidden sm:flex px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-600/20 hover:bg-emerald-100 dark:hover:bg-emerald-600/35 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/40 text-xs font-bold transition-colors items-center gap-1.5 whitespace-nowrap shrink-0"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>CV Studio</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onLockStudio}
-                    className="hidden sm:flex p-2 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-800 transition-colors"
-                    title="লক করে পাবলিক মোডে যান"
-                    aria-label="Lock CV Studio"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onOpenLogin}
-                  className="hidden sm:flex px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 text-xs font-semibold transition-colors items-center gap-1.5 whitespace-nowrap shrink-0"
-                  title="ওনার লগইন (Document CV Studio-তে প্রবেশ করুন)"
-                >
-                  <Unlock className={`w-3.5 h-3.5 ${accent.eyebrow}`} />
-                  <span>Studio Login</span>
-                </button>
-              )}
             </div>
           </div>
 
           {/* Mobile & Tablet Slide-Down Drawer */}
           {mobileMenuOpen && (
-            <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 space-y-2">
+            <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#070B14] px-4 py-3 space-y-2.5">
               <div className="grid grid-cols-2 gap-1.5">
                 {navItems.map((item) => (
                   <a
@@ -866,21 +1005,30 @@ export function WebPortfolioView({
           )}
         </header>
 
-        {/* Asymmetric Editorial Split Hero + Bento Quick Switcher */}
+        {/* HERO SECTION — Adapts Distinctly Across 3 Curated Website Designs */}
         <section
           id="about"
-          className="relative py-14 sm:py-20 px-4 sm:px-6 overflow-hidden"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.14) 1px, transparent 0)',
-            backgroundSize: '28px 28px',
-          }}
+          className="relative py-8 sm:py-12 lg:py-16 px-4 sm:px-6 overflow-hidden"
+          style={
+            isBlueprint
+              ? {
+                  backgroundImage:
+                    'linear-gradient(to right, rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.08) 1px, transparent 1px)',
+                  backgroundSize: '36px 36px',
+                }
+              : isEditorial
+              ? undefined
+              : {
+                  backgroundImage:
+                    'radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.14) 1px, transparent 0)',
+                  backgroundSize: '28px 28px',
+                }
+          }
         >
-          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch relative z-10">
-            {/* Left Editorial Narrative Column */}
-            <div className="lg:col-span-7 flex flex-col justify-center">
-              {/* Quiet unboxed metadata line */}
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium mb-3">
+          <div className="max-w-6xl mx-auto relative z-10 space-y-6">
+            {/* Sub-header Portfolio Toolbar: Design Style Switcher + Active Role Status */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
                 <span>{cvData.education.degree}</span>
                 <span aria-hidden="true">·</span>
                 <span>{cvData.education.school}</span>
@@ -889,218 +1037,462 @@ export function WebPortfolioView({
                 {activeRoleLabel && (
                   <>
                     <span aria-hidden="true">·</span>
-                    <span className="text-blue-600 dark:text-cyan-400 font-semibold">
-                      Tailored View: {activeRoleLabel}
+                    <span className={`font-semibold ${accent.eyebrow}`}>
+                      Tailored Role: {activeRoleLabel}
                     </span>
                   </>
                 )}
               </div>
 
-              <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight text-balance">
-                {cvData.name}
-              </h1>
-
-              <p className={`text-sm sm:text-base font-bold ${accent.eyebrow} mt-2.5 tracking-wide`}>
-                {cvData.title}
-              </p>
-
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-slate-600 dark:text-slate-400">
-                <span className="inline-flex items-center gap-1.5">
-                  <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span
-                    className={`transition-opacity duration-200 ${
-                      roleFade ? 'opacity-100' : 'opacity-0'
-                    }`}
-                  >
-                    Focus: {ROLE_ROTATIONS[roleIdx]}
-                  </span>
-                </span>
-                {portfolioConfig.availabilityActive && (
-                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
-                    {portfolioConfig.availabilityText}
-                  </span>
-                )}
-              </div>
-
-              <p className="mt-5 text-slate-600 dark:text-slate-300 text-sm sm:text-[15px] leading-relaxed text-justify max-w-2xl">
-                {cvData.summary}
-              </p>
-
-              {/* Quick Actions & Recruiter Tools */}
-              <div className="mt-7 flex flex-wrap items-center gap-2.5">
-                <a
-                  href={github}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
-                >
-                  <Github className="w-4 h-4" /> GitHub
-                </a>
-                <a
-                  href={linkedin}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
-                >
-                  <Linkedin className="w-4 h-4 text-blue-600 dark:text-blue-400" /> LinkedIn
-                </a>
-                {website && (
-                  <a
-                    href={website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
-                  >
-                    <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" /> Website
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => exportVCard(cvData)}
-                  className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
-                  title="Download .vcf contact file for mobile or Outlook"
-                >
-                  <UserPlus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Save Contact (.vcf)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQrModalOpen(true)}
-                  className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
-                >
-                  <QrCode className={`w-4 h-4 ${accent.eyebrow}`} /> QR Card
-                </button>
+              {/* Clean Segmented Website Design Selector */}
+              <div
+                className="inline-flex items-center gap-1 p-1 rounded-lg bg-slate-200/75 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 max-w-full overflow-x-auto no-scrollbar"
+                role="group"
+                aria-label="Website Design Style"
+              >
+                {DESIGN_STYLE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  const isCurrent = activeStyle === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => handleChangeDesignStyle(opt.key)}
+                      title={opt.desc}
+                      className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                        isCurrent
+                          ? accent.tabActive
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Icon className="w-3 h-3" />
+                      <span className="hidden sm:inline">{opt.label}</span>
+                      <span className="sm:hidden">{opt.shortLabel}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Right Asymmetric Bento Portrait + Interactive Recruiter Role-Lens Card */}
-            <div className="lg:col-span-5 bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-1 gap-5 lg:gap-4 items-center lg:items-stretch">
-              <div className="md:col-span-6 lg:col-span-1 flex items-center gap-4">
-                <div className="w-24 h-28 sm:w-28 sm:h-32 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shrink-0">
-                  <img
-                    src={settings.photoSrc}
-                    alt={cvData.name}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                    style={{
-                      objectPosition: `${settings.photoPosX ?? 50}% ${settings.photoPosY ?? 50}%`,
-                      transform: `scale(${settings.photoScale || 1})`,
-                    }}
-                  />
-                </div>
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="text-[11px] font-['JetBrains_Mono',monospace] text-slate-500 dark:text-slate-400">
-                    Direct Coordinates
+            {/* HERO LAYOUT VARIANT 1: EXECUTIVE MONOGRAPH (EDITORIAL) */}
+            {isEditorial ? (
+              <div className="portfolio-reveal space-y-8 pt-2">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+                  <div className="lg:col-span-8 space-y-5">
+                    {portfolioConfig.availabilityActive && (
+                      <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{portfolioConfig.availabilityText}</span>
+                      </div>
+                    )}
+
+                    <h1
+                      className={`text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white tracking-tight leading-[1.08] text-balance ${displayHeadingFont}`}
+                    >
+                      {cvData.name}
+                    </h1>
+
+                    <p className={`text-sm sm:text-base font-semibold tracking-wide ${accent.eyebrow}`}>
+                      {cvData.title}
+                    </p>
+
+                    <p className="text-slate-700 dark:text-slate-300 text-sm sm:text-base leading-[1.75] max-w-2xl">
+                      {cvData.summary}
+                    </p>
+
+                    <div className="pt-2 flex flex-wrap items-center gap-2.5">
+                      <a
+                        href="#contact"
+                        className={`px-4 py-2.5 rounded-lg text-xs font-bold inline-flex items-center gap-2 whitespace-nowrap ${accent.btnPrimary}`}
+                      >
+                        Schedule Interview <ArrowRight className="w-3.5 h-3.5" />
+                      </a>
+                      {onOpenPrintPreview && (
+                        <button
+                          type="button"
+                          onClick={onOpenPrintPreview}
+                          className="px-3.5 py-2.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs font-semibold text-slate-800 dark:text-slate-200 inline-flex items-center gap-1.5 whitespace-nowrap hover:border-stone-400 dark:hover:border-stone-600 transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View A4 CV
+                        </button>
+                      )}
+                      <a
+                        href={linkedin}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-2.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs font-semibold text-slate-800 dark:text-slate-200 inline-flex items-center gap-1.5 whitespace-nowrap"
+                      >
+                        <Linkedin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> LinkedIn
+                      </a>
+                      <a
+                        href={github}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-2.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs font-semibold text-slate-800 dark:text-slate-200 inline-flex items-center gap-1.5 whitespace-nowrap"
+                      >
+                        <Github className="w-3.5 h-3.5" /> GitHub
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => exportVCard(cvData)}
+                        className="px-3.5 py-2.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs font-semibold text-slate-800 dark:text-slate-200 inline-flex items-center gap-1.5 whitespace-nowrap"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Save .vcf
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyCoordinate('email', email)}
-                    className="w-full flex items-center justify-between gap-1.5 text-left group/coord"
-                    title="Click to copy email"
-                  >
-                    <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {email}
-                    </span>
-                    <span className="text-slate-400 group-hover/coord:text-slate-700 dark:group-hover/coord:text-slate-200 shrink-0">
-                      {copiedCoord === 'email' ? (
-                        <Check className="w-3 h-3 text-emerald-500" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyCoordinate('phone', phone)}
-                    className="w-full flex items-center justify-between gap-1.5 text-left group/coord"
-                    title="Click to copy phone number"
-                  >
-                    <span className="text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-600 dark:text-slate-300 truncate">
-                      {phone}
-                    </span>
-                    <span className="text-slate-400 group-hover/coord:text-slate-700 dark:group-hover/coord:text-slate-200 shrink-0">
-                      {copiedCoord === 'phone' ? (
-                        <Check className="w-3 h-3 text-emerald-500" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                    </span>
-                  </button>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">{location}</div>
+
+                  {/* Editorial Dossier Right Column */}
+                  <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-stone-200 dark:border-stone-800 pt-6 lg:pt-0 lg:pl-8 space-y-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 h-28 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-900 shrink-0">
+                        {portraitFailed || !settings.photoSrc ? (
+                          <div className="w-full h-full flex items-center justify-center text-lg font-bold text-slate-500">
+                            {getCompanyInitials(cvData.name)}
+                          </div>
+                        ) : (
+                          <img
+                            src={settings.photoSrc}
+                            alt={cvData.name}
+                            referrerPolicy="no-referrer"
+                            onError={() => setPortraitFailed(true)}
+                            className="w-full h-full object-cover"
+                            style={{
+                              objectPosition: `${settings.photoPosX ?? 50}% ${settings.photoPosY ?? 50}%`,
+                              transform: `scale(${settings.photoScale || 1})`,
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0 space-y-1.5">
+                        <div className="text-[10.5px] font-['JetBrains_Mono',monospace] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Direct Dossier
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCoordinate('email', email)}
+                          className="w-full flex items-center justify-between gap-1.5 text-left text-xs font-bold text-slate-900 dark:text-white"
+                        >
+                          <span className="truncate">{email}</span>
+                          {copiedCoord === 'email' ? (
+                            <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                          ) : (
+                            <Copy className="w-3 h-3 text-slate-400 shrink-0" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCoordinate('phone', phone)}
+                          className="w-full flex items-center justify-between gap-1.5 text-left text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-600 dark:text-slate-300"
+                        >
+                          <span className="truncate">{phone}</span>
+                          {copiedCoord === 'phone' ? (
+                            <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                          ) : (
+                            <Copy className="w-3 h-3 text-slate-400 shrink-0" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setQrModalOpen(true)}
+                          className={`text-[11px] font-semibold ${accent.eyebrow} inline-flex items-center gap-1 hover:underline`}
+                        >
+                          <QrCode className="w-3 h-3" /> QR Business Card
+                        </button>
+                      </div>
+                    </div>
+
+                    {profiles.length > 0 && onSelectPublicProfile && (
+                      <div className="pt-4 border-t border-stone-200 dark:border-stone-800 space-y-2">
+                        <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Compass className={`w-3.5 h-3.5 ${accent.eyebrow}`} />
+                          Tailored Role Perspectives
+                        </div>
+                        <div className="space-y-1">
+                          {profiles.slice(0, 4).map((prof) => {
+                            const isSel = prof.id === activeProfileId;
+                            return (
+                              <button
+                                key={prof.id}
+                                type="button"
+                                onClick={() => onSelectPublicProfile(prof.id)}
+                                className={`w-full px-3 py-1.5 rounded-md text-left text-xs font-medium flex items-center justify-between transition-colors ${
+                                  isSel
+                                    ? accent.activePill
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-stone-800/60'
+                                }`}
+                              >
+                                <span className="truncate">{prof.name}</span>
+                                {isSel && <Check className="w-3 h-3 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              <div className="md:col-span-6 lg:col-span-1 flex flex-col justify-between gap-4 border-t md:border-t-0 lg:border-t border-slate-100 dark:border-slate-800 pt-4 md:pt-0 lg:pt-4 md:pl-5 lg:pl-0 md:border-l lg:border-l-0">
-                {/* Interactive Recruiter Role-Lens Switcher */}
-                {profiles.length > 0 && onSelectPublicProfile && (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <Compass className={`w-3.5 h-3.5 ${accent.eyebrow}`} />
-                        Recruiter Role Lens
-                      </span>
-                      <span className="text-slate-500 dark:text-slate-400">Tailor View &amp; PDF</span>
+            ) : (
+              /* HERO LAYOUT VARIANT 2 & 3: SIGNATURE BENTO OR SYSTEMS BLUEPRINT */
+              <div className="portfolio-reveal grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+                {/* Left Narrative & Interactive Specialization Focus */}
+                <div className="lg:col-span-7 flex flex-col justify-center space-y-4">
+                  {portfolioConfig.availabilityActive && (
+                    <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{portfolioConfig.availabilityText}</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {profiles.slice(0, 4).map((prof) => {
-                        const isSel = prof.id === activeProfileId;
+                  )}
+
+                  <h1
+                    className={`text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.1] text-balance ${displayHeadingFont}`}
+                  >
+                    {cvData.name}
+                  </h1>
+
+                  <p className={`text-sm sm:text-base font-bold ${accent.eyebrow} tracking-wide`}>
+                    {cvData.title}
+                  </p>
+
+                  {/* Interactive Multi-Discipline Focus Switcher */}
+                  <div
+                    className="space-y-2 pt-1"
+                    onMouseEnter={() => setFocusPaused(true)}
+                    onMouseLeave={() => setFocusPaused(false)}
+                  >
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {ROLE_SPECIALIZATIONS.map((spec, idx) => {
+                        const isSel = idx === focusIdx;
                         return (
                           <button
-                            key={prof.id}
+                            key={spec.key}
                             type="button"
-                            onClick={() => onSelectPublicProfile(prof.id)}
-                            className={`px-2.5 py-2 rounded-lg text-left text-[11px] font-semibold border transition-colors truncate ${
+                            onClick={() => {
+                              setFocusIdx(idx);
+                              setFocusPaused(true);
+                            }}
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-colors whitespace-nowrap shrink-0 ${
                               isSel
                                 ? accent.activePill
-                                : `bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 ${accent.hoverBorder}`
+                                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                             }`}
-                            title={prof.description}
                           >
-                            {prof.name}
+                            {spec.label}
                           </button>
                         );
                       })}
                     </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                      <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        {activeFocus.headline}
+                      </span>
+                      <span aria-hidden="true" className="text-slate-400">
+                        ·
+                      </span>
+                      <span className="font-['JetBrains_Mono',monospace] text-[11px] text-slate-500 dark:text-slate-400">
+                        {activeFocus.proof}
+                      </span>
+                    </div>
                   </div>
-                )}
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <a
-                    href="#contact"
-                    className={`font-semibold ${accent.eyebrow} hover:underline inline-flex items-center gap-1 whitespace-nowrap`}
-                  >
-                    Schedule Interview <ArrowRight className="w-3.5 h-3.5" />
-                  </a>
-                  <div className="flex items-center gap-1.5">
-                    {onOpenPrintPreview && (
-                      <button
-                        type="button"
-                        onClick={onOpenPrintPreview}
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-semibold whitespace-nowrap inline-flex items-center gap-1"
+                  <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-[15px] leading-relaxed text-left sm:text-justify max-w-2xl">
+                    {cvData.summary}
+                  </p>
+
+                  {/* Quick Actions & Recruiter Tools */}
+                  <div className="pt-2 flex flex-wrap items-center gap-2.5">
+                    <a
+                      href={github}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
+                    >
+                      <Github className="w-4 h-4" /> GitHub
+                    </a>
+                    <a
+                      href={linkedin}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
+                    >
+                      <Linkedin className="w-4 h-4 text-blue-600 dark:text-blue-400" /> LinkedIn
+                    </a>
+                    {website && (
+                      <a
+                        href={website}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
                       >
-                        <Eye className="w-3 h-3" /> A4 View
-                      </button>
+                        <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" /> Website
+                      </a>
                     )}
                     <button
                       type="button"
-                      onClick={onExportPDF}
-                      className="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-[11px] font-bold whitespace-nowrap"
+                      onClick={() => exportVCard(cvData)}
+                      className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
+                      title="Download .vcf contact file for mobile or Outlook"
                     >
-                      Export PDF
+                      <UserPlus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Save Contact
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQrModalOpen(true)}
+                      className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 transition-colors whitespace-nowrap shrink-0"
+                    >
+                      <QrCode className={`w-4 h-4 ${accent.eyebrow}`} /> QR Card
                     </button>
                   </div>
                 </div>
+
+                {/* Right Signature Bento / Blueprint Profile Card */}
+                <div
+                  className={`lg:col-span-5 ${cardSurfaceClass} p-5 flex flex-col justify-between gap-4`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-24 h-28 sm:w-28 sm:h-32 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shrink-0">
+                      {portraitFailed || !settings.photoSrc ? (
+                        <div className="w-full h-full flex items-center justify-center text-xl font-bold text-slate-500">
+                          {getCompanyInitials(cvData.name)}
+                        </div>
+                      ) : (
+                        <img
+                          src={settings.photoSrc}
+                          alt={cvData.name}
+                          referrerPolicy="no-referrer"
+                          onError={() => setPortraitFailed(true)}
+                          className="w-full h-full object-cover"
+                          style={{
+                            objectPosition: `${settings.photoPosX ?? 50}% ${settings.photoPosY ?? 50}%`,
+                            transform: `scale(${settings.photoScale || 1})`,
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="text-[11px] font-['JetBrains_Mono',monospace] text-slate-500 dark:text-slate-400">
+                        Direct Coordinates
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCoordinate('email', email)}
+                        className="w-full flex items-center justify-between gap-1.5 text-left group/coord"
+                        title="Click to copy email"
+                      >
+                        <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {email}
+                        </span>
+                        <span className="text-slate-400 group-hover/coord:text-slate-700 dark:group-hover/coord:text-slate-200 shrink-0">
+                          {copiedCoord === 'email' ? (
+                            <Check className="w-3 h-3 text-emerald-500" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCoordinate('phone', phone)}
+                        className="w-full flex items-center justify-between gap-1.5 text-left group/coord"
+                        title="Click to copy phone number"
+                      >
+                        <span className="text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-600 dark:text-slate-300 truncate">
+                          {phone}
+                        </span>
+                        <span className="text-slate-400 group-hover/coord:text-slate-700 dark:group-hover/coord:text-slate-200 shrink-0">
+                          {copiedCoord === 'phone' ? (
+                            <Check className="w-3 h-3 text-emerald-500" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </span>
+                      </button>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{location}</div>
+                    </div>
+                  </div>
+
+                  {/* Blueprint compact discipline matrix OR Role Lens Switcher */}
+                  {profiles.length > 0 && onSelectPublicProfile && (
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Compass className={`w-3.5 h-3.5 ${accent.eyebrow}`} />
+                          Recruiter Role Lens
+                        </span>
+                        <span className="text-slate-500 dark:text-slate-400">Tailor View &amp; PDF</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {profiles.slice(0, 4).map((prof) => {
+                          const isSel = prof.id === activeProfileId;
+                          return (
+                            <button
+                              key={prof.id}
+                              type="button"
+                              onClick={() => onSelectPublicProfile(prof.id)}
+                              className={`px-2.5 py-2 rounded-lg text-left text-[11px] font-semibold border transition-colors truncate ${
+                                isSel
+                                  ? accent.activePill
+                                  : `bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 ${accent.hoverBorder}`
+                              }`}
+                              title={prof.description}
+                            >
+                              {prof.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <a
+                      href="#contact"
+                      className={`font-semibold ${accent.eyebrow} hover:underline inline-flex items-center gap-1 whitespace-nowrap`}
+                    >
+                      Schedule Interview <ArrowRight className="w-3.5 h-3.5" />
+                    </a>
+                    <div className="flex items-center gap-1.5">
+                      {onOpenPrintPreview && (
+                        <button
+                          type="button"
+                          onClick={onOpenPrintPreview}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-semibold whitespace-nowrap inline-flex items-center gap-1"
+                        >
+                          <Eye className="w-3 h-3" /> A4 View
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={onExportPDF}
+                        className="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-[11px] font-bold whitespace-nowrap"
+                      >
+                        Export PDF
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </section>
 
-        {/* Full-Width 4-Column Quantitative Metrics Strip (Studio-Editable) */}
-        <section className="bg-white dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800/80 py-6 sm:py-7 px-4">
-          <div className="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 text-center font-['JetBrains_Mono',monospace] tabular-nums">
+        {/* FULL-WIDTH 4-COLUMN QUANTITATIVE METRICS STRIP */}
+        <section className={`${sectionBandBg} py-6 sm:py-7 px-4`}>
+          <div
+            className={`max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 text-center font-['JetBrains_Mono',monospace] tabular-nums ${
+              isBlueprint ? 'gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800' : ''
+            }`}
+          >
             {portfolioConfig.metrics.map((m, idx) => (
               <div
                 key={m.id}
-                className="p-3 border-slate-200 dark:border-slate-800 [&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-r-0 sm:border-r sm:last:border-r-0 [&:nth-child(n+3)]:border-t sm:[&:nth-child(n+3)]:border-t-0"
+                className={
+                  isBlueprint
+                    ? 'p-4 bg-white dark:bg-[#0B1222]'
+                    : 'p-3 border-slate-200 dark:border-slate-800 [&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-r-0 sm:border-r sm:last:border-r-0 [&:nth-child(n+3)]:border-t sm:[&:nth-child(n+3)]:border-t-0'
+                }
               >
                 <div
                   className={`text-xl sm:text-3xl font-extrabold ${
@@ -1123,166 +1515,312 @@ export function WebPortfolioView({
           </div>
         </section>
 
-        {/* Technical Skills Matrix with Interactive Filter */}
+        {/* TECHNICAL SKILLS MATRIX */}
         <section id="skills" className="py-16 px-4 sm:px-6 max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
-            <div>
-              <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold mb-1.5`}>
-                {showSectionNumbers ? '01 · Capabilities' : 'Capabilities'}
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
-                Core Technical Skills &amp; Competencies
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                Data Analytics · Software QA · Cloud APIs · Enterprise Infrastructure
-              </p>
-            </div>
-
-            <div className="inline-flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 self-start max-w-full overflow-x-auto no-scrollbar sm:flex-wrap">
-              <button
-                type="button"
-                onClick={() => setSkillFilter('all')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                  skillFilter === 'all'
-                    ? accent.tabActive
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                All Domains
-              </button>
-              {cvData.skills.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setSkillFilter(s.id)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                    skillFilter === s.id
-                      ? accent.tabActive
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  {s.category}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredSkills.map((s, idx) => {
-              const tags = splitTopLevelCommas(s.competencies);
-              return (
-                <div
-                  key={s.id || idx}
-                  className={`bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-5 ${accent.hoverBorder} transition-colors flex flex-col`}
-                >
-                  <div className="flex items-center gap-3 mb-3.5 pb-3 border-b border-slate-100 dark:border-slate-800/80">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                      {s.category.includes('Data') ? (
-                        <Database className="w-4 h-4" />
-                      ) : s.category.includes('QA') ? (
-                        <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      ) : s.category.includes('API') ? (
-                        <Code2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                      ) : s.category.includes('Enterprise') ? (
-                        <Server className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                      ) : (
-                        <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                      )}
-                    </div>
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-snug">
-                      {s.category}
-                    </h3>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-y-1.5 text-[12px] font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
-                    {tags.map((tag, tIdx) => (
-                      <React.Fragment key={tIdx}>
-                        <span>{tag}</span>
-                        {tIdx < tags.length - 1 && (
-                          <span aria-hidden="true" className="mx-2 text-slate-300 dark:text-slate-600 select-none">
-                            ·
-                          </span>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </div>
+          {isEditorial ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+              <div className="lg:col-span-4 space-y-3 lg:sticky lg:top-24">
+                <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold`}>
+                  {sectionLabel('01', 'Capabilities')}
                 </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Experience Timeline */}
-        <section
-          id="experience"
-          className="py-16 px-4 sm:px-6 bg-white dark:bg-slate-900/40 border-y border-slate-200 dark:border-slate-800"
-        >
-          <div className="max-w-5xl mx-auto">
-            <div className="mb-12">
-              <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold mb-1.5`}>
-                {showSectionNumbers ? '02 · Career Timeline' : 'Career Timeline'}
+                <h2 className={`text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
+                  Technical Skills &amp; Core Domains
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Structured competencies spanning Data Analytics, Software Quality Assurance, API Verification, and Enterprise Systems.
+                </p>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
-                Professional Work Experience
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                Verified industry track record · Production operations · Measurable outcomes
-              </p>
-            </div>
 
-            <div className="space-y-6 relative before:hidden md:before:block before:absolute before:left-5 before:top-4 before:bottom-4 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
-              {cvData.experiences.map((exp) => {
-                const duration = calculateDuration(exp.date);
-                return (
-                  <div
-                    key={exp.id}
-                    className={`md:ml-12 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ${accent.hoverBorder} transition-colors rounded-xl p-6 relative`}
-                  >
-                    <div className={`hidden md:block absolute -left-[33px] top-7 w-2.5 h-2.5 rounded-full ${accent.dot} ring-4 ring-white dark:ring-slate-950`} />
-                    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-                      <div>
-                        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                          {exp.role}
-                        </h3>
-                        <div className={`text-xs font-semibold ${accent.eyebrow} mt-0.5`}>
-                          {exp.company}
-                        </div>
+              <div className="lg:col-span-8 divide-y divide-stone-200 dark:divide-stone-800 border-t border-b border-stone-200 dark:border-stone-800">
+                {cvData.skills.map((s, idx) => {
+                  const tags = splitTopLevelCommas(s.competencies);
+                  return (
+                    <div key={s.id || idx} className="py-5 grid grid-cols-1 sm:grid-cols-12 gap-3 items-baseline">
+                      <div className="sm:col-span-4 font-bold text-sm text-slate-900 dark:text-white">
+                        {s.category}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-500 dark:text-slate-400">
-                        <span>{exp.date}</span>
-                        {duration && (
-                          <span className="px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10.5px] font-semibold">
-                            {duration}
-                          </span>
-                        )}
-                        <span aria-hidden="true">·</span>
-                        <span>{exp.location}</span>
+                      <div className="sm:col-span-8 flex flex-wrap items-center gap-y-1 text-xs sm:text-[13px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {tags.map((tag, tIdx) => (
+                          <React.Fragment key={tIdx}>
+                            <span>{tag}</span>
+                            {tIdx < tags.length - 1 && (
+                              <span aria-hidden="true" className="mx-2 text-stone-300 dark:text-stone-700">
+                                ·
+                              </span>
+                            )}
+                          </React.Fragment>
+                        ))}
                       </div>
                     </div>
-
-                    <ul className="mt-4 space-y-2 text-xs sm:text-[13.5px] text-slate-600 dark:text-slate-300 leading-relaxed list-outside ml-4 list-disc">
-                      {exp.bullets.map((b) => (
-                        <li key={b.id} dangerouslySetInnerHTML={{ __html: b.text }} />
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
+          ) : (
+            <>
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+                <div>
+                  <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold mb-1.5`}>
+                    {sectionLabel('01', 'Capabilities')}
+                  </div>
+                  <h2 className={`text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
+                    Core Technical Skills &amp; Competencies
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                    Data Analytics · Software QA · Cloud APIs · Enterprise Infrastructure
+                  </p>
+                </div>
+
+                <div className="inline-flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 self-start max-w-full overflow-x-auto no-scrollbar sm:flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setSkillFilter('all')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                      skillFilter === 'all'
+                        ? accent.tabActive
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    All Domains
+                  </button>
+                  {cvData.skills.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setSkillFilter(s.id)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                        skillFilter === s.id
+                          ? accent.tabActive
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {s.category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                className={
+                  isBlueprint
+                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden'
+                    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
+                }
+              >
+                {filteredSkills.map((s, idx) => {
+                  const tags = splitTopLevelCommas(s.competencies);
+                  const isFeaturedBento =
+                    !isBlueprint && skillFilter === 'all' && idx === 0 && filteredSkills.length >= 4;
+                  return (
+                    <div
+                      key={s.id || idx}
+                      className={
+                        isBlueprint
+                          ? 'bg-white dark:bg-[#0B1222] p-5 flex flex-col justify-between transition-colors hover:bg-slate-50 dark:hover:bg-[#0F172A]'
+                          : `${cardSurfaceClass} p-5 ${accent.hoverBorder} transition-colors flex flex-col ${
+                              isFeaturedBento ? 'md:col-span-2' : ''
+                            }`
+                      }
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-3.5 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-9 h-9 rounded-lg ${accent.ringSoft} flex items-center justify-center shrink-0`}>
+                            {s.category.includes('Data') ? (
+                              <Database className="w-4 h-4" />
+                            ) : s.category.includes('QA') ? (
+                              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            ) : s.category.includes('API') ? (
+                              <Code2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                            ) : s.category.includes('Enterprise') ? (
+                              <Server className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            ) : (
+                              <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            )}
+                          </div>
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-snug truncate">
+                            {s.category}
+                          </h3>
+                        </div>
+                        <span className="font-['JetBrains_Mono',monospace] text-[10.5px] text-slate-400 tabular-nums shrink-0">
+                          {String(idx + 1).padStart(2, '0')}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-y-1.5 text-[12.5px] font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+                        {tags.map((tag, tIdx) => (
+                          <React.Fragment key={tIdx}>
+                            <span>{tag}</span>
+                            {tIdx < tags.length - 1 && (
+                              <span aria-hidden="true" className="mx-2 text-slate-300 dark:text-slate-600 select-none">
+                                ·
+                              </span>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* EXPERIENCE TIMELINE */}
+        <section id="experience" className={`${sectionBandBg} py-16 px-4 sm:px-6`}>
+          <div className={isEditorial ? 'max-w-6xl mx-auto' : 'max-w-5xl mx-auto'}>
+            {isEditorial ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+                <div className="lg:col-span-4 space-y-3 lg:sticky lg:top-24">
+                  <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold`}>
+                    {sectionLabel('02', 'Career Timeline')}
+                  </div>
+                  <h2 className={`text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
+                    Professional Experience
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Production analytics, quality assurance engineering, and enterprise IT administration.
+                  </p>
+                </div>
+
+                <div className="lg:col-span-8 divide-y divide-stone-200 dark:divide-stone-800 border-t border-b border-stone-200 dark:border-stone-800">
+                  {cvData.experiences.map((exp) => {
+                    const duration = calculateDuration(exp.date);
+                    return (
+                      <article key={exp.id} className="py-6 space-y-3">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <div>
+                            <h3 className={`text-lg font-bold text-slate-900 dark:text-white ${displayHeadingFont}`}>
+                              {exp.role}
+                            </h3>
+                            <div className={`text-xs font-semibold ${accent.eyebrow} mt-0.5`}>
+                              {exp.company}
+                            </div>
+                          </div>
+                          <div className="text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-500 dark:text-slate-400">
+                            {exp.date}
+                            {duration ? ` (${duration})` : ''} · {exp.location}
+                          </div>
+                        </div>
+                        <ul className="space-y-2 text-xs sm:text-[13.5px] text-slate-700 dark:text-slate-300 leading-relaxed list-outside ml-4 list-disc">
+                          {exp.bullets.map((b) => (
+                            <li key={b.id} dangerouslySetInnerHTML={{ __html: b.text }} />
+                          ))}
+                        </ul>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="mb-10">
+                  <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold mb-1.5`}>
+                    {sectionLabel('02', 'Career Timeline')}
+                  </div>
+                  <h2 className={`text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
+                    Professional Work Experience
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                    Verified industry track record · Production operations · Measurable outcomes
+                  </p>
+                </div>
+
+                <div className="space-y-5 relative before:hidden md:before:block before:absolute before:left-5 before:top-4 before:bottom-4 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
+                  {cvData.experiences.map((exp) => {
+                    const duration = calculateDuration(exp.date);
+                    const isCollapsed = Boolean(collapsedExpIds[exp.id]);
+                    return (
+                      <div
+                        key={exp.id}
+                        className={`md:ml-12 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ${accent.hoverBorder} transition-colors ${
+                          isBlueprint ? 'rounded-lg' : 'rounded-xl'
+                        } p-4 sm:p-6 relative`}
+                      >
+                        <div className={`hidden md:block absolute -left-[33px] top-7 w-2.5 h-2.5 rounded-full ${accent.dot} ring-4 ring-white dark:ring-[#070B14]`} />
+                        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3.5">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div
+                              className={`w-10 h-10 rounded-lg border flex items-center justify-center text-xs font-extrabold font-['JetBrains_Mono',monospace] shrink-0 ${accent.monogramBg}`}
+                            >
+                              {getCompanyInitials(exp.company)}
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug">
+                                {exp.role}
+                              </h3>
+                              <div className={`text-xs font-semibold ${accent.eyebrow} mt-0.5`}>
+                                {exp.company}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-500 dark:text-slate-400">
+                            <span>{exp.date}</span>
+                            {duration && (
+                              <>
+                                <span aria-hidden="true">·</span>
+                                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                                  {duration}
+                                </span>
+                              </>
+                            )}
+                            <span aria-hidden="true">·</span>
+                            <span>{exp.location}</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleExperienceCard(exp.id)}
+                              className="ml-1 p-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+                              aria-label={isCollapsed ? 'Expand role details' : 'Collapse role details'}
+                              title={isCollapsed ? 'Expand highlights' : 'Compact view'}
+                            >
+                              {isCollapsed ? (
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              ) : (
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {isCollapsed ? (
+                          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                            <span>{exp.bullets.length} documented achievements &amp; responsibilities</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleExperienceCard(exp.id)}
+                              className={`font-semibold ${accent.eyebrow} hover:underline`}
+                            >
+                              Expand details
+                            </button>
+                          </div>
+                        ) : (
+                          <ul className="mt-4 space-y-2 text-xs sm:text-[13.5px] text-slate-600 dark:text-slate-300 leading-relaxed list-outside ml-4 list-disc">
+                            {exp.bullets.map((b) => (
+                              <li key={b.id} dangerouslySetInnerHTML={{ __html: b.text }} />
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </section>
 
-        {/* Key Projects Showcase with Blueprint Banners & Tabbed Case Study Modal */}
+        {/* KEY PROJECTS SHOWCASE */}
         <section id="projects" className="py-16 px-4 sm:px-6 max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
             <div>
               <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold mb-1.5`}>
-                {showSectionNumbers ? '03 · Case Studies' : 'Case Studies'}
+                {sectionLabel('03', 'Case Studies')}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
+              <h2 className={`text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
                 Key Technical Projects &amp; Case Studies
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                Click any project card to inspect architecture, methodology, and deliverables
+                Select any project to inspect system architecture, methodology, and deliverables
               </p>
             </div>
 
@@ -1309,78 +1847,98 @@ export function WebPortfolioView({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredProjects.map((proj) => (
-              <article
-                key={proj.id}
-                onClick={() => {
-                  setCaseTab('overview');
-                  setSelectedProject(proj);
-                }}
-                className={`cursor-pointer bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-6 ${accent.hoverBorder} transition-colors flex flex-col justify-between group`}
-              >
-                <div>
-                  <ProjectBlueprintBanner proj={proj} />
+          <div
+            className={
+              isBlueprint
+                ? 'grid grid-cols-1 md:grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden'
+                : 'grid grid-cols-1 md:grid-cols-2 gap-6'
+            }
+          >
+            {filteredProjects.map((proj, idx) => {
+              const isHeroProject =
+                activeStyle === 'bento' &&
+                projectFilter === 'all' &&
+                idx === 0 &&
+                filteredProjects.length >= 3;
+              return (
+                <article
+                  key={proj.id}
+                  onClick={() => {
+                    setCaseTab('overview');
+                    setSelectedProject(proj);
+                  }}
+                  className={
+                    isBlueprint
+                      ? 'cursor-pointer bg-white dark:bg-[#0B1222] hover:bg-slate-50 dark:hover:bg-[#0F172A] p-6 transition-colors flex flex-col justify-between group'
+                      : `cursor-pointer ${cardSurfaceClass} p-6 ${accent.hoverBorder} transition-colors flex flex-col justify-between group ${
+                          isHeroProject ? 'md:col-span-2' : ''
+                        }`
+                  }
+                >
+                  <div className={isHeroProject ? 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start' : ''}>
+                    <div className={isHeroProject ? 'lg:col-span-5' : ''}>
+                      <ProjectBlueprintBanner proj={proj} />
+                    </div>
 
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white transition-colors">
-                      {proj.title}
-                    </h3>
+                    <div className={isHeroProject ? 'lg:col-span-7' : ''}>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className={`text-base sm:text-lg font-bold text-slate-900 dark:text-white transition-colors ${isEditorial ? displayHeadingFont : ''}`}>
+                          {isBlueprint ? `${String(idx + 1).padStart(2, '0')} · ${proj.title}` : proj.title}
+                        </h3>
+                        {proj.url && (
+                          <a
+                            href={proj.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-slate-400 hover:text-slate-700 dark:hover:text-white shrink-0 p-1"
+                            aria-label={`Open ${proj.title}`}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
+
+                      <div className={`text-[11.5px] font-['JetBrains_Mono',monospace] ${accent.eyebrow} mb-3`}>
+                        {proj.technologies.split(',').map((t) => t.trim()).join(' · ')}
+                      </div>
+
+                      <p className="text-xs sm:text-[13.5px] text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
+                        {proj.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold">
+                    <span className={`${accent.eyebrow} inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform`}>
+                      Inspect Case Study <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
                     {proj.url && (
                       <a
                         href={proj.url}
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="text-slate-400 hover:text-slate-700 dark:hover:text-white shrink-0 p-1"
-                        aria-label={`Open ${proj.title}`}
+                        className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        Source / Demo
                       </a>
                     )}
                   </div>
-
-                  <div className={`text-[11.5px] font-['JetBrains_Mono',monospace] ${accent.eyebrow} mb-3`}>
-                    {proj.technologies.split(',').map((t) => t.trim()).join(' · ')}
-                  </div>
-
-                  <p className="text-xs sm:text-[13.5px] text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
-                    {proj.description}
-                  </p>
-                </div>
-
-                <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold">
-                  <span className={`${accent.eyebrow} inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform`}>
-                    Inspect Case Study <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                  {proj.url && (
-                    <a
-                      href={proj.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                    >
-                      Source / Demo
-                    </a>
-                  )}
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         </section>
 
-        {/* Credentials Bento Grid (Education, Certifications, Languages & Strengths) */}
-        <section
-          id="education"
-          className="py-16 px-4 sm:px-6 bg-white dark:bg-slate-900/40 border-y border-slate-200 dark:border-slate-800"
-        >
+        {/* CREDENTIALS BENTO GRID */}
+        <section id="education" className={`${sectionBandBg} py-16 px-4 sm:px-6`}>
           <div className="max-w-6xl mx-auto">
             <div className="mb-10">
               <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold mb-1.5`}>
-                {showSectionNumbers ? '04 · Credentials' : 'Credentials'}
+                {sectionLabel('04', 'Credentials')}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
+              <h2 className={`text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
                 Education, Certifications &amp; Languages
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
@@ -1389,7 +1947,6 @@ export function WebPortfolioView({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
-              {/* Academic Background */}
               <div className="md:col-span-5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex flex-col justify-between">
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
@@ -1412,7 +1969,6 @@ export function WebPortfolioView({
                 </div>
               </div>
 
-              {/* Certifications */}
               <div className="md:col-span-7 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
                   <Award className="w-5 h-5 text-amber-500 dark:text-amber-400" /> Professional Certifications
@@ -1427,7 +1983,6 @@ export function WebPortfolioView({
                 </ul>
               </div>
 
-              {/* Languages & Core Strengths Bento Strip */}
               <div className="md:col-span-6 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex items-start gap-3">
                 <Languages className="w-5 h-5 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5" />
                 <div className="text-xs space-y-1">
@@ -1451,14 +2006,14 @@ export function WebPortfolioView({
           </div>
         </section>
 
-        {/* Custom Studio Sections (Awards, Publications, References) */}
+        {/* CUSTOM STUDIO SECTIONS */}
         {hasCustomSections && (
           <section id="highlights" className="py-16 px-4 sm:px-6 max-w-6xl mx-auto">
             <div className="mb-10">
               <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold mb-1.5`}>
-                {showSectionNumbers ? '05 · Highlights' : 'Highlights'}
+                {sectionLabel('05', 'Highlights')}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
+              <h2 className={`text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
                 Additional Highlights &amp; Credentials
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
@@ -1468,10 +2023,7 @@ export function WebPortfolioView({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {cvData.customSections.map((sec) => (
-                <div
-                  key={sec.id}
-                  className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-3"
-                >
+                <div key={sec.id} className={`${cardSurfaceClass} p-6 space-y-3`}>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2.5">
                     {sec.title}
                   </h3>
@@ -1482,7 +2034,7 @@ export function WebPortfolioView({
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs sm:text-[13.5px] text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
+                    <p className="text-xs sm:text-[13.5px] text-slate-600 dark:text-slate-300 leading-relaxed text-left sm:text-justify">
                       {sec.content.join(' ')}
                     </p>
                   )}
@@ -1492,16 +2044,14 @@ export function WebPortfolioView({
           </section>
         )}
 
-        {/* Direct Contact Composer & Actions */}
+        {/* DIRECT CONTACT COMPOSER & ACTIONS */}
         <section id="contact" className="py-16 sm:py-20 px-4 sm:px-6 max-w-5xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-5 space-y-4">
               <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold`}>
-                {showSectionNumbers
-                  ? `${hasCustomSections ? '06' : '05'} · Get In Touch`
-                  : 'Get In Touch'}
+                {sectionLabel(hasCustomSections ? '06' : '05', 'Get In Touch')}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance">
+              <h2 className={`text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
                 Let&apos;s Connect &amp; Work Together
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -1511,7 +2061,7 @@ export function WebPortfolioView({
               <div className="space-y-2.5 pt-2 text-xs">
                 <a
                   href={`mailto:${email}`}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/60 transition-colors"
+                  className={`flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ${accent.hoverBorder} transition-colors`}
                 >
                   <Mail className="w-4 h-4 text-blue-600 dark:text-cyan-400 shrink-0" />
                   <div>
@@ -1522,7 +2072,7 @@ export function WebPortfolioView({
 
                 <a
                   href={`tel:${phone.replace(/\s+/g, '')}`}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/60 transition-colors"
+                  className={`flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ${accent.hoverBorder} transition-colors`}
                 >
                   <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <div>
@@ -1546,7 +2096,7 @@ export function WebPortfolioView({
             {/* Zero-Backend Interactive Message Form */}
             <form
               onSubmit={handleSendMailto}
-              className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-4 text-xs"
+              className={`lg:col-span-7 ${cardSurfaceClass} p-6 space-y-4 text-xs`}
             >
               <div className="font-bold text-sm text-slate-900 dark:text-white">
                 Send a Direct Message
@@ -1642,32 +2192,60 @@ export function WebPortfolioView({
         <footer className="border-t border-slate-200 dark:border-slate-800/80 py-6 px-4 text-center text-xs text-slate-500">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
             <p>© {new Date().getFullYear()} {cvData.name}. All rights reserved.</p>
-            {!isStudioUnlocked && (
-              <button
-                type="button"
-                onClick={onOpenLogin}
-                className="text-[11px] text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 flex items-center gap-1 transition-colors"
-              >
-                <Lock className="w-3 h-3" /> Owner Access
-              </button>
-            )}
+            <div className="flex items-center gap-4">
+              {onOpenPrintPreview && (
+                <button
+                  type="button"
+                  onClick={onOpenPrintPreview}
+                  className="text-[11px] text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 flex items-center gap-1 transition-colors"
+                >
+                  <Eye className="w-3 h-3" /> A4 CV Preview
+                </button>
+              )}
+              {isStudioUnlocked ? (
+                <button
+                  type="button"
+                  onClick={onLockStudio}
+                  className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+                >
+                  <Lock className="w-3 h-3" /> Lock Studio
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
+                  className="text-[11px] text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 flex items-center gap-1 transition-colors"
+                >
+                  <Lock className="w-3 h-3" /> Owner Access
+                </button>
+              )}
+            </div>
           </div>
         </footer>
 
         {/* Mobile Sticky Bottom CTA Bar */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center gap-2">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#070B14]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center gap-2 shadow-[0_-8px_24px_rgba(2,6,23,0.16)]">
           <button
             type="button"
             onClick={onExportPDF}
-            className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 whitespace-nowrap ${accent.btnPrimary}`}
+            className={`flex-1 min-h-[44px] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 whitespace-nowrap ${accent.btnPrimary}`}
           >
             <Download className="w-3.5 h-3.5" /> Download CV
           </button>
+          {onOpenPrintPreview && (
+            <button
+              type="button"
+              onClick={onOpenPrintPreview}
+              className="min-h-[44px] px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 whitespace-nowrap"
+            >
+              <Eye className="w-3.5 h-3.5" /> A4 View
+            </button>
+          )}
           <a
             href="#contact"
-            className="flex-1 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold flex items-center justify-center gap-1.5 whitespace-nowrap"
+            className="min-h-[44px] px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
-            <Mail className="w-3.5 h-3.5" /> Contact Me
+            <Mail className="w-3.5 h-3.5" /> Contact
           </a>
         </div>
 
@@ -1699,7 +2277,7 @@ export function WebPortfolioView({
           <button
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-16 md:bottom-6 right-5 z-30 p-2.5 rounded-full bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-lg hover:scale-105 transition-transform"
+            className="fixed bottom-20 md:bottom-6 right-4 sm:right-5 z-30 p-2.5 rounded-full bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-lg hover:scale-105 transition-transform"
             title="Back to top"
             aria-label="Scroll back to top"
           >
@@ -1707,86 +2285,92 @@ export function WebPortfolioView({
           </button>
         )}
 
-        {/* Tabbed Project Case Study Modal */}
+        {/* Slide-Over Project Case Study Drawer */}
         {selectedProject && (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
+            className="no-print fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex justify-end"
             onClick={() => setSelectedProject(null)}
           >
-            <div
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 text-slate-900 dark:text-slate-100 shadow-2xl space-y-4"
+            <aside
+              role="dialog"
+              aria-modal="true"
+              aria-label={selectedProject.title}
+              className="bg-white dark:bg-[#0B1222] border-l border-slate-200 dark:border-slate-800 max-w-xl w-full h-full overflow-y-auto p-5 sm:p-7 text-slate-900 dark:text-slate-100 shadow-2xl flex flex-col justify-between gap-6"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="min-w-0">
-                  <div className="text-[11px] font-['JetBrains_Mono',monospace] text-blue-600 dark:text-cyan-400 mb-1">
-                    Technical Case Study
+              <div className="space-y-5">
+                <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+                  <div className="min-w-0">
+                    <div className={`text-[11px] font-['JetBrains_Mono',monospace] ${accent.eyebrow} mb-1`}>
+                      Technical Case Study
+                    </div>
+                    <h3 className={`text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white ${displayHeadingFont}`}>
+                      {selectedProject.title}
+                    </h3>
                   </div>
-                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
-                    {selectedProject.title}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedProject(null)}
-                  className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 shrink-0"
-                  aria-label="Close Case Study"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Case Study Interactive Tabs (Mobile-Safe Wrapping) */}
-              <div className="flex flex-wrap sm:inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 text-xs w-full sm:w-auto">
-                {[
-                  { key: 'overview', label: 'Overview & Impact' },
-                  { key: 'architecture', label: 'Architecture Preview' },
-                  { key: 'stack', label: 'Stack & Deliverables' },
-                ].map((tab) => (
                   <button
-                    key={tab.key}
                     type="button"
-                    onClick={() => setCaseTab(tab.key as any)}
-                    className={`flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 rounded-md font-semibold transition-colors whitespace-nowrap text-center ${
-                      caseTab === tab.key
-                        ? 'bg-white dark:bg-blue-600 text-slate-900 dark:text-white shadow-sm'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
+                    onClick={() => setSelectedProject(null)}
+                    className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 shrink-0"
+                    aria-label="Close Case Study"
                   >
-                    {tab.label}
+                    <X className="w-4 h-4" />
                   </button>
-                ))}
+                </div>
+
+                {/* Case Study Tabs */}
+                <div className="flex flex-wrap sm:inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 text-xs w-full sm:w-auto">
+                  {[
+                    { key: 'overview', label: 'Overview & Impact' },
+                    { key: 'architecture', label: 'Architecture Preview' },
+                    { key: 'stack', label: 'Stack & Deliverables' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setCaseTab(tab.key as 'overview' | 'architecture' | 'stack')}
+                      className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md font-semibold transition-colors whitespace-nowrap text-center ${
+                        caseTab === tab.key
+                          ? accent.tabActive
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {caseTab === 'overview' && (
+                  <div className="space-y-4 text-xs sm:text-sm leading-relaxed">
+                    <ProjectBlueprintBanner proj={selectedProject} />
+                    <p className="text-slate-600 dark:text-slate-300 text-left sm:text-justify">
+                      {selectedProject.description}
+                    </p>
+                  </div>
+                )}
+
+                {caseTab === 'architecture' && (
+                  <div className="space-y-4 text-xs sm:text-sm">
+                    <ProjectBlueprintBanner proj={selectedProject} />
+                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Designed with end-to-end validation checkpoints, clear separation between raw data inputs, verification layers, and structured stakeholder reporting outputs.
+                    </p>
+                  </div>
+                )}
+
+                {caseTab === 'stack' && (
+                  <div className="space-y-3 text-xs sm:text-sm">
+                    <div className="font-bold text-slate-800 dark:text-slate-200">
+                      Core Tooling &amp; Technologies
+                    </div>
+                    <p className={`font-['JetBrains_Mono',monospace] ${accent.eyebrow} leading-relaxed`}>
+                      {selectedProject.technologies.split(',').map((t) => t.trim()).join(' · ')}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {caseTab === 'overview' && (
-                <div className="space-y-3 text-xs sm:text-[13.5px] leading-relaxed">
-                  <p className="text-slate-600 dark:text-slate-300 text-justify">
-                    {selectedProject.description}
-                  </p>
-                </div>
-              )}
-
-              {caseTab === 'architecture' && (
-                <div className="space-y-3 text-xs">
-                  <ProjectBlueprintBanner proj={selectedProject} />
-                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Designed with end-to-end validation checkpoints, clear separation between raw inputs, verification layers, and structured reporting outputs.
-                  </p>
-                </div>
-              )}
-
-              {caseTab === 'stack' && (
-                <div className="space-y-2 text-xs">
-                  <div className="font-bold text-slate-800 dark:text-slate-200">
-                    Core Tooling &amp; Technologies
-                  </div>
-                  <p className="font-['JetBrains_Mono',monospace] text-blue-600 dark:text-cyan-300 leading-relaxed">
-                    {selectedProject.technologies.split(',').map((t) => t.trim()).join(' · ')}
-                  </p>
-                </div>
-              )}
-
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setSelectedProject(null)}
@@ -1799,20 +2383,20 @@ export function WebPortfolioView({
                     href={selectedProject.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5"
+                    className={`px-4 py-2 rounded-lg text-white text-xs font-bold inline-flex items-center gap-1.5 ${accent.btnPrimary}`}
                   >
                     Open Live / Repository <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
               </div>
-            </div>
+            </aside>
           </div>
         )}
 
         {/* Spotlight Command Palette Modal (Ctrl+K) */}
         {commandOpen && (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-start justify-center pt-20 p-4"
+            className="no-print fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-start justify-center pt-20 p-4"
             onClick={() => setCommandOpen(false)}
           >
             <div
@@ -1826,7 +2410,7 @@ export function WebPortfolioView({
                   type="text"
                   value={commandQuery}
                   onChange={(e) => setCommandQuery(e.target.value)}
-                  placeholder="Search actions, projects, role views, or sections..."
+                  placeholder="Search actions, design styles, projects, role views..."
                   className="flex-1 bg-transparent text-slate-900 dark:text-white text-xs focus:outline-none"
                 />
                 <button
@@ -1861,7 +2445,7 @@ export function WebPortfolioView({
                           {item.subtitle}
                         </div>
                       </div>
-                      <span className="text-[10px] font-['JetBrains_Mono',monospace] text-blue-600 dark:text-cyan-400 shrink-0">
+                      <span className={`text-[10px] font-['JetBrains_Mono',monospace] ${accent.eyebrow} shrink-0`}>
                         {item.group}
                       </span>
                     </button>
@@ -1875,7 +2459,7 @@ export function WebPortfolioView({
         {/* Digital QR Business Card Modal */}
         {qrModalOpen && (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+            className="no-print fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setQrModalOpen(false)}
           >
             <div
@@ -1890,6 +2474,7 @@ export function WebPortfolioView({
                   type="button"
                   onClick={() => setQrModalOpen(false)}
                   className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500"
+                  aria-label="Close QR Business Card"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1903,7 +2488,7 @@ export function WebPortfolioView({
 
               <div className="space-y-0.5">
                 <div className="font-extrabold text-sm text-slate-900 dark:text-white">{cvData.name}</div>
-                <div className="text-[11px] text-blue-600 dark:text-cyan-400 font-semibold">
+                <div className={`text-[11px] ${accent.eyebrow} font-semibold`}>
                   {cvData.title}
                 </div>
               </div>
@@ -1924,7 +2509,7 @@ export function WebPortfolioView({
                 <button
                   type="button"
                   onClick={() => exportVCard(cvData)}
-                  className="py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-1.5"
+                  className={`py-2 px-3 rounded-lg font-bold flex items-center justify-center gap-1.5 ${accent.btnPrimary}`}
                 >
                   <UserPlus className="w-3.5 h-3.5" /> Save .vcf
                 </button>

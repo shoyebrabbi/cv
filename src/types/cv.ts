@@ -131,12 +131,14 @@ export interface PortfolioMetricItem {
 }
 
 export type PortfolioAccentTheme = 'auto' | 'cobalt' | 'emerald' | 'teal' | 'indigo' | 'rose';
+export type PortfolioDesignStyle = 'bento' | 'editorial' | 'blueprint';
 
 export interface PortfolioSettings {
   availabilityText: string;
   availabilityActive: boolean;
   showSectionNumbers?: boolean;
   accentTheme?: PortfolioAccentTheme;
+  designStyle?: PortfolioDesignStyle;
   metrics: PortfolioMetricItem[];
 }
 

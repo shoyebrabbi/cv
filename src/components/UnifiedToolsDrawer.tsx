@@ -285,7 +285,7 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
         className="no-print fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm"
         onClick={onClose}
       />
-      <aside className="no-print fixed inset-y-0 right-0 z-50 w-full max-w-2xl overflow-y-auto border-l border-slate-800 bg-[#090E1A] text-white shadow-2xl">
+      <aside className="no-print fixed inset-y-0 right-0 z-50 w-[92vw] sm:w-full max-w-2xl rounded-l-2xl sm:rounded-none overflow-y-auto border-l border-slate-800 bg-[#090E1A] text-white shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800/90 bg-[#080D1A]/95 px-5 py-3.5 backdrop-blur">
           <div>

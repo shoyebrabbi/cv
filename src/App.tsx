@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { User } from 'firebase/auth';
 import confetti from 'canvas-confetti';
-import { CVData, StudioSettings, CVTemplateKey, PhotoPosition, CVProfile, CustomTemplatePreset } from './types/cv';
+import { CVData, StudioSettings, CVTemplateKey, PhotoPosition, CVProfile, CustomTemplatePreset, JobApplication } from './types/cv';
 import { INITIAL_CV_DATA, INITIAL_SETTINGS, INITIAL_PROFILES } from './data/initialCV';
 import {
   FIREBASE_PROJECT_ID,
@@ -27,6 +27,7 @@ import {
   subscribeCustomTemplates,
   upsertCustomTemplateCloud,
   deleteCustomTemplateCloud,
+  upsertJobApplicationCloud,
 } from './firebase';
 import {
   exportDirectPDF,
@@ -69,6 +70,11 @@ import {
   Columns2,
   PanelRightOpen,
   Ruler,
+  Sliders,
+  Edit3,
+  Eye,
+  Briefcase,
+  FileDown,
 } from 'lucide-react';
 
 interface Toast {
@@ -1785,7 +1791,7 @@ export default function App() {
     showToast('সিভি মূল ডিফল্ট অবস্থায় রিসেট হয়েছে!', 'success');
   }
 
-  // Import JSON project
+  // Import Full JSON Workspace Backup
   function handleImportJSON(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1793,14 +1799,61 @@ export default function App() {
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        if (parsed.data) applyCVUpdate(mergeCVData(parsed.data));
-        if (parsed.settings) setSettings(mergeStudioSettings(parsed.settings));
-        showToast('JSON প্রজেক্ট সফলভাবে রিস্টোর হয়েছে!', 'success');
+        const nextData = parsed.data ? mergeCVData(parsed.data) : null;
+        const nextSettings = parsed.settings ? mergeStudioSettings(parsed.settings) : null;
+
+        if (nextData) applyCVUpdate(nextData);
+        if (nextSettings) setSettings(nextSettings);
+
+        if (Array.isArray(parsed.profiles) && parsed.profiles.length > 0) {
+          const restoredProfiles: CVProfile[] = parsed.profiles.map((p: CVProfile) => ({
+            ...p,
+            data: mergeCVData(p.data),
+            settings: mergeStudioSettings(p.settings),
+          }));
+          setProfiles(restoredProfiles);
+          if (ownerUid) {
+            void Promise.all(
+              restoredProfiles.map((p, idx) => upsertPublicProfile(ownerUid, p, idx))
+            ).catch((err) => console.error('Cloud profile restore failed:', err));
+          }
+        }
+
+        if (typeof parsed.activeProfileId === 'string' && parsed.activeProfileId) {
+          setActiveProfileId(parsed.activeProfileId);
+        }
+
+        if (Array.isArray(parsed.customTemplates)) {
+          const restoredTemplates = parsed.customTemplates as CustomTemplatePreset[];
+          setCustomTemplates(restoredTemplates);
+          if (ownerUid) {
+            void Promise.all(
+              restoredTemplates.map((tpl) => upsertCustomTemplateCloud(ownerUid, tpl))
+            ).catch((err) => console.error('Cloud template restore failed:', err));
+          }
+        }
+
+        if (Array.isArray(parsed.jobApplications)) {
+          const restoredApps = parsed.jobApplications as JobApplication[];
+          try {
+            localStorage.setItem('shoyeb_job_tracker_v1', JSON.stringify(restoredApps));
+          } catch {
+            // ignore quota errors
+          }
+          if (ownerUid) {
+            void Promise.all(
+              restoredApps.map((app) => upsertJobApplicationCloud(ownerUid, app))
+            ).catch((err) => console.error('Cloud job tracker restore failed:', err));
+          }
+        }
+
+        showToast('সম্পূর্ণ প্রজেক্ট ব্যাকআপ সফলভাবে রিস্টোর ও সিঙ্ক হয়েছে!', 'success');
       } catch {
         showToast('JSON ফাইলটি পড়া যায়নি', 'error');
       }
     };
     reader.readAsText(file);
+    e.target.value = '';
   }
 
   async function handleDownloadPDF() {
@@ -1850,6 +1903,18 @@ export default function App() {
             onBackToEditor={() => setSettings((s) => ({ ...s, portfolioMode: false }))}
             onExportPDF={handleDownloadPDF}
             onOpenPrintPreview={() => setPrintPreviewOpen(true)}
+            onUpdatePortfolioStyle={
+              isStudioUnlocked
+                ? (designStyle) =>
+                    setSettings((s) => ({
+                      ...s,
+                      portfolio: {
+                        ...(s.portfolio || INITIAL_SETTINGS.portfolio!),
+                        designStyle,
+                      },
+                    }))
+                : undefined
+            }
           />
           {/* Offscreen clean A4 document for 1-click PDF & Print directly from Live Website */}
           <div
@@ -2040,10 +2105,10 @@ export default function App() {
             {/* Center Live A4 Canvas */}
             <main
               ref={canvasHostRef}
-              className="print-shell-reset flex-1 py-4 sm:py-6 px-2.5 sm:px-6 overflow-y-auto overflow-x-auto bg-[#060911]"
+              className="print-shell-reset flex-1 py-3 sm:py-6 px-2 sm:px-6 pb-24 lg:pb-6 overflow-y-auto overflow-x-auto bg-[#060911]"
             >
               {/* Clean Floating Canvas Bar */}
-              <div className="no-print max-w-[210mm] mx-auto mb-3 sm:mb-4 bg-[#090E1A] border border-slate-800/90 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs shadow-lg">
+              <div className="no-print max-w-[210mm] mx-auto mb-2.5 sm:mb-4 bg-[#090E1A] border border-slate-800/90 rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs shadow-lg">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <span className="font-semibold text-slate-200 tabular-nums whitespace-nowrap text-[11px] sm:text-xs">
                     {estimatedPages} {estimatedPages > 1 ? 'Pages' : 'Page'} · {Math.round(docHeight * 0.264583)}mm
@@ -2151,6 +2216,17 @@ export default function App() {
                     title={viewportFitScale < 1 ? 'Fit to Screen' : 'Reset 100%'}
                   >
                     {viewportFitScale < 1 ? 'Fit' : 'Reset'}
+                  </button>
+
+                  <div className="lg:hidden h-3.5 w-px bg-slate-800 mx-0.5" />
+                  <button
+                    type="button"
+                    onClick={() => setPrintPreviewOpen(true)}
+                    className="lg:hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 text-[11px] font-semibold text-cyan-300 transition whitespace-nowrap"
+                    title="A4 Print Preview"
+                  >
+                    <Printer className="w-3 h-3" />
+                    <span>Preview</span>
                   </button>
 
                   {!isRightRailOpen && !zenMode && (
@@ -2335,6 +2411,68 @@ export default function App() {
             )}
           </div>
 
+          {/* Mobile & Tablet Thumb-Zone Studio Action Bar (<1024px) */}
+          {!zenMode && (
+            <nav
+              aria-label="Mobile Studio Actions"
+              className="no-print lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#080D1A]/95 backdrop-blur-md border-t border-slate-800/90 px-2 py-1.5 grid grid-cols-4 gap-1.5 shadow-[0_-8px_24px_rgba(2,6,23,0.45)]"
+            >
+              <button
+                type="button"
+                onClick={() => setIsStudioOpen((v) => !v)}
+                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition ${
+                  isStudioOpen
+                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
+                    : 'text-slate-300 hover:bg-slate-900 border border-transparent'
+                }`}
+              >
+                <Sliders className="w-4 h-4 text-blue-400" />
+                <span>Design</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSettings((prev) => ({ ...prev, isEditMode: !prev.isEditMode }))
+                }
+                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition ${
+                  settings.isEditMode
+                    ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
+                    : 'bg-slate-900/70 text-slate-300 border border-slate-800'
+                }`}
+              >
+                {settings.isEditMode ? (
+                  <Edit3 className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <Eye className="w-4 h-4 text-slate-300" />
+                )}
+                <span>{settings.isEditMode ? 'Editing' : 'Preview'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsUnifiedToolsOpen(true)}
+                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition ${
+                  isUnifiedToolsOpen
+                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
+                    : 'text-slate-300 hover:bg-slate-900 border border-transparent'
+                }`}
+              >
+                <Briefcase className="w-4 h-4 text-amber-400" />
+                <span>Toolkit</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                className="min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-bold transition shadow-sm"
+              >
+                <FileDown className="w-4 h-4" />
+                <span>Save PDF</span>
+              </button>
+            </nav>
+          )}
+
           {/* Right Unified Tools Drawer */}
           <UnifiedToolsDrawer
             isOpen={isUnifiedToolsOpen}
@@ -2444,8 +2582,25 @@ export default function App() {
           showToast('Plain Text (.txt) ফাইল ডাউনলোড সম্পন্ন হয়েছে!', 'success');
         }}
         onExportJSON={() => {
-          exportJSONBackup(cvData, settings);
-          showToast('JSON প্রজেক্ট ব্যাকআপ সেভ হয়েছে!', 'success');
+          let jobApplications: JobApplication[] = [];
+          try {
+            const rawApps = localStorage.getItem('shoyeb_job_tracker_v1');
+            if (rawApps) jobApplications = JSON.parse(rawApps);
+          } catch {
+            // ignore
+          }
+          const latestProfiles = profiles.map((p) =>
+            p.id === activeProfileId
+              ? { ...p, data: cvData, settings, updatedAt: new Date().toISOString() }
+              : p
+          );
+          exportJSONBackup(cvData, settings, {
+            activeProfileId,
+            profiles: latestProfiles,
+            customTemplates,
+            jobApplications,
+          });
+          showToast('সম্পূর্ণ A-to-Z প্রজেক্ট ব্যাকআপ (.json) ডাউনলোড হয়েছে!', 'success');
         }}
         onImportJSON={handleImportJSON}
         onCopyAllText={async () => {
@@ -2529,7 +2684,11 @@ export default function App() {
       />
 
       {/* Floating Toast Container */}
-      <div className="no-print fixed bottom-4 left-3 right-3 sm:left-auto sm:right-5 sm:max-w-sm z-50 flex flex-col gap-2 pointer-events-none">
+      <div
+        className={`no-print fixed left-3 right-3 sm:left-auto sm:right-5 sm:max-w-sm z-50 flex flex-col gap-2 pointer-events-none ${
+          showPublicWebsite ? 'bottom-20 md:bottom-4' : 'bottom-20 lg:bottom-4'
+        }`}
+      >
         {toasts.map((t) => (
           <div
             key={t.id}

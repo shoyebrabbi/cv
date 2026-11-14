@@ -107,7 +107,7 @@ export function ExportHubModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
+    <div className="no-print fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-3xl w-full text-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-[#0B1120] border-b border-slate-800 flex items-center justify-between gap-2">
@@ -401,7 +401,7 @@ export function ExportHubModal({
                   </label>
                 </div>
                 <p className="text-[10.5px] text-slate-400">
-                  অন্য কম্পিউটারে বা ব্রাউজারে আপনার সমস্ত এডিট ও ডিজাইন স্থানান্তর করতে JSON ফাইল সেভ করে রাখুন।
+                  আপনার অ্যাক্টিভ CV, সব প্রোফাইল, কাস্টম টেমপ্লেট, জব ট্র্যাকার এবং ডিজাইন সেটিংস এক ফাইলে সেভ বা রিস্টোর করুন।
                 </p>
               </div>
 

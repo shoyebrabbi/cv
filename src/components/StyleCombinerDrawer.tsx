@@ -80,7 +80,7 @@ export function StyleCombinerDrawer({
         onClick={onClose}
         aria-hidden="true"
       />
-      <aside className="no-print fixed lg:static inset-y-0 left-0 w-full max-w-[360px] sm:w-[356px] bg-[#090E1A] border-r border-slate-800/90 text-slate-200 flex flex-col shrink-0 z-50 lg:z-30 h-full overflow-hidden shadow-2xl lg:shadow-none">
+      <aside className="no-print fixed lg:static inset-y-0 left-0 w-[88vw] max-w-[360px] sm:w-[356px] rounded-r-2xl lg:rounded-none bg-[#090E1A] border-r border-slate-800/90 text-slate-200 flex flex-col shrink-0 z-50 lg:z-30 h-full overflow-hidden shadow-2xl lg:shadow-none">
         {/* Inspector Header */}
         <div className="px-4 py-3 border-b border-slate-800/90 flex items-center justify-between shrink-0 bg-[#080D1A]">
           <div className="flex items-center gap-2.5">
@@ -97,7 +97,7 @@ export function StyleCombinerDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+            className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
             title="প্যানেল বন্ধ করুন"
           >
             <X className="w-4 h-4" />
@@ -1217,6 +1217,74 @@ export function StyleCombinerDrawer({
                           style={{ backgroundColor: opt.color }}
                         />
                         <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Website Design Style Selector */}
+              <div className="bg-[#111827] px-3 py-2.5 rounded-lg border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-slate-300">
+                  <span className="font-medium">Website Design Layout</span>
+                  <span className="font-mono text-[10.5px] text-emerald-400 uppercase">
+                    {settings.portfolio?.designStyle || 'bento'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {(
+                    [
+                      {
+                        key: 'bento',
+                        label: 'Signature Bento',
+                        desc: 'Asymmetric proof cards & executive split (Recommended)',
+                      },
+                      {
+                        key: 'editorial',
+                        label: 'Executive Monograph',
+                        desc: 'Serif display headings & publication hairline rules',
+                      },
+                      {
+                        key: 'blueprint',
+                        label: 'Systems Blueprint',
+                        desc: 'Architectural grid cells & engineering precision',
+                      },
+                    ] as const
+                  ).map((opt) => {
+                    const active = (settings.portfolio?.designStyle || 'bento') === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() =>
+                          onUpdateSettings({
+                            portfolio: {
+                              ...(settings.portfolio || {}),
+                              availabilityActive: settings.portfolio?.availabilityActive !== false,
+                              availabilityText:
+                                settings.portfolio?.availabilityText ||
+                                'Available for Immediate Joining · Chattogram / Dhaka / Remote',
+                              designStyle: opt.key,
+                              metrics: settings.portfolio?.metrics || [
+                                { id: 'm1', value: '2+ Years', label: 'Industry Experience' },
+                                { id: 'm2', value: '50,000+', label: 'Records Reconciled' },
+                                { id: 'm3', value: '80+', label: 'Test Cases Authored' },
+                                { id: 'm4', value: '100+', label: 'Enterprise Users Supported' },
+                              ],
+                            },
+                          })
+                        }
+                        className={`px-2.5 py-2 rounded-md text-left border transition ${
+                          active
+                            ? 'border-blue-400 bg-slate-800 text-white shadow-sm'
+                            : 'border-slate-800 bg-[#080D1A] text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold flex items-center justify-between">
+                          <span>{opt.label}</span>
+                          {active && <span className="text-[9.5px] font-mono text-cyan-300">ACTIVE</span>}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 leading-snug">{opt.desc}</div>
                       </button>
                     );
                   })}

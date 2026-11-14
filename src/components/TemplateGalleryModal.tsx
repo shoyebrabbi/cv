@@ -249,7 +249,7 @@ export function TemplateGalleryModal({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4"
+      className="no-print fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4"
       onClick={onClose}
     >
       <div

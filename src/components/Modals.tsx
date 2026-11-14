@@ -41,7 +41,7 @@ export function HyperlinkModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4">
+    <div className="no-print fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4">
       <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-md w-full p-4 sm:p-6 text-slate-100 shadow-2xl">
         <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
           <h3 className="text-sm sm:text-base font-bold flex items-center gap-2 text-blue-400 min-w-0">
@@ -287,7 +287,7 @@ export function ATSAuditModal({
 
   return (
     <div
-      className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4"
+      className="no-print fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4"
       onClick={onClose}
     >
       <div
@@ -613,7 +613,7 @@ export function AddSectionModal({ isOpen, onClose, onAdd }: AddSectionModalProps
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div className="no-print fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-md w-full p-6 text-slate-100 shadow-2xl">
         <h3 className="text-base font-bold flex items-center gap-2 text-blue-400 mb-3">
           <PlusCircle className="w-5 h-5" /> নতুন কাস্টম সেকশন যোগ করুন
@@ -676,7 +676,7 @@ export function ResetModal({ isOpen, onClose, onConfirm }: ResetModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div className="no-print fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-md w-full p-6 text-slate-100 shadow-2xl">
         <div className="flex items-center gap-3 text-amber-400 mb-3">
           <AlertTriangle className="w-7 h-7 shrink-0" />
@@ -727,7 +727,7 @@ git remote add origin https://github.com/<YOUR_USERNAME>/<YOUR_REPO>.git
 git push -u origin main`;
 
   return (
-    <div className="fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div className="no-print fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-2xl w-full p-6 text-slate-100 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2.5">

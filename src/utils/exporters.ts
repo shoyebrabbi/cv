@@ -1,5 +1,12 @@
 import * as XLSX from 'xlsx';
-import { CVData, CVSectionId, StudioSettings } from '../types/cv';
+import {
+  CVData,
+  CVProfile,
+  CVSectionId,
+  CustomTemplatePreset,
+  JobApplication,
+  StudioSettings,
+} from '../types/cv';
 
 function getSafeFileBase(candidateName?: string): string {
   const clean = (candidateName || 'Candidate')
@@ -65,17 +72,50 @@ function getSectionHeading(
 
 function prepareCaptureHost(element: HTMLElement) {
   const wrapper = element.closest('.cv-document-wrapper') as HTMLElement | null;
-  const offscreenHost = element.closest('.print-only-cv-host, .cv-zoom-frame') as HTMLElement | null;
+  const zoomFrame = element.closest('.cv-zoom-frame') as HTMLElement | null;
+  const offscreenHost = element.closest('.print-only-cv-host') as HTMLElement | null;
+
+  document.body.classList.add('exporting-cv');
 
   const prevWrapperTransform = wrapper ? wrapper.style.transform : '';
   const prevWrapperMarginBottom = wrapper ? wrapper.style.marginBottom : '';
+  const prevWrapperWidth = wrapper ? wrapper.style.width : '';
   if (wrapper) {
     wrapper.style.transform = 'scale(1)';
     wrapper.style.marginBottom = '0px';
+    wrapper.style.width = '794px';
   }
 
-  let restoreHost: (() => void) | null = null;
-  if (offscreenHost && getComputedStyle(offscreenHost).position === 'fixed') {
+  let restoreZoomFrame: (() => void) | null = null;
+  if (zoomFrame) {
+    const prevWidth = zoomFrame.style.width;
+    const prevHeight = zoomFrame.style.height;
+    const prevPos = zoomFrame.style.position;
+    const prevLeft = zoomFrame.style.left;
+    const prevOpacity = zoomFrame.style.opacity;
+    const prevOverflow = zoomFrame.style.overflow;
+
+    zoomFrame.style.width = '794px';
+    zoomFrame.style.height = 'auto';
+    zoomFrame.style.overflow = 'visible';
+    if (getComputedStyle(zoomFrame).position === 'fixed') {
+      zoomFrame.style.position = 'static';
+      zoomFrame.style.left = 'auto';
+      zoomFrame.style.opacity = '1';
+    }
+
+    restoreZoomFrame = () => {
+      zoomFrame.style.width = prevWidth;
+      zoomFrame.style.height = prevHeight;
+      zoomFrame.style.position = prevPos;
+      zoomFrame.style.left = prevLeft;
+      zoomFrame.style.opacity = prevOpacity;
+      zoomFrame.style.overflow = prevOverflow;
+    };
+  }
+
+  let restoreOffscreenHost: (() => void) | null = null;
+  if (offscreenHost) {
     const prevLeft = offscreenHost.style.left;
     const prevTop = offscreenHost.style.top;
     const prevOpacity = offscreenHost.style.opacity;
@@ -90,7 +130,7 @@ function prepareCaptureHost(element: HTMLElement) {
     offscreenHost.style.width = '794px';
     offscreenHost.style.height = 'auto';
 
-    restoreHost = () => {
+    restoreOffscreenHost = () => {
       offscreenHost.style.left = prevLeft;
       offscreenHost.style.top = prevTop;
       offscreenHost.style.opacity = prevOpacity;
@@ -101,10 +141,13 @@ function prepareCaptureHost(element: HTMLElement) {
   }
 
   return () => {
-    if (restoreHost) restoreHost();
+    document.body.classList.remove('exporting-cv');
+    if (restoreOffscreenHost) restoreOffscreenHost();
+    if (restoreZoomFrame) restoreZoomFrame();
     if (wrapper) {
       wrapper.style.transform = prevWrapperTransform;
       wrapper.style.marginBottom = prevWrapperMarginBottom;
+      wrapper.style.width = prevWrapperWidth;
     }
   };
 }
@@ -141,12 +184,16 @@ export async function exportDirectPDF(
       scale: 2,
       useCORS: true,
       letterRendering: true,
+      width: 794,
+      windowWidth: 1024,
       scrollX: 0,
       scrollY: 0,
       x: 0,
       y: 0,
       ignoreElements: (el: Element) =>
-        el.classList?.contains('builder-control') || el.classList?.contains('no-print'),
+        el.classList?.contains('builder-control') ||
+        el.classList?.contains('no-print') ||
+        el.classList?.contains('signature-draw-hint'),
     },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: {
@@ -194,13 +241,17 @@ export async function exportHighResPNG(
           scale: 2.5,
           useCORS: true,
           letterRendering: true,
+          width: 794,
+          windowWidth: 1024,
           scrollX: 0,
           scrollY: 0,
           x: 0,
           y: 0,
           backgroundColor: '#ffffff',
           ignoreElements: (el: Element) =>
-            el.classList?.contains('builder-control') || el.classList?.contains('no-print'),
+            el.classList?.contains('builder-control') ||
+            el.classList?.contains('no-print') ||
+            el.classList?.contains('signature-draw-hint'),
         },
       })
       .from(element)
@@ -837,16 +888,29 @@ body { font-family: ${settings.cvFont || "'Inter', sans-serif"}; background: #f1
   triggerDownload(blob, `${getSafeFileBase(data.name)}_CV.html`);
 }
 
-// 8. JSON Backup
-export function exportJSONBackup(data: CVData, settings: StudioSettings) {
+// 8. Full A-to-Z JSON Workspace Backup (Active CV, Design, Profiles, Custom Templates & Job Tracker)
+export function exportJSONBackup(
+  data: CVData,
+  settings: StudioSettings,
+  workspace?: {
+    activeProfileId?: string;
+    profiles?: CVProfile[];
+    customTemplates?: CustomTemplatePreset[];
+    jobApplications?: JobApplication[];
+  }
+) {
   const payload = {
     exportedAt: new Date().toISOString(),
-    version: '3.0.0',
+    version: '4.0.0',
+    activeProfileId: workspace?.activeProfileId || 'prof_master',
     data,
     settings,
+    ...(workspace?.profiles ? { profiles: workspace.profiles } : {}),
+    ...(workspace?.customTemplates ? { customTemplates: workspace.customTemplates } : {}),
+    ...(workspace?.jobApplications ? { jobApplications: workspace.jobApplications } : {}),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
-  triggerDownload(blob, `${getSafeFileBase(data.name)}_CV_Project.json`);
+  triggerDownload(blob, `${getSafeFileBase(data.name)}_CV_Full_Backup.json`);
 }
 
 // 9. Copy all text — Synced with Studio Section Order, Titles & Visibility

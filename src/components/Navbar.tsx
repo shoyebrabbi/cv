@@ -124,6 +124,7 @@ export function Navbar({
   onOpenSecuritySettings,
 }: NavbarProps) {
   const [insertMenuOpen, setInsertMenuOpen] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const insertRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -279,6 +280,23 @@ export function Navbar({
             <span>PDF</span>
           </button>
 
+          <button
+            type="button"
+            onClick={() => setMobileToolsOpen((prev) => !prev)}
+            className={`md:hidden px-2 py-1.5 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition whitespace-nowrap shrink-0 ${
+              mobileToolsOpen
+                ? 'bg-blue-600/25 border-blue-500/50 text-blue-200'
+                : 'bg-[#0F172A] border-slate-700/90 text-slate-200'
+            }`}
+            title="টেমপ্লেট, ফরম্যাটিং ও ফটো টুলবার দেখুন/লুকান"
+          >
+            <Sliders className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span>Format</span>
+            <ChevronDown
+              className={`w-3 h-3 transition-transform ${mobileToolsOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
           {/* Compact Utility Icons */}
           <div className="flex items-center gap-1 border-l border-slate-800 pl-1.5 xl:pl-2 shrink-0">
             <button
@@ -339,8 +357,8 @@ export function Navbar({
         </div>
       </div>
 
-      {/* TIER 2: Contextual Design, Template, Photo & Formatting Workbench */}
-      <div className="bg-[#0D1424] border-t border-slate-800/80">
+      {/* TIER 2: Contextual Design, Template, Photo & Formatting Workbench (Collapsible on mobile < md) */}
+      <div className={`${mobileToolsOpen ? 'block' : 'hidden md:block'} bg-[#0D1424] border-t border-slate-800/80`}>
         <div className="max-w-[1800px] mx-auto px-2.5 sm:px-5 py-1.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-1.5 text-xs">
           {/* Row A: Design Panel, Unclipped Template Picker, Insert & Print Preview (Outside overflow-x-auto so dropdown never clips!) */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -402,7 +420,7 @@ export function Navbar({
               </button>
 
               {insertMenuOpen && (
-                <div className="absolute right-0 mt-1.5 w-52 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50 text-xs">
+                <div className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-52 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50 text-xs">
                   <button
                     type="button"
                     onClick={() => {
