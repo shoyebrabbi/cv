@@ -39,6 +39,9 @@ import {
   ProjectItem,
 } from '../types/cv';
 import { compressImageFileToDataUrl } from '../utils/imageCompress';
+import { sanitizeRichTextHtml } from '../utils/sanitizeHtml';
+import { getDefaultContactIcon } from '../utils/contactIcon';
+import { getExperienceDateLabel } from '../utils/experienceDate';
 
 const TEMPLATE_DISPLAY_NAMES: Record<CVTemplateKey, string> = {
   'bd-corporate': 'BD Corporate',
@@ -579,6 +582,31 @@ export function MobileCVEditor({
                             </div>
                           </div>
 
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">
+                              Contact Icon (emoji or symbol)
+                            </label>
+                            <input
+                              type="text"
+                              value={c.icon ?? ''}
+                              maxLength={16}
+                              onChange={(e) =>
+                                onUpdateCVData((prev) => ({
+                                  ...prev,
+                                  contacts: prev.contacts.map((item, i) =>
+                                    i === idx ? { ...item, icon: e.target.value } : item
+                                  ),
+                                }))
+                              }
+                              placeholder={`${getDefaultContactIcon(c.type)} (automatic)`}
+                              aria-label={`Icon for ${c.label}`}
+                              className="w-full min-h-[40px] rounded-lg bg-[#080D1A] border border-slate-700 px-3 text-lg text-white"
+                            />
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              Leave blank to use the icon for this contact type.
+                            </p>
+                          </div>
+
                           <input
                             type="text"
                             value={c.label}
@@ -842,7 +870,7 @@ export function MobileCVEditor({
                             />
                             <input
                               type="text"
-                              value={exp.date}
+                              value={getExperienceDateLabel(exp)}
                               onChange={(e) =>
                                 onUpdateCVData((prev) => ({
                                   ...prev,
@@ -855,6 +883,26 @@ export function MobileCVEditor({
                               className="w-full min-h-[40px] rounded-lg bg-[#080D1A] border border-slate-700 px-3 text-sm text-slate-200"
                             />
                           </div>
+                          <input
+                            type="text"
+                            value={exp.location}
+                            onChange={(e) =>
+                              onUpdateCVData((prev) => ({
+                                ...prev,
+                                experiences: prev.experiences.map((item, i) =>
+                                  i === idx
+                                    ? {
+                                        ...item,
+                                        date: getExperienceDateLabel(item),
+                                        location: e.target.value,
+                                      }
+                                    : item
+                                ),
+                              }))
+                            }
+                            placeholder="Work Location"
+                            className="w-full min-h-[40px] rounded-lg bg-[#080D1A] border border-slate-700 px-3 text-sm text-slate-200"
+                          />
 
                           <div className="space-y-2 pt-1">
                             <div className="text-xs font-semibold text-slate-400">
@@ -972,7 +1020,7 @@ export function MobileCVEditor({
                                   contentEditable
                                   suppressContentEditableWarning
                                   onBlur={() => syncBulletHtml(idx, bIdx, b.id)}
-                                  dangerouslySetInnerHTML={{ __html: b.text }}
+                                  dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(b.text) }}
                                   className="min-h-[60px] rounded-lg bg-[#0B1221] border border-slate-700 p-2.5 text-sm text-slate-100 leading-relaxed focus:outline-none focus:border-blue-500"
                                 />
                               </div>
@@ -1357,6 +1405,36 @@ export function MobileCVEditor({
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">
+                              Section Layout
+                            </label>
+                            <select
+                              value={cs.type}
+                              onChange={(e) =>
+                                onUpdateCVData((prev) => ({
+                                  ...prev,
+                                  customSections: prev.customSections.map((section, i) =>
+                                    i === idx
+                                      ? {
+                                          ...section,
+                                          type: e.target.value as
+                                            | 'bullets'
+                                            | 'paragraph'
+                                            | 'references',
+                                        }
+                                      : section
+                                  ),
+                                }))
+                              }
+                              className="w-full min-h-[40px] rounded-lg bg-[#080D1A] border border-slate-700 px-3 text-sm text-slate-200"
+                            >
+                              <option value="bullets">Bullet list</option>
+                              <option value="paragraph">Paragraph</option>
+                              <option value="references">References</option>
+                            </select>
                           </div>
 
                           <textarea

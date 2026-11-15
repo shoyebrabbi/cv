@@ -858,9 +858,26 @@ body.exporting-cv .cv-references-grid {
   animation: portfolioFadeRise 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+.portfolio-scroll-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 560ms ease,
+    transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portfolio-scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .portfolio-reveal {
+  .portfolio-reveal,
+  .portfolio-scroll-reveal {
     animation: none !important;
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 }
 

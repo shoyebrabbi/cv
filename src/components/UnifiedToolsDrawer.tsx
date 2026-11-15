@@ -29,6 +29,7 @@ import {
   StudioSettings,
 } from '../types/cv';
 import { exportCoverLetterPDF, exportCoverLetterDoc } from '../utils/exporters';
+import { sanitizeHref } from '../utils/sanitizeHtml';
 import {
   subscribeJobApplications,
   upsertJobApplicationCloud,
@@ -862,7 +863,7 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
                             <span>📞 {phone}</span> &nbsp;|&nbsp; <span>✉️ {email}</span>
                             <br />
                             <a
-                              href={website}
+                              href={sanitizeHref(website) || undefined}
                               target="_blank"
                               rel="noreferrer"
                               style={{ color: palette.accent, fontWeight: 'bold', textDecoration: 'none' }}
@@ -871,7 +872,7 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
                             </a>
                             &nbsp;|&nbsp;
                             <a
-                              href={linkedin}
+                              href={sanitizeHref(linkedin) || undefined}
                               target="_blank"
                               rel="noreferrer"
                               style={{ color: palette.accent, fontWeight: 'bold', textDecoration: 'none' }}
@@ -882,7 +883,7 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
                           {showSigCta && (
                             <div style={{ marginTop: '10px' }}>
                               <a
-                                href={website}
+                                href={sanitizeHref(website) || undefined}
                                 target="_blank"
                                 rel="noreferrer"
                                 style={{
@@ -1275,7 +1276,7 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
                               {app.company}
                               {app.url && (
                                 <a
-                                  href={app.url}
+                                  href={sanitizeHref(app.url || '') || undefined}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-cyan-400 hover:text-cyan-300"
@@ -1478,7 +1479,11 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <a
-                            href={`mailto:${inq.senderEmail}?subject=${encodeURIComponent(`Re: ${inq.subject}`)}`}
+                            href={
+                              sanitizeHref(
+                                `mailto:${inq.senderEmail}?subject=${encodeURIComponent(`Re: ${inq.subject}`)}`
+                              ) || undefined
+                            }
                             className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold inline-flex items-center gap-1"
                           >
                             <Mail className="w-3 h-3" /> Reply

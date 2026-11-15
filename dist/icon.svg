@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B1221" />
+      <stop offset="100%" stop-color="#070B14" />
+    </linearGradient>
+    <linearGradient id="accent" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <rect x="20" y="20" width="472" height="472" rx="96" stroke="url(#accent)" stroke-opacity="0.32" stroke-width="4" />
+  <path d="M128 360V152H196C231 152 254 171 254 202C254 226 240 242 218 249L262 360H217L179 258H166V360H128ZM166 226H194C209 226 218 218 218 204C218 190 209 183 194 183H166V226Z" fill="#F8FAFC" />
+  <path d="M286 306L318 287C326 312 343 326 365 326C386 326 398 316 398 302C398 287 386 279 356 268C316 254 294 236 294 201C294 167 322 146 361 146C399 146 424 167 433 197L400 215C392 193 379 181 360 181C342 181 332 190 332 201C332 215 344 222 374 233C415 247 437 265 437 301C437 338 408 362 364 362C322 362 294 338 286 306Z" fill="url(#accent)" />
+  <circle cx="404" cy="116" r="14" fill="#10B981" />
+</svg>

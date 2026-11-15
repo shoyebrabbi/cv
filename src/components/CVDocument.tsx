@@ -20,6 +20,9 @@ import {
 } from 'lucide-react';
 import { CVData, CVSectionId, StudioSettings } from '../types/cv';
 import { compressImageFileToDataUrl } from '../utils/imageCompress';
+import { sanitizeHref, sanitizeRichTextHtml } from '../utils/sanitizeHtml';
+import { getContactIcon } from '../utils/contactIcon';
+import { getExperienceDateLabel } from '../utils/experienceDate';
 
 interface CVDocumentProps {
   cvData: CVData;
@@ -51,7 +54,7 @@ export function CVDocument({
 
   function highlightTextHtml(raw: string, isHtml = false): string {
     const base = isHtml
-      ? raw
+      ? sanitizeRichTextHtml(raw)
       : raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     if (!isHighlightActive) return base;
     const escaped = jdHighlightKeywords
@@ -408,7 +411,12 @@ export function CVDocument({
         {/* QR Code in Header (if enabled) */}
         {settings.qrCode?.enabled && settings.qrCode?.position === 'header' && qrDataUrl && (
           <div className="shrink-0 flex flex-col items-center justify-center p-1.5 rounded-lg border border-slate-200 bg-white shadow-sm text-center">
-            <a href={settings.qrCode.url} target="_blank" rel="noreferrer" title="Click or Scan with Mobile">
+            <a
+              href={sanitizeHref(settings.qrCode.url) || undefined}
+              target="_blank"
+              rel="noreferrer"
+              title="Click or Scan with Mobile"
+            >
               <img
                 src={qrDataUrl}
                 alt="QR Code"
@@ -513,17 +521,26 @@ export function CVDocument({
                 }`}
                 data-type={item.type}
               >
-                <span className="contact-icon theme-text">
-                  {item.type === 'location' && '📍'}
-                  {item.type === 'phone' && '📞'}
-                  {item.type === 'email' && '✉️'}
-                  {item.type === 'website' && '🌐'}
-                  {item.type === 'linkedin' && '💼'}
-                  {item.type === 'github' && '🐙'}
-                  {item.type === 'custom' && '🔗'}
+                <span
+                  className="contact-icon theme-text"
+                  contentEditable={effectiveEditMode}
+                  suppressContentEditableWarning
+                  onBlur={(e) => {
+                    const icon = e.currentTarget.innerText.trim();
+                    onUpdateCVData((prev) => ({
+                      ...prev,
+                      contacts: prev.contacts.map((contact) =>
+                        contact.id === item.id ? { ...contact, icon } : contact
+                      ),
+                    }));
+                  }}
+                  title={effectiveEditMode ? 'Edit contact icon' : undefined}
+                  aria-label={`Icon for ${item.label}`}
+                >
+                  {getContactIcon(item)}
                 </span>
                 <a
-                  href={item.url}
+                  href={sanitizeHref(item.url) || undefined}
                   target="_blank"
                   rel="noreferrer"
                   className="contact-link font-medium"
@@ -574,9 +591,10 @@ export function CVDocument({
                     type="button"
                     onClick={() => deleteContact(item.id)}
                     className="text-rose-400 hover:text-rose-300"
-                    title="Delete"
+                    title="Delete entire contact item (icon, label, and link)"
+                    aria-label={`Delete entire contact item: ${item.label}`}
                   >
-                    <X className="w-3 h-3" />
+                    <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -855,20 +873,42 @@ export function CVDocument({
                         {exp.company}
                       </span>
                     </div>
-                    <div
-                      className="exp-date text-[0.92em] font-semibold text-slate-600"
-                      contentEditable={effectiveEditMode}
-                      suppressContentEditableWarning
-                      onBlur={(e) => {
-                        const newDate = e.currentTarget.innerText.trim();
-                        onUpdateCVData((prev) => {
-                          const newExp = [...prev.experiences];
-                          newExp[expIdx] = { ...newExp[expIdx], date: newDate };
-                          return { ...prev, experiences: newExp };
-                        });
-                      }}
-                    >
-                      {exp.date} | {exp.location}
+                    <div className="exp-date text-[0.92em] font-semibold text-slate-600">
+                      <span
+                        contentEditable={effectiveEditMode}
+                        suppressContentEditableWarning
+                        onBlur={(e) => {
+                          const date = e.currentTarget.innerText.trim();
+                          onUpdateCVData((prev) => ({
+                            ...prev,
+                            experiences: prev.experiences.map((item, i) =>
+                              i === expIdx ? { ...item, date } : item
+                            ),
+                          }));
+                        }}
+                        aria-label={`Date for ${exp.role}`}
+                      >
+                        {getExperienceDateLabel(exp)}
+                      </span>
+                      {exp.location && ' | '}
+                      <span
+                        contentEditable={effectiveEditMode}
+                        suppressContentEditableWarning
+                        onBlur={(e) => {
+                          const location = e.currentTarget.innerText.trim();
+                          onUpdateCVData((prev) => ({
+                            ...prev,
+                            experiences: prev.experiences.map((item, i) =>
+                              i === expIdx
+                                ? { ...item, date: getExperienceDateLabel(item), location }
+                                : item
+                            ),
+                          }));
+                        }}
+                        aria-label={`Location for ${exp.role}`}
+                      >
+                        {exp.location}
+                      </span>
                     </div>
                   </div>
 
@@ -1010,7 +1050,7 @@ export function CVDocument({
                   <div className="flex flex-wrap justify-between items-baseline gap-2">
                     <h3 className="proj-title font-bold text-slate-900 text-[1.03em]">
                       <a
-                        href={proj.url}
+                        href={sanitizeHref(proj.url) || undefined}
                         target="_blank"
                         rel="noreferrer"
                         className="proj-link underline hover:text-blue-600"
@@ -1310,9 +1350,34 @@ export function CVDocument({
             }`}
           >
             <div
-              onMouseDown={(e) => e.preventDefault()}
+              onMouseDown={(e) => {
+                if (e.target instanceof HTMLElement && e.target.closest('select')) return;
+                e.preventDefault();
+              }}
               className="cv-section-header-bar builder-control no-print hidden group-hover/sec:flex absolute right-0 -top-5 items-center gap-1 bg-slate-900/95 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-30"
             >
+              <select
+                value={sec.type}
+                onChange={(e) =>
+                  onUpdateCVData((prev) => ({
+                    ...prev,
+                    customSections: prev.customSections.map((section) =>
+                      section.id === sec.id
+                        ? {
+                            ...section,
+                            type: e.target.value as 'bullets' | 'paragraph' | 'references',
+                          }
+                        : section
+                    ),
+                  }))
+                }
+                aria-label={`Layout for ${sec.title}`}
+                className="max-w-24 rounded bg-slate-800 px-1 py-0.5 text-[9px] text-slate-100"
+              >
+                <option value="bullets">Bullets</option>
+                <option value="paragraph">Paragraph</option>
+                <option value="references">References</option>
+              </select>
               {sec.type !== 'paragraph' && (
                 <button
                   type="button"
@@ -1445,7 +1510,7 @@ export function CVDocument({
                     <span
                       contentEditable={effectiveEditMode}
                       suppressContentEditableWarning
-                      dangerouslySetInnerHTML={{ __html: item }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item) }}
                       onBlur={(e) => {
                         const val = e.currentTarget.innerHTML.trim();
                         onUpdateCVData((prev) => {

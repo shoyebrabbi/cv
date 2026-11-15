@@ -27,6 +27,8 @@ Visit `http://localhost:3000` in your browser.
 ### ধাপ ১: গিট রিপোজিটরি তৈরি ও পুশ করুন
 আপনার কম্পিউটারের টার্মিনাল বা VS Code-এ নিচের কমান্ডগুলো চালান:
 
+**গুরুত্বপূর্ণ:** শুধু একটি `.tsx` বা `.html` ফাইল নয়, পুরো project folder-এর source ও configuration GitHub-এ দিন। `.gitignore` স্বয়ংক্রিয়ভাবে `node_modules`, `dist`, `dev-dist` ও `.env` বাদ দেবে; GitHub Actions নিজেই build করে `dist` তৈরি করবে।
+
 ```bash
 # গিট ইনিশিয়ালাইজ করুন
 git init

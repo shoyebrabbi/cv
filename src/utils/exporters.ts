@@ -6,6 +6,9 @@ import {
   JobApplication,
   StudioSettings,
 } from '../types/cv';
+import { escapeHtml, sanitizeHref, sanitizeRichTextHtml } from './sanitizeHtml';
+import { getContactIcon } from './contactIcon';
+import { getExperienceDateLabel } from './experienceDate';
 
 function getSafeFileBase(candidateName?: string): string {
   const clean = (candidateName || 'Candidate')
@@ -445,7 +448,9 @@ export async function exportHighResPNG(
 
 // 2. Word (.doc & .docx) — Full Studio Sync
 export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: StudioSettings) {
-  const primaryColor = settings.themePrimary || '#0f4c81';
+  const primaryColor = /^#[\da-f]{3,8}$/i.test(settings.themePrimary || '')
+    ? settings.themePrimary
+    : '#0f4c81';
   const activeSections = getActiveSectionOrder(settings);
   const safeFileBase = (data.name || 'Resume')
     .trim()
@@ -457,8 +462,13 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
       ? data.contacts
           .map((c) =>
             c.url
-              ? `<a href="${c.url}" style="color:${primaryColor}; text-decoration:none; font-weight:bold;">${c.label}</a>`
-              : `<span>${c.label}</span>`
+              ? (() => {
+                  const href = sanitizeHref(c.url);
+                  return href
+                    ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer" style="color:${primaryColor}; text-decoration:none; font-weight:bold;">${escapeHtml(getContactIcon(c))} ${escapeHtml(c.label)}</a>`
+                    : `<span>${escapeHtml(getContactIcon(c))} ${escapeHtml(c.label)}</span>`;
+                })()
+              : `<span>${escapeHtml(getContactIcon(c))} ${escapeHtml(c.label)}</span>`
           )
           .join(' &nbsp;|&nbsp; ')
       : '';
@@ -468,7 +478,7 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
       ? `<td style="width:115px; vertical-align:top; text-align:${
           settings.photoPosition === 'right' ? 'right' : 'left'
         };">
-          <img src="${settings.photoSrc}" width="95" height="110" style="border:2px solid ${primaryColor}; border-radius:6px; object-fit:cover;" />
+          <img src="${escapeHtml(settings.photoSrc)}" width="95" height="110" style="border:2px solid ${primaryColor}; border-radius:6px; object-fit:cover;" />
         </td>`
       : '';
 
@@ -476,10 +486,10 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
     <td style="vertical-align:top; text-align:${
       settings.headerAlign === 'center' || settings.photoPosition === 'center' ? 'center' : 'left'
     };">
-      <h1 style="margin:0; font-size:20pt; color:#0f172a; text-transform:uppercase;">${data.name}</h1>
+      <h1 style="margin:0; font-size:20pt; color:#0f172a; text-transform:uppercase;">${escapeHtml(data.name)}</h1>
       ${
         settings.showTitle !== false
-          ? `<p style="margin:2pt 0 6pt 0; font-size:11pt; font-weight:bold; color:${primaryColor};">${data.title}</p>`
+          ? `<p style="margin:2pt 0 6pt 0; font-size:11pt; font-weight:bold; color:${primaryColor};">${escapeHtml(data.title)}</p>`
           : ''
       }
       ${
@@ -499,8 +509,8 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
     .map(
       (s) => `
       <tr>
-        <td style="width:24%; font-weight:bold; background-color:#f0f7ff; border:1px solid #cbd5e1; border-left:3pt solid ${primaryColor}; padding:5pt 8pt; font-size:9.5pt;">${s.category}</td>
-        <td style="width:76%; border:1px solid #cbd5e1; padding:5pt 8pt; font-size:9.5pt;">${s.competencies}</td>
+        <td style="width:24%; font-weight:bold; background-color:#f0f7ff; border:1px solid #cbd5e1; border-left:3pt solid ${primaryColor}; padding:5pt 8pt; font-size:9.5pt;">${escapeHtml(s.category)}</td>
+        <td style="width:76%; border:1px solid #cbd5e1; padding:5pt 8pt; font-size:9.5pt;">${escapeHtml(s.competencies)}</td>
       </tr>
     `
     )
@@ -513,13 +523,13 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
       <div style="margin-bottom:9pt; page-break-inside:avoid;">
         <table style="width:100%; border-collapse:collapse;">
           <tr>
-            <td style="font-weight:bold; font-size:10.5pt; color:#0f172a;">${e.role} — <span style="color:${primaryColor};">${e.company}</span></td>
-            <td style="text-align:right; font-weight:bold; font-size:9pt; color:#475569;">${e.date} | ${e.location}</td>
+            <td style="font-weight:bold; font-size:10.5pt; color:#0f172a;">${escapeHtml(e.role)} — <span style="color:${primaryColor};">${escapeHtml(e.company)}</span></td>
+            <td style="text-align:right; font-weight:bold; font-size:9pt; color:#475569;">${escapeHtml(getExperienceDateLabel(e))} | ${escapeHtml(e.location)}</td>
           </tr>
         </table>
         <ul style="margin-top:3pt; margin-bottom:3pt; padding-left:16pt;">
           ${e.bullets
-            .map((b) => `<li style="font-size:9.5pt; color:#334155; margin-bottom:2.5pt;">${b.text.replace(/<[^>]+>/g, '')}</li>`)
+            .map((b) => `<li style="font-size:9.5pt; color:#334155; margin-bottom:2.5pt;">${escapeHtml(b.text.replace(/<[^>]+>/g, ''))}</li>`)
             .join('')}
         </ul>
       </div>
@@ -535,58 +545,63 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
         <table style="width:100%; border-collapse:collapse;">
           <tr>
             <td style="font-weight:bold; font-size:10pt; color:#0f172a;">
-              ${p.url ? `<a href="${p.url}" style="color:#0f172a; text-decoration:none;">${p.title}</a>` : p.title}
+              ${(() => {
+                const href = sanitizeHref(p.url);
+                return href
+                  ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer" style="color:#0f172a; text-decoration:none;">${escapeHtml(p.title)}</a>`
+                  : escapeHtml(p.title);
+              })()}
             </td>
-            <td style="text-align:right; font-style:italic; font-weight:bold; font-size:9pt; color:${primaryColor};">${p.technologies}</td>
+            <td style="text-align:right; font-style:italic; font-weight:bold; font-size:9pt; color:${primaryColor};">${escapeHtml(p.technologies)}</td>
           </tr>
         </table>
-        <p style="margin:2pt 0 0 0; font-size:9.5pt; color:#334155; text-align:justify;">${p.description}</p>
+        <p style="margin:2pt 0 0 0; font-size:9.5pt; color:#334155; text-align:justify;">${escapeHtml(p.description)}</p>
       </div>
     `
     )
     .join('');
 
   const certsHTML = data.certifications
-    .map((c) => `<li style="font-size:9pt; margin-bottom:2pt;">${c}</li>`)
+    .map((c) => `<li style="font-size:9pt; margin-bottom:2pt;">${escapeHtml(c)}</li>`)
     .join('');
 
   const wordSections: Record<CVSectionId, string> = {
     summary: `
-      <h2>${getSectionHeading('summary', settings)}</h2>
-      <p style="font-size:9.5pt; text-align:justify; color:#334155; margin-top:0;">${data.summary}</p>
+      <h2>${escapeHtml(getSectionHeading('summary', settings))}</h2>
+      <p style="font-size:9.5pt; text-align:justify; color:#334155; margin-top:0;">${escapeHtml(data.summary)}</p>
     `,
     skills: `
-      <h2>${getSectionHeading('skills', settings)}</h2>
+      <h2>${escapeHtml(getSectionHeading('skills', settings))}</h2>
       <table style="width:100%; border-collapse:collapse; margin-bottom:6pt;">
         ${skillsRowsHTML}
       </table>
     `,
     experience: `
-      <h2>${getSectionHeading('experience', settings)}</h2>
+      <h2>${escapeHtml(getSectionHeading('experience', settings))}</h2>
       ${expHTML}
     `,
     projects: `
-      <h2>${getSectionHeading('projects', settings)}</h2>
+      <h2>${escapeHtml(getSectionHeading('projects', settings))}</h2>
       ${projHTML}
     `,
     credentials: `
       <table style="width:100%; border-collapse:collapse; margin-top:8pt; page-break-inside:avoid;">
         <tr>
           <td style="width:33%; vertical-align:top; padding-right:10pt;">
-            <h2>${getSectionHeading('credentials', settings)}</h2>
-            <p style="font-size:9.5pt; margin:0;"><strong>${data.education.degree}</strong><br>
-            <span style="color:${primaryColor}; font-weight:bold;">${data.education.school}</span><br>
-            <span style="font-size:8.5pt; color:#64748b;">${data.education.year}</span><br>
-            ${data.education.modules}</p>
+            <h2>${escapeHtml(getSectionHeading('credentials', settings))}</h2>
+            <p style="font-size:9.5pt; margin:0;"><strong>${escapeHtml(data.education.degree)}</strong><br>
+            <span style="color:${primaryColor}; font-weight:bold;">${escapeHtml(data.education.school)}</span><br>
+            <span style="font-size:8.5pt; color:#64748b;">${escapeHtml(data.education.year)}</span><br>
+            ${escapeHtml(data.education.modules)}</p>
           </td>
           <td style="width:40%; vertical-align:top; padding-right:10pt;">
-            <h2>${getSectionHeading('certifications', settings)}</h2>
+            <h2>${escapeHtml(getSectionHeading('certifications', settings))}</h2>
             <ul style="margin:0; padding-left:15pt;">${certsHTML}</ul>
           </td>
           <td style="width:27%; vertical-align:top;">
-            <h2>${getSectionHeading('languages', settings)}</h2>
-            <p style="font-size:9pt; margin:0 0 5pt 0;"><strong>Languages:</strong><br>${data.languages.replace(/\n/g, '<br>')}</p>
-            <p style="font-size:9pt; margin:0;"><strong>Key Strengths:</strong><br>${data.strengths}</p>
+            <h2>${escapeHtml(getSectionHeading('languages', settings))}</h2>
+            <p style="font-size:9pt; margin:0 0 5pt 0;"><strong>Languages:</strong><br>${data.languages.split(/\r?\n/).map(escapeHtml).join('<br>')}</p>
+            <p style="font-size:9pt; margin:0;"><strong>Key Strengths:</strong><br>${escapeHtml(data.strengths)}</p>
           </td>
         </tr>
       </table>
@@ -597,13 +612,13 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
     .map(
       (sec) => `
       ${sec.forcePageBreak ? `<br clear="all" style="page-break-before:always" />` : ''}
-      <h2>${sec.title}</h2>
+      <h2>${escapeHtml(sec.title)}</h2>
       ${
         sec.type === 'paragraph'
-          ? `<p style="font-size:9.5pt; text-align:justify; color:#334155;">${sec.content.join(' ')}</p>`
+          ? `<p style="font-size:9.5pt; text-align:justify; color:#334155;">${sec.content.map(sanitizeRichTextHtml).join(' ')}</p>`
           : `<ul style="margin-top:3pt; margin-bottom:5pt; padding-left:16pt;">
               ${sec.content
-                .map((item) => `<li style="font-size:9.5pt; color:#334155; margin-bottom:2pt;">${item}</li>`)
+                .map((item) => `<li style="font-size:9.5pt; color:#334155; margin-bottom:2pt;">${sanitizeRichTextHtml(item)}</li>`)
                 .join('')}
             </ul>`
       }
@@ -616,9 +631,9 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
       ? `
       <table style="width:100%; border-top:1pt solid #e2e8f0; margin-top:14pt; padding-top:4pt; font-size:8pt; color:#64748b;">
         <tr>
-          <td>${settings.footerNote !== undefined ? settings.footerNote : `${data.name} — Professional Resume`}</td>
+          <td>${escapeHtml(settings.footerNote !== undefined ? settings.footerNote : `${data.name} — Professional Resume`)}</td>
           <td style="text-align:right;">${
-            settings.showFooterPageNum !== false ? settings.footerRightText || '' : ''
+            escapeHtml(settings.showFooterPageNum !== false ? settings.footerRightText || '' : '')
           }</td>
         </tr>
       </table>
@@ -629,7 +644,7 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
     <head>
       <meta charset="utf-8">
-      <title>${data.name} - CV</title>
+      <title>${escapeHtml(data.name)} - CV</title>
       <style>
         @page { size: 21cm 29.7cm; margin: 1.1cm 1.3cm 1.1cm 1.3cm; }
         body { font-family: 'Calibri', 'Arial', sans-serif; color: #1e293b; line-height: 1.36; }
@@ -667,7 +682,7 @@ export async function exportExcel(data: CVData) {
   const overviewRows = [
     [`${data.name} - EXECUTIVE MASTER TECHNICAL CV`],
     ['Role / Title', data.title],
-    ...data.contacts.map((c) => ['Contact / Link', c.label, c.url]),
+    ...data.contacts.map((c) => ['Contact / Link', `${getContactIcon(c)} ${c.label}`, c.url]),
     [],
     ['PROFESSIONAL SUMMARY'],
     [data.summary],
@@ -681,7 +696,7 @@ export async function exportExcel(data: CVData) {
     ...data.experiences.map((e) => [
       e.role,
       e.company,
-      `${e.date} | ${e.location}`,
+      `${getExperienceDateLabel(e)} | ${e.location}`,
       e.bullets.map((b) => b.text.replace(/<[^>]+>/g, '')).join(' | '),
     ]),
     [],
@@ -715,7 +730,7 @@ export async function exportExcel(data: CVData) {
       expFlat.push({
         Role: e.role,
         Organization: e.company,
-        'Period & Location': `${e.date} | ${e.location}`,
+        'Period & Location': `${getExperienceDateLabel(e)} | ${e.location}`,
         'Responsibility / Impact': b.text.replace(/<[^>]+>/g, ''),
       });
     });
@@ -760,14 +775,20 @@ export async function exportExcel(data: CVData) {
 export function exportCSV(data: CVData) {
   const rows = [
     ['Section', 'Title / Category', 'Organization / Tech Stack', 'Timeline / URL', 'Details / Description'],
-    ['Profile', data.name, data.title, '', data.contacts.map((c) => `${c.label} (${c.url})`).join(' | ')],
+    [
+      'Profile',
+      data.name,
+      data.title,
+      '',
+      data.contacts.map((c) => `${getContactIcon(c)} ${c.label} (${c.url})`).join(' | '),
+    ],
     ['Summary', 'Professional Summary', '', '', data.summary],
     ...data.skills.map((s) => ['Skill', s.category, '', '', s.competencies]),
     ...data.experiences.map((e) => [
       'Experience',
       e.role,
       e.company,
-      `${e.date} | ${e.location}`,
+      `${getExperienceDateLabel(e)} | ${e.location}`,
       e.bullets.map((b) => b.text.replace(/<[^>]+>/g, '')).join(' ; '),
     ]),
     ...data.projects.map((p) => ['Project', p.title, p.technologies, p.url, p.description]),
@@ -788,7 +809,13 @@ export function exportMarkdown(data: CVData, settings?: StudioSettings): void {
   const activeSections = getActiveSectionOrder(settings);
   let md = `# ${data.name}\n**${data.title}**\n\n`;
   if (settings?.showContacts !== false) {
-    md += data.contacts.map((c) => (c.url ? `[${c.label}](${c.url})` : c.label)).join(' | ') + `\n\n---\n\n`;
+    md +=
+      data.contacts
+        .map((c) => {
+          const label = `${getContactIcon(c)} ${c.label}`;
+          return c.url ? `[${label}](${c.url})` : label;
+        })
+        .join(' | ') + `\n\n---\n\n`;
   }
 
   activeSections.forEach((secId) => {
@@ -803,7 +830,7 @@ export function exportMarkdown(data: CVData, settings?: StudioSettings): void {
     } else if (secId === 'experience') {
       md += `## ${getSectionHeading('experience', settings)}\n`;
       data.experiences.forEach((e) => {
-        md += `### ${e.role} — *${e.company}*\n*${e.date} | ${e.location}*\n`;
+        md += `### ${e.role} — *${e.company}*\n*${getExperienceDateLabel(e)} | ${e.location}*\n`;
         e.bullets.forEach((b) => {
           md += `- ${b.text.replace(/<[^>]+>/g, '')}\n`;
         });
@@ -843,7 +870,9 @@ export function exportMarkdown(data: CVData, settings?: StudioSettings): void {
 // 6. Plain Text Exporter — Synced with Studio Section Order & Custom Sections
 export function exportPlainText(data: CVData, settings?: StudioSettings): void {
   const activeSections = getActiveSectionOrder(settings);
-  let txt = `${data.name}\n${data.title}\n${data.contacts.map((c) => c.label).join(' | ')}\n================================================================================\n\n`;
+  let txt = `${data.name}\n${data.title}\n${data.contacts
+    .map((c) => `${getContactIcon(c)} ${c.label}`)
+    .join(' | ')}\n================================================================================\n\n`;
 
   activeSections.forEach((secId) => {
     if (secId === 'summary') {
@@ -860,7 +889,7 @@ export function exportPlainText(data: CVData, settings?: StudioSettings): void {
       const h = getSectionHeading('experience', settings);
       txt += `${h}\n${'-'.repeat(h.length)}\n`;
       data.experiences.forEach((e) => {
-        txt += `${e.role} - ${e.company} (${e.date} | ${e.location})\n`;
+        txt += `${e.role} - ${e.company} (${getExperienceDateLabel(e)} | ${e.location})\n`;
         e.bullets.forEach((b) => {
           txt += `  • ${b.text.replace(/<[^>]+>/g, '')}\n`;
         });
@@ -903,32 +932,43 @@ export function exportPlainText(data: CVData, settings?: StudioSettings): void {
 
 // 7. Standalone HTML file — Full Studio Sync
 export function exportHTMLFile(data: CVData, settings: StudioSettings) {
-  const primaryColor = settings.themePrimary || '#0f4c81';
+  const primaryColor = /^#[\da-f]{3,8}$/i.test(settings.themePrimary || '')
+    ? settings.themePrimary
+    : '#0f4c81';
+  const safeColor = (value: string | undefined, fallback: string) =>
+    /^#[\da-f]{3,8}$/i.test(value || '') ? value : fallback;
+  const fontFamily = (settings.cvFont || "'Inter', sans-serif").replace(/[^a-zA-Z0-9 ,'"_-]/g, '');
+  const safeLink = (url: string, label: string, style = 'color:#0f172a;') => {
+    const href = sanitizeHref(url);
+    return href
+      ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer" style="${style}">${label}</a>`
+      : label;
+  };
   const activeSections = getActiveSectionOrder(settings);
 
   const htmlSections: Record<CVSectionId, string> = {
     summary: `
-      <div class="cv-section-title">${getSectionHeading('summary', settings)}</div>
-      <p style="font-size: 12px; line-height: 1.5; text-align: justify; color: #334155;">${data.summary}</p>
+      <div class="cv-section-title">${escapeHtml(getSectionHeading('summary', settings))}</div>
+      <p style="font-size: 12px; line-height: 1.5; text-align: justify; color: #334155;">${escapeHtml(data.summary)}</p>
     `,
     skills: `
-      <div class="cv-section-title">${getSectionHeading('skills', settings)}</div>
+      <div class="cv-section-title">${escapeHtml(getSectionHeading('skills', settings))}</div>
       <table class="skills-table">
-        ${data.skills.map((s) => `<tr><td>${s.category}</td><td>${s.competencies}</td></tr>`).join('')}
+        ${data.skills.map((s) => `<tr><td>${escapeHtml(s.category)}</td><td>${escapeHtml(s.competencies)}</td></tr>`).join('')}
       </table>
     `,
     experience: `
-      <div class="cv-section-title">${getSectionHeading('experience', settings)}</div>
+      <div class="cv-section-title">${escapeHtml(getSectionHeading('experience', settings))}</div>
       ${data.experiences
         .map(
           (e) => `
         <div style="margin-bottom: 12px;">
           <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:13px;">
-            <span>${e.role} — <span style="color:${primaryColor};">${e.company}</span></span>
-            <span style="font-size:12px; color:#64748b;">${e.date} | ${e.location}</span>
+            <span>${escapeHtml(e.role)} — <span style="color:${primaryColor};">${escapeHtml(e.company)}</span></span>
+            <span style="font-size:12px; color:#64748b;">${escapeHtml(getExperienceDateLabel(e))} | ${escapeHtml(e.location)}</span>
           </div>
           <ul style="margin: 6px 0; padding-left: 18px; font-size: 12px; color: #334155;">
-            ${e.bullets.map((b) => `<li style="margin-bottom: 3px;">${b.text}</li>`).join('')}
+            ${e.bullets.map((b) => `<li style="margin-bottom: 3px;">${sanitizeRichTextHtml(b.text)}</li>`).join('')}
           </ul>
         </div>
       `
@@ -936,16 +976,16 @@ export function exportHTMLFile(data: CVData, settings: StudioSettings) {
         .join('')}
     `,
     projects: `
-      <div class="cv-section-title">${getSectionHeading('projects', settings)}</div>
+      <div class="cv-section-title">${escapeHtml(getSectionHeading('projects', settings))}</div>
       ${data.projects
         .map(
           (p) => `
         <div style="margin-bottom: 10px;">
           <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold;">
-            <span>${p.url ? `<a href="${p.url}" style="color:#0f172a;">${p.title}</a>` : p.title}</span>
-            <span style="font-size:11px; color:${primaryColor}; font-style:italic;">${p.technologies}</span>
+            <span>${safeLink(p.url, escapeHtml(p.title))}</span>
+            <span style="font-size:11px; color:${primaryColor}; font-style:italic;">${escapeHtml(p.technologies)}</span>
           </div>
-          <p style="font-size: 12px; color: #334155; margin: 3px 0 0 0; text-align: justify;">${p.description}</p>
+          <p style="font-size: 12px; color: #334155; margin: 3px 0 0 0; text-align: justify;">${escapeHtml(p.description)}</p>
         </div>
       `
         )
@@ -954,25 +994,25 @@ export function exportHTMLFile(data: CVData, settings: StudioSettings) {
     credentials: `
       <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 14px;">
         <div>
-          <div class="cv-section-title">${getSectionHeading('credentials', settings)}</div>
+          <div class="cv-section-title">${escapeHtml(getSectionHeading('credentials', settings))}</div>
           <div style="font-size: 12px; color: #334155;">
-            <strong>${data.education.degree}</strong><br>
-            <span style="color:${primaryColor};">${data.education.school}</span><br>
-            <span style="color:#64748b;">${data.education.year}</span><br>
-            <span style="font-size: 11px;">${data.education.modules}</span>
+            <strong>${escapeHtml(data.education.degree)}</strong><br>
+            <span style="color:${primaryColor};">${escapeHtml(data.education.school)}</span><br>
+            <span style="color:#64748b;">${escapeHtml(data.education.year)}</span><br>
+            <span style="font-size: 11px;">${escapeHtml(data.education.modules)}</span>
           </div>
         </div>
         <div>
-          <div class="cv-section-title">${getSectionHeading('certifications', settings)}</div>
+          <div class="cv-section-title">${escapeHtml(getSectionHeading('certifications', settings))}</div>
           <ul style="font-size: 11.5px; color: #334155; padding-left: 18px; margin: 0;">
-            ${data.certifications.map((c) => `<li style="margin-bottom:2px;">${c}</li>`).join('')}
+            ${data.certifications.map((c) => `<li style="margin-bottom:2px;">${escapeHtml(c)}</li>`).join('')}
           </ul>
         </div>
         <div>
-          <div class="cv-section-title">${getSectionHeading('languages', settings)}</div>
+          <div class="cv-section-title">${escapeHtml(getSectionHeading('languages', settings))}</div>
           <div style="font-size: 11.5px; color: #334155;">
-            <strong>Languages:</strong><br>${data.languages.replace(/\n/g, '<br>')}<br><br>
-            <strong>Key Strengths:</strong><br>${data.strengths}
+            <strong>Languages:</strong><br>${data.languages.split(/\r?\n/).map(escapeHtml).join('<br>')}<br><br>
+            <strong>Key Strengths:</strong><br>${escapeHtml(data.strengths)}
           </div>
         </div>
       </div>
@@ -982,12 +1022,12 @@ export function exportHTMLFile(data: CVData, settings: StudioSettings) {
   const customHtml = (data.customSections || [])
     .map(
       (sec) => `
-      <div class="cv-section-title">${sec.title}</div>
+      <div class="cv-section-title">${escapeHtml(sec.title)}</div>
       ${
         sec.type === 'paragraph'
-          ? `<p style="font-size: 12px; line-height: 1.5; text-align: justify; color: #334155;">${sec.content.join(' ')}</p>`
+          ? `<p style="font-size: 12px; line-height: 1.5; text-align: justify; color: #334155;">${sec.content.map(sanitizeRichTextHtml).join(' ')}</p>`
           : `<ul style="margin: 6px 0; padding-left: 18px; font-size: 12px; color: #334155;">
-              ${sec.content.map((item) => `<li style="margin-bottom: 3px;">${item}</li>`).join('')}
+              ${sec.content.map((item) => `<li style="margin-bottom: 3px;">${sanitizeRichTextHtml(item)}</li>`).join('')}
             </ul>`
       }
     `
@@ -999,19 +1039,19 @@ export function exportHTMLFile(data: CVData, settings: StudioSettings) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${data.name} - Executive Master Technical CV</title>
+<title>${escapeHtml(data.name)} - Executive Master Technical CV</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
-body { font-family: ${settings.cvFont || "'Inter', sans-serif"}; background: #f1f5f9; padding: 24px; color: ${settings.cvTextColor || '#1e293b'}; }
-.cv-document { background: ${settings.cvPaperBg || 'white'}; max-width: 210mm; margin: 0 auto; padding: 36px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 8px; }
+body { font-family: ${fontFamily}; background: #f1f5f9; padding: 24px; color: ${safeColor(settings.cvTextColor, '#1e293b')}; }
+.cv-document { background: ${safeColor(settings.cvPaperBg, '#ffffff')}; max-width: 210mm; margin: 0 auto; padding: 36px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 8px; }
 .theme-text { color: ${primaryColor}; }
 .theme-border { border-color: ${primaryColor}; }
 .cv-section-title { display:flex; align-items:center; font-weight:800; font-size:0.92rem; color:${primaryColor}; text-transform:uppercase; margin-top:1.1rem; margin-bottom:0.5rem; border-bottom:2px solid ${primaryColor}; padding-bottom:3px; }
 .skills-table { width:100%; border-collapse:collapse; font-size:0.84rem; }
 .skills-table td { border:1px solid #cbd5e1; padding:6px 10px; vertical-align:top; }
-.skills-table td:first-child { width:24%; font-weight:700; background:${settings.themeLight || '#f0f7ff'}; border-left:3.5px solid ${primaryColor}; }
+.skills-table td:first-child { width:24%; font-weight:700; background:${safeColor(settings.themeLight, '#f0f7ff')}; border-left:3.5px solid ${primaryColor}; }
 </style>
 </head>
 <body>
@@ -1023,17 +1063,23 @@ body { font-family: ${settings.cvFont || "'Inter', sans-serif"}; background: #f1
         } padding-bottom: 12px; margin-bottom: 16px; text-align: ${
           settings.headerAlign === 'center' ? 'center' : 'left'
         };">
-          <h1 style="font-size: 26px; font-weight: 800; text-transform: uppercase; margin: 0;">${data.name}</h1>
+          <h1 style="font-size: 26px; font-weight: 800; text-transform: uppercase; margin: 0;">${escapeHtml(data.name)}</h1>
           ${
             settings.showTitle !== false
-              ? `<div style="font-size: 13px; font-weight: 700; color: ${primaryColor}; margin-top: 3px;">${data.title}</div>`
+              ? `<div style="font-size: 13px; font-weight: 700; color: ${primaryColor}; margin-top: 3px;">${escapeHtml(data.title)}</div>`
               : ''
           }
           ${
             settings.showContacts !== false
               ? `<div style="font-size: 12px; color: #475569; margin-top: 8px;">
                   ${data.contacts
-                    .map((c) => (c.url ? `<a href="${c.url}" style="color:${primaryColor}; text-decoration:none;">${c.label}</a>` : c.label))
+                    .map((c) =>
+                      safeLink(
+                        c.url,
+                        `${escapeHtml(getContactIcon(c))} ${escapeHtml(c.label)}`,
+                        `color:${primaryColor}; text-decoration:none;`
+                      )
+                    )
                     .join(' &bull; ')}
                 </div>`
               : ''
@@ -1048,8 +1094,8 @@ body { font-family: ${settings.cvFont || "'Inter', sans-serif"}; background: #f1
   ${
     settings.showFooter !== false
       ? `<div style="margin-top: 18px; padding-top: 8px; border-top: 1px solid #e2e8f0; display:flex; justify-content:space-between; font-size: 11px; color: #64748b;">
-          <span>${settings.footerNote !== undefined ? settings.footerNote : `${data.name} — Professional Resume`}</span>
-          <span>${settings.showFooterPageNum !== false ? settings.footerRightText || '' : ''}</span>
+          <span>${escapeHtml(settings.footerNote !== undefined ? settings.footerNote : `${data.name} — Professional Resume`)}</span>
+          <span>${escapeHtml(settings.showFooterPageNum !== false ? settings.footerRightText || '' : '')}</span>
         </div>`
       : ''
   }
@@ -1090,7 +1136,9 @@ export function exportJSONBackup(
 export async function copyAllCVText(data: CVData, settings?: StudioSettings): Promise<boolean> {
   const activeSections = getActiveSectionOrder(settings);
   let txt = `${data.name}\n${settings?.showTitle !== false ? `${data.title}\n` : ''}${
-    settings?.showContacts !== false ? `${data.contacts.map((c) => c.label).join(' | ')}\n` : ''
+    settings?.showContacts !== false
+      ? `${data.contacts.map((c) => `${getContactIcon(c)} ${c.label}`).join(' | ')}\n`
+      : ''
   }\n`;
 
   activeSections.forEach((secId) => {
@@ -1105,7 +1153,7 @@ export async function copyAllCVText(data: CVData, settings?: StudioSettings): Pr
     } else if (secId === 'experience') {
       txt += `${getSectionHeading('experience', settings)}\n`;
       data.experiences.forEach((e) => {
-        txt += `${e.role} - ${e.company} (${e.date})\n`;
+        txt += `${e.role} - ${e.company} (${getExperienceDateLabel(e)})\n`;
         e.bullets.forEach((b) => {
           txt += `• ${b.text.replace(/<[^>]+>/g, '')}\n`;
         });
@@ -1185,37 +1233,72 @@ export async function exportCoverLetterPDF(
   settings: StudioSettings,
   company?: string
 ) {
-  const primaryColor = settings.themePrimary || '#0f4c81';
+  const primaryColor = /^#[\da-f]{3,8}$/i.test(settings.themePrimary || '')
+    ? settings.themePrimary
+    : '#0f4c81';
   const fontStack = settings.cvFont || "'Plus Jakarta Sans', sans-serif";
-  const contactsLine = data.contacts.map((c) => c.label).join('  |  ');
-  const safeBody = coverText
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br/>');
 
   const wrapper = document.createElement('div');
-  wrapper.style.position = 'fixed';
-  wrapper.style.left = '0px';
-  wrapper.style.top = '0px';
-  wrapper.style.zIndex = '-9999';
-  wrapper.style.pointerEvents = 'none';
-  wrapper.style.width = '210mm';
-  wrapper.style.background = '#ffffff';
-  wrapper.style.color = '#1e293b';
-  wrapper.style.fontFamily = fontStack;
-  wrapper.style.padding = '16mm 18mm';
-  wrapper.style.boxSizing = 'border-box';
-  wrapper.innerHTML = `
-    <div style="border-bottom: 2.5px solid ${primaryColor}; padding-bottom: 12px; margin-bottom: 20px;">
-      <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.02em;">${data.name}</h1>
-      <div style="margin-top: 3px; font-size: 12px; font-weight: 700; color: ${primaryColor}; text-transform: uppercase;">${data.title}</div>
-      <div style="margin-top: 6px; font-size: 10.5px; color: #475569;">${contactsLine}</div>
-    </div>
-    <div style="font-size: 12.5px; line-height: 1.65; color: #1e293b; text-align: left;">
-      ${safeBody}
-    </div>
-  `;
+  Object.assign(wrapper.style, {
+    position: 'fixed',
+    left: '0px',
+    top: '0px',
+    zIndex: '-9999',
+    pointerEvents: 'none',
+    width: '210mm',
+    background: '#ffffff',
+    color: '#1e293b',
+    fontFamily: fontStack,
+    padding: '16mm 18mm',
+    boxSizing: 'border-box',
+  });
+
+  const header = document.createElement('div');
+  Object.assign(header.style, {
+    borderBottom: `2.5px solid ${primaryColor}`,
+    paddingBottom: '12px',
+    marginBottom: '20px',
+  });
+  const name = document.createElement('h1');
+  name.textContent = data.name;
+  Object.assign(name.style, {
+    margin: '0',
+    fontSize: '22px',
+    fontWeight: '800',
+    color: '#0f172a',
+    textTransform: 'uppercase',
+    letterSpacing: '0.02em',
+  });
+  const title = document.createElement('div');
+  title.textContent = data.title;
+  Object.assign(title.style, {
+    marginTop: '3px',
+    fontSize: '12px',
+    fontWeight: '700',
+    color: primaryColor,
+    textTransform: 'uppercase',
+  });
+  const contacts = document.createElement('div');
+  contacts.textContent = data.contacts.map((contact) => contact.label).join('  |  ');
+  Object.assign(contacts.style, {
+    marginTop: '6px',
+    fontSize: '10.5px',
+    color: '#475569',
+  });
+  header.append(name, title, contacts);
+
+  const body = document.createElement('div');
+  Object.assign(body.style, {
+    fontSize: '12.5px',
+    lineHeight: '1.65',
+    color: '#1e293b',
+    textAlign: 'left',
+  });
+  coverText.split(/\r?\n/).forEach((line, index) => {
+    if (index > 0) body.appendChild(document.createElement('br'));
+    body.appendChild(document.createTextNode(line));
+  });
+  wrapper.append(header, body);
   document.body.appendChild(wrapper);
 
   const safeCompany = (company || 'Application').replace(/[^a-zA-Z0-9]+/g, '_');
@@ -1257,8 +1340,10 @@ export function exportCoverLetterDoc(
   settings: StudioSettings,
   company?: string
 ) {
-  const primaryColor = settings.themePrimary || '#0f4c81';
-  const contactsLine = data.contacts.map((c) => c.label).join(' &nbsp;|&nbsp; ');
+  const primaryColor = /^#[\da-f]{3,8}$/i.test(settings.themePrimary || '')
+    ? settings.themePrimary
+    : '#0f4c81';
+  const contactsLine = data.contacts.map((c) => c.label).join('  |  ');
   const safeBody = coverText
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -1267,7 +1352,7 @@ export function exportCoverLetterDoc(
 
   const docHtml = `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>
-    <head><meta charset="utf-8"><title>Cover Letter - ${data.name}</title>
+    <head><meta charset="utf-8"><title>Cover Letter - ${escapeHtml(data.name)}</title>
     <style>
       @page { size: 21cm 29.7cm; margin: 1.8cm 2cm; }
       body { font-family: 'Calibri', Arial, sans-serif; color: #1e293b; line-height: 1.55; font-size: 11pt; }
@@ -1275,9 +1360,9 @@ export function exportCoverLetterDoc(
     </head>
     <body>
       <div style="border-bottom: 2pt solid ${primaryColor}; padding-bottom: 8pt; margin-bottom: 16pt;">
-        <h1 style="margin:0; font-size: 18pt; color: #0f172a; text-transform: uppercase;">${data.name}</h1>
-        <div style="font-size: 10.5pt; font-weight: bold; color: ${primaryColor}; margin-top: 2pt;">${data.title}</div>
-        <div style="font-size: 9pt; color: #475569; margin-top: 5pt;">${contactsLine}</div>
+        <h1 style="margin:0; font-size: 18pt; color: #0f172a; text-transform: uppercase;">${escapeHtml(data.name)}</h1>
+        <div style="font-size: 10.5pt; font-weight: bold; color: ${primaryColor}; margin-top: 2pt;">${escapeHtml(data.title)}</div>
+        <div style="font-size: 9pt; color: #475569; margin-top: 5pt;">${escapeHtml(contactsLine)}</div>
       </div>
       <div>${safeBody}</div>
     </body>

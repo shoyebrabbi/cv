@@ -66,6 +66,8 @@ import {
   WebsiteSectionKey,
 } from '../types/cv';
 import { exportVCard } from '../utils/exporters';
+import { getExperienceDateLabel } from '../utils/experienceDate';
+import { sanitizeHref, sanitizeRichTextHtml } from '../utils/sanitizeHtml';
 import { PWAInstallButton, OfflineIndicator } from './PWAControls';
 
 const WebsiteEditorDrawer = lazy(() =>
@@ -909,6 +911,7 @@ export function WebPortfolioView({
   const [inquirySubmittedState, setInquirySubmittedState] = useState<{
     savedToCloud: boolean;
     sentAt: string;
+    mailtoUrl: string;
   } | null>(null);
 
   const portfolioConfig: PortfolioSettings = settings.portfolio || {
@@ -1112,6 +1115,15 @@ export function WebPortfolioView({
       ...(siteData.customSections && siteData.customSections.length > 0 ? ['highlights'] : []),
       'contact',
     ];
+    const revealIds = [
+      'metrics',
+      'skills',
+      'experience',
+      'projects',
+      'education',
+      ...(siteData.customSections && siteData.customSections.length > 0 ? ['highlights'] : []),
+      'contact',
+    ];
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -1122,12 +1134,30 @@ export function WebPortfolioView({
       },
       { rootMargin: '-32% 0px -52% 0px', threshold: 0.05 }
     );
+    const revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 }
+    );
     ids.forEach((id) => {
       const el = document.getElementById(id);
       if (el) observer.observe(el);
     });
-    return () => observer.disconnect();
-  }, [siteData.customSections, activeStyle]);
+    revealIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) revealObserver.observe(el);
+    });
+    return () => {
+      observer.disconnect();
+      revealObserver.disconnect();
+    };
+  }, [siteData.customSections, hiddenSectionsSet, activeStyle]);
 
   useEffect(() => {
     if (focusPaused || siteSpecializations.length === 0) return;
@@ -1536,16 +1566,25 @@ export function WebPortfolioView({
     setIsSubmittingInquiry(true);
     try {
       if (onSubmitInquiry) {
+        const submittedName = senderName.trim();
+        const submittedEmail = senderEmail.trim();
+        const submittedMessage = senderMessage.trim();
+        const submittedSubject = inquirySubject;
         const res = await onSubmitInquiry({
-          senderName: senderName.trim(),
-          senderEmail: senderEmail.trim(),
-          subject: inquirySubject,
-          message: senderMessage.trim(),
+          senderName: submittedName,
+          senderEmail: submittedEmail,
+          subject: submittedSubject,
+          message: submittedMessage,
           targetRole: activeRoleLabel || activeProfileObj?.name || 'Master Portfolio',
         });
+        const mailSubject = encodeURIComponent(`${submittedSubject} — from ${submittedName}`);
+        const mailBody = encodeURIComponent(
+          `Name: ${submittedName}\nEmail / Company: ${submittedEmail}\n\n${submittedMessage}`
+        );
         setInquirySubmittedState({
           savedToCloud: Boolean(res && res.savedToCloud),
           sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          mailtoUrl: `mailto:${email}?subject=${mailSubject}&body=${mailBody}`,
         });
         setSenderName('');
         setSenderEmail('');
@@ -2140,7 +2179,7 @@ export function WebPortfolioView({
         {/* HERO SECTION */}
         <section
           id="about"
-          className="relative py-8 sm:py-14 lg:py-16 px-4 sm:px-6 overflow-hidden"
+          className="relative py-10 sm:py-16 lg:py-20 px-4 sm:px-6 overflow-hidden"
           style={
             isBlueprint
               ? {
@@ -2156,7 +2195,7 @@ export function WebPortfolioView({
                 }
           }
         >
-          <div className="max-w-6xl mx-auto relative z-10 space-y-6">
+          <div className="max-w-6xl mx-auto relative z-10 space-y-7 sm:space-y-8">
             {/* Sub-header Portfolio Toolbar: Metadata + Design Layout Switcher */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
               <div className="flex flex-wrap items-center gap-2 text-xs sm:text-[13px] text-slate-600 dark:text-slate-400 font-medium">
@@ -2308,19 +2347,25 @@ export function WebPortfolioView({
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
                   <div className="lg:col-span-8 space-y-5">
                     {portfolioConfig.availabilityActive && (
-                      <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/[0.08] dark:text-emerald-400">
                         <CheckCircle className="w-4 h-4 shrink-0" />
-                        <span>{portfolioConfig.availabilityText}</span>
+                        <span className="leading-5">{portfolioConfig.availabilityText}</span>
                       </div>
                     )}
 
+                    <div className="flex items-center gap-2.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                      <span className={`h-1.5 w-1.5 rounded-full ${accent.dot}`} />
+                      <span>Professional Portfolio</span>
+                      <span className="h-px w-8 bg-slate-300 dark:bg-slate-700" />
+                    </div>
+
                     <h1
-                      className={`text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white tracking-tight leading-[1.08] text-balance ${displayHeadingFont}`}
+                      className={`text-4xl sm:text-6xl lg:text-[4rem] font-bold text-slate-900 dark:text-white tracking-[-0.045em] leading-[1.02] text-balance ${displayHeadingFont}`}
                     >
                       {siteData.name}
                     </h1>
 
-                    <p className={`text-sm sm:text-base font-semibold tracking-wide ${accent.eyebrow}`}>
+                    <p className={`border-l-2 border-current pl-3 text-sm sm:text-base font-semibold tracking-wide ${accent.eyebrow}`}>
                       {siteData.title}
                     </p>
 
@@ -2356,7 +2401,7 @@ export function WebPortfolioView({
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
                         <a
-                          href={github}
+                          href={sanitizeHref(github) || undefined}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -2365,7 +2410,7 @@ export function WebPortfolioView({
                         </a>
                         <span aria-hidden="true" className="text-stone-300 dark:text-stone-700">·</span>
                         <a
-                          href={linkedin}
+                          href={sanitizeHref(linkedin) || undefined}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -2376,7 +2421,7 @@ export function WebPortfolioView({
                           <>
                             <span aria-hidden="true" className="text-stone-300 dark:text-stone-700">·</span>
                             <a
-                              href={website}
+                              href={sanitizeHref(website) || undefined}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -2408,7 +2453,7 @@ export function WebPortfolioView({
                   {/* Editorial Dossier Right Column */}
                   <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-stone-200 dark:border-stone-800 pt-6 lg:pt-0 lg:pl-8 space-y-5">
                     <div className="flex items-center gap-4">
-                      <div className="w-24 h-28 rounded-xl overflow-hidden border border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-900 shrink-0 p-1">
+                      <div className="w-24 h-28 rounded-2xl overflow-hidden border border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-900 shrink-0 p-1 shadow-lg shadow-slate-900/10 ring-4 ring-white/70 dark:ring-stone-800/70">
                         {portraitFailed || !sitePhotoSrc ? (
                           <div className="w-full h-full rounded-lg flex items-center justify-center text-lg font-bold text-slate-500">
                             {getCompanyInitials(siteData.name)}
@@ -2548,19 +2593,25 @@ export function WebPortfolioView({
                   {/* Left Narrative & Interactive Specialization Focus */}
                   <div className="lg:col-span-7 flex flex-col justify-center space-y-4">
                     {portfolioConfig.availabilityActive && (
-                      <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/[0.08] dark:text-emerald-400">
                         <CheckCircle className="w-4 h-4 shrink-0" />
-                        <span>{portfolioConfig.availabilityText}</span>
+                        <span className="leading-5">{portfolioConfig.availabilityText}</span>
                       </div>
                     )}
 
+                    <div className="flex items-center gap-2.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                      <span className={`h-1.5 w-1.5 rounded-full ${accent.dot}`} />
+                      <span>Professional Portfolio</span>
+                      <span className="h-px w-8 bg-slate-300 dark:bg-slate-700" />
+                    </div>
+
                     <h1
-                      className={`text-3xl sm:text-5xl lg:text-[3.25rem] font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.08] text-balance ${displayHeadingFont}`}
+                      className={`text-3xl sm:text-5xl lg:text-[3.75rem] font-extrabold text-slate-900 dark:text-white tracking-[-0.045em] leading-[1.02] text-balance ${displayHeadingFont}`}
                     >
                       {siteData.name}
                     </h1>
 
-                    <p className={`text-sm sm:text-base font-bold ${accent.eyebrow} tracking-wide`}>
+                    <p className={`border-l-2 border-current pl-3 text-sm sm:text-base font-bold ${accent.eyebrow} tracking-wide`}>
                       {siteData.title}
                     </p>
 
@@ -2597,7 +2648,7 @@ export function WebPortfolioView({
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
                         <a
-                          href={github}
+                          href={sanitizeHref(github) || undefined}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -2606,7 +2657,7 @@ export function WebPortfolioView({
                         </a>
                         <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
                         <a
-                          href={linkedin}
+                          href={sanitizeHref(linkedin) || undefined}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -2617,7 +2668,7 @@ export function WebPortfolioView({
                           <>
                             <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
                             <a
-                              href={website}
+                              href={sanitizeHref(website) || undefined}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -2649,10 +2700,15 @@ export function WebPortfolioView({
 
                   {/* Right Signature Bento / Blueprint Profile Card */}
                   <div
-                    className={`lg:col-span-5 ${cardSurfaceClass} p-5 flex flex-col justify-between gap-4 shadow-sm`}
+                    className={`lg:col-span-5 ${cardSurfaceClass} relative overflow-hidden p-5 flex flex-col justify-between gap-4 shadow-lg shadow-slate-900/[0.04] dark:shadow-black/20`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 h-28 sm:w-28 sm:h-32 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 shrink-0">
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -inset-x-8 -top-10 h-40 opacity-80"
+                      style={{ background: accent.heroGlow }}
+                    />
+                    <div className="relative z-10 flex items-center gap-4">
+                      <div className="w-24 h-28 sm:w-28 sm:h-32 rounded-2xl overflow-hidden border border-white dark:border-slate-700 bg-slate-100 dark:bg-slate-950 shrink-0 shadow-lg shadow-slate-900/10 ring-4 ring-white/70 dark:ring-slate-800/70">
                         {portraitFailed || !sitePhotoSrc ? (
                           <div className="w-full h-full flex items-center justify-center text-xl font-bold text-slate-500">
                             {getCompanyInitials(siteData.name)}
@@ -2714,7 +2770,7 @@ export function WebPortfolioView({
                     </div>
 
                     {profiles.length > 0 && onSelectPublicProfile && (
-                      <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+                      <div className="relative z-10 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                             <Compass className={`w-3.5 h-3.5 ${accent.eyebrow}`} />
@@ -2745,7 +2801,7 @@ export function WebPortfolioView({
                       </div>
                     )}
 
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="relative z-10 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
                       <a
                         href="#contact"
                         className={`font-semibold ${accent.eyebrow} hover:underline inline-flex items-center gap-1 whitespace-nowrap`}
@@ -2799,9 +2855,9 @@ export function WebPortfolioView({
                             setFocusPaused(true);
                           }
                         }}
-                        className={`cursor-pointer text-left p-4 rounded-2xl border transition-all duration-200 flex items-start gap-3.5 ${
+                        className={`cursor-pointer text-left p-4 rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:focus-visible:ring-cyan-400/60 flex items-start gap-3.5 ${
                           isSel
-                            ? `bg-white dark:bg-slate-900 border-blue-500/60 dark:border-cyan-400/50 shadow-sm`
+                            ? `bg-white dark:bg-slate-900 border-blue-500/60 dark:border-cyan-400/50 shadow-md shadow-blue-500/[0.06]`
                             : 'bg-white/70 dark:bg-slate-900/50 border-slate-200/90 dark:border-slate-800/80 hover:bg-white dark:hover:bg-slate-900'
                         }`}
                       >
@@ -2813,8 +2869,8 @@ export function WebPortfolioView({
                           <Icon className="w-5 h-5" />
                         </div>
                         <div className="min-w-0 flex-1 space-y-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="min-w-0 flex-1 text-xs sm:text-sm font-bold leading-snug text-slate-900 dark:text-white">
                               {spec.label}
                             </span>
                             <span className={`text-[11px] font-['JetBrains_Mono',monospace] font-bold shrink-0 ${accent.eyebrow}`}>
@@ -2850,7 +2906,7 @@ export function WebPortfolioView({
         {hiddenSectionsSet.has('metrics') ? (
           renderHiddenPlaceholder('metrics', 'Impact Metrics Strip')
         ) : (
-          <section className={`${sectionBandBg} py-6 sm:py-7 px-4`}>
+          <section id="metrics" className={`${sectionBandBg} portfolio-scroll-reveal py-8 sm:py-9 px-4`}>
             {isStudioUnlocked && websiteEditMode && onUpdatePortfolioSettings && (
               <div className="max-w-6xl mx-auto mb-3 flex justify-end">
                 {renderSectionEditButton('metrics', isMetricsCustomized, 'Edit Metrics & Pillars')}
@@ -2858,28 +2914,26 @@ export function WebPortfolioView({
             )}
             <div
               className={`max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 text-center font-['JetBrains_Mono',monospace] tabular-nums ${
-                isBlueprint ? 'gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800' : ''
+                isBlueprint
+                  ? 'gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800'
+                  : isEditorial
+                  ? ''
+                  : 'gap-3'
               }`}
             >
-              {safeMetrics.map((m, idx) => (
+              {safeMetrics.map((m) => (
                 <div
                   key={m.id}
                   className={
                     isBlueprint
                       ? 'p-4 bg-white dark:bg-[#0B1222]'
-                      : 'p-3.5 border-slate-200 dark:border-slate-800 [&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-r-0 sm:border-r sm:last:border-r-0 [&:nth-child(n+3)]:border-t sm:[&:nth-child(n+3)]:border-t-0'
+                      : isEditorial
+                      ? 'p-3.5 border-slate-200 dark:border-slate-800 [&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-r-0 sm:border-r sm:last:border-r-0 [&:nth-child(n+3)]:border-t sm:[&:nth-child(n+3)]:border-t-0'
+                      : 'rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 p-4 sm:p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md'
                   }
                 >
                   <div
-                    className={`text-2xl sm:text-3xl font-extrabold ${
-                      idx === 0
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : idx === 1
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : idx === 2
-                        ? 'text-cyan-600 dark:text-cyan-400'
-                        : 'text-indigo-600 dark:text-amber-400'
-                    }`}
+                    className={`text-2xl sm:text-3xl font-extrabold ${accent.eyebrow}`}
                   >
                     {m.value}
                   </div>
@@ -2896,7 +2950,7 @@ export function WebPortfolioView({
         {hiddenSectionsSet.has('skills') ? (
           renderHiddenPlaceholder('skills', 'Technical Skills Matrix')
         ) : (
-        <section id="skills" className="py-14 sm:py-16 px-4 sm:px-6 max-w-6xl mx-auto">
+        <section id="skills" className="portfolio-scroll-reveal py-14 sm:py-16 px-4 sm:px-6 max-w-6xl mx-auto">
           {isEditorial ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
               <div className="lg:col-span-4 space-y-3 lg:sticky lg:top-24">
@@ -3088,7 +3142,7 @@ export function WebPortfolioView({
         {hiddenSectionsSet.has('experience') ? (
           renderHiddenPlaceholder('experience', 'Professional Work Experience')
         ) : (
-        <section id="experience" className={`${sectionBandBg} py-14 sm:py-16 px-4 sm:px-6`}>
+        <section id="experience" className={`${sectionBandBg} portfolio-scroll-reveal py-14 sm:py-16 px-4 sm:px-6`}>
           <div className={isEditorial ? 'max-w-6xl mx-auto' : 'max-w-5xl mx-auto'}>
             {isEditorial ? (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
@@ -3118,7 +3172,8 @@ export function WebPortfolioView({
 
                 <div className="lg:col-span-8 divide-y divide-stone-200 dark:divide-stone-800 border-t border-b border-stone-200 dark:border-stone-800">
                   {siteData.experiences.map((exp) => {
-                    const duration = calculateDuration(exp.date);
+                    const dateLabel = getExperienceDateLabel(exp);
+                    const duration = calculateDuration(dateLabel);
                     const isCollapsed = Boolean(collapsedExpIds[exp.id]);
                     const tools = extractExperienceTools(exp);
                     return (
@@ -3134,7 +3189,7 @@ export function WebPortfolioView({
                           </div>
                           <div className="flex items-center gap-2 text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-500 dark:text-slate-400">
                             <span>
-                              {exp.date}
+                              {dateLabel}
                               {duration ? ` (${duration})` : ''} · {exp.location}
                             </span>
                             <button
@@ -3150,7 +3205,7 @@ export function WebPortfolioView({
                         {!isCollapsed && (
                           <ul className="space-y-2.5 text-sm text-slate-700 dark:text-slate-300 leading-relaxed list-outside ml-4 list-disc">
                             {exp.bullets.map((b) => (
-                              <li key={b.id} dangerouslySetInnerHTML={{ __html: b.text }} />
+                              <li key={b.id} dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(b.text) }} />
                             ))}
                           </ul>
                         )}
@@ -3207,7 +3262,8 @@ export function WebPortfolioView({
 
                 <div className="space-y-5 relative before:hidden md:before:block before:absolute before:left-5 before:top-4 before:bottom-4 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
                   {siteData.experiences.map((exp) => {
-                    const duration = calculateDuration(exp.date);
+                    const dateLabel = getExperienceDateLabel(exp);
+                    const duration = calculateDuration(dateLabel);
                     const isCollapsed = Boolean(collapsedExpIds[exp.id]);
                     const tools = extractExperienceTools(exp);
                     return (
@@ -3236,7 +3292,7 @@ export function WebPortfolioView({
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2 text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-500 dark:text-slate-400">
-                            <span>{exp.date}</span>
+                            <span>{dateLabel}</span>
                             {duration && (
                               <>
                                 <span aria-hidden="true">·</span>
@@ -3277,7 +3333,7 @@ export function WebPortfolioView({
                         ) : (
                           <ul className="mt-4 space-y-2.5 text-sm text-slate-700 dark:text-slate-300 leading-relaxed list-outside ml-4 list-disc">
                             {exp.bullets.map((b) => (
-                              <li key={b.id} dangerouslySetInnerHTML={{ __html: b.text }} />
+                              <li key={b.id} dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(b.text) }} />
                             ))}
                           </ul>
                         )}
@@ -3314,7 +3370,7 @@ export function WebPortfolioView({
         {hiddenSectionsSet.has('projects') ? (
           renderHiddenPlaceholder('projects', 'Key Projects & Case Studies')
         ) : (
-        <section id="projects" className="py-14 sm:py-16 px-4 sm:px-6 max-w-6xl mx-auto">
+        <section id="projects" className="portfolio-scroll-reveal py-14 sm:py-16 px-4 sm:px-6 max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 sm:mb-10">
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -3439,7 +3495,7 @@ export function WebPortfolioView({
                         </h3>
                         {proj.url && (
                           <a
-                            href={proj.url}
+                            href={sanitizeHref(proj.url) || undefined}
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -3473,7 +3529,7 @@ export function WebPortfolioView({
                     </span>
                     {proj.url && (
                       <a
-                        href={proj.url}
+                        href={sanitizeHref(proj.url) || undefined}
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -3494,7 +3550,7 @@ export function WebPortfolioView({
         {hiddenSectionsSet.has('education') ? (
           renderHiddenPlaceholder('education', 'Education & Certifications')
         ) : (
-        <section id="education" className={`${sectionBandBg} py-14 sm:py-16 px-4 sm:px-6`}>
+        <section id="education" className={`${sectionBandBg} portfolio-scroll-reveal py-14 sm:py-16 px-4 sm:px-6`}>
           <div className="max-w-6xl mx-auto">
             <div className="mb-8 sm:mb-10">
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -3577,7 +3633,7 @@ export function WebPortfolioView({
           hiddenSectionsSet.has('highlights') ? (
             renderHiddenPlaceholder('highlights', 'Additional Highlights & Credentials')
           ) : (
-          <section id="highlights" className="py-14 sm:py-16 px-4 sm:px-6 max-w-6xl mx-auto">
+          <section id="highlights" className="portfolio-scroll-reveal py-14 sm:py-16 px-4 sm:px-6 max-w-6xl mx-auto">
             <div className="mb-8 sm:mb-10">
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 <div className={`text-xs font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold`}>
@@ -3602,7 +3658,7 @@ export function WebPortfolioView({
                   {sec.type === 'bullets' || sec.type === 'references' ? (
                     <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed list-outside ml-4 list-disc">
                       {sec.content.map((item, idx) => (
-                        <li key={idx} dangerouslySetInnerHTML={{ __html: item }} />
+                        <li key={idx} dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(item) }} />
                       ))}
                     </ul>
                   ) : (
@@ -3621,7 +3677,7 @@ export function WebPortfolioView({
         {hiddenSectionsSet.has('contact') ? (
           renderHiddenPlaceholder('contact', 'Direct Contact Composer')
         ) : (
-        <section id="contact" className="py-14 sm:py-20 px-4 sm:px-6 max-w-5xl mx-auto">
+        <section id="contact" className="portfolio-scroll-reveal py-14 sm:py-20 px-4 sm:px-6 max-w-5xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-5 space-y-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -3639,7 +3695,7 @@ export function WebPortfolioView({
 
               <div className="space-y-2.5 pt-2 text-xs sm:text-sm">
                 <div className={`flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ${accent.hoverBorder} transition-colors`}>
-                  <a href={`mailto:${email}`} className="flex items-center gap-3 min-w-0 flex-1">
+                  <a href={sanitizeHref(`mailto:${email}`) || undefined} className="flex items-center gap-3 min-w-0 flex-1">
                     <Mail className="w-4 h-4 text-blue-600 dark:text-cyan-400 shrink-0" />
                     <div className="min-w-0">
                       <div className="text-[11px] text-slate-500 dark:text-slate-400">Direct Email</div>
@@ -3657,7 +3713,7 @@ export function WebPortfolioView({
                 </div>
 
                 <div className={`flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ${accent.hoverBorder} transition-colors`}>
-                  <a href={`tel:${phone.replace(/\s+/g, '')}`} className="flex items-center gap-3 min-w-0 flex-1">
+                  <a href={sanitizeHref(`tel:${phone.replace(/\s+/g, '')}`) || undefined} className="flex items-center gap-3 min-w-0 flex-1">
                     <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <div className="min-w-0">
                       <div className="text-[11px] text-slate-500 dark:text-slate-400">Phone / WhatsApp</div>
@@ -3703,17 +3759,43 @@ export function WebPortfolioView({
               </div>
 
               {inquirySubmittedState ? (
-                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/35 border border-emerald-200 dark:border-emerald-500/40 p-4 space-y-3">
+                <div
+                  className={`rounded-xl border p-4 space-y-3 ${
+                    inquirySubmittedState.savedToCloud
+                      ? 'bg-emerald-50 dark:bg-emerald-950/35 border-emerald-200 dark:border-emerald-500/40'
+                      : 'bg-amber-50 dark:bg-amber-950/35 border-amber-200 dark:border-amber-500/40'
+                  }`}
+                >
                   <div className="flex items-start gap-2.5">
-                    <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <CheckCircle
+                      className={`w-5 h-5 shrink-0 mt-0.5 ${
+                        inquirySubmittedState.savedToCloud
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    />
                     <div className="space-y-1">
-                      <div className="font-bold text-emerald-900 dark:text-emerald-200 text-sm">
-                        Message Delivered to {siteData.name}&apos;s Inbox!
+                      <div
+                        className={`font-bold text-sm ${
+                          inquirySubmittedState.savedToCloud
+                            ? 'text-emerald-900 dark:text-emerald-200'
+                            : 'text-amber-900 dark:text-amber-200'
+                        }`}
+                      >
+                        {inquirySubmittedState.savedToCloud
+                          ? `Message Delivered to ${siteData.name}'s Inbox!`
+                          : 'Message saved only in this browser'}
                       </div>
-                      <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80 leading-relaxed">
+                      <p
+                        className={`text-xs leading-relaxed ${
+                          inquirySubmittedState.savedToCloud
+                            ? 'text-emerald-800/80 dark:text-emerald-300/80'
+                            : 'text-amber-800/90 dark:text-amber-300/90'
+                        }`}
+                      >
                         {inquirySubmittedState.savedToCloud
                           ? `Synced securely at ${inquirySubmittedState.sentAt}. You can also copy the email address or send a backup via your email app.`
-                          : `Saved locally at ${inquirySubmittedState.sentAt}. For instant external email delivery, click "Open in Email App" below.`}
+                          : `It was not delivered to the owner. A local copy was saved at ${inquirySubmittedState.sentAt}; use "Open Email App" below to send it.`}
                       </p>
                     </div>
                   </div>
@@ -3726,7 +3808,7 @@ export function WebPortfolioView({
                       Send Another Message
                     </button>
                     <a
-                      href={`mailto:${email}`}
+                      href={sanitizeHref(inquirySubmittedState.mailtoUrl) || undefined}
                       className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5"
                     >
                       <Mail className="w-3.5 h-3.5" /> Open Email App
@@ -4255,7 +4337,7 @@ export function WebPortfolioView({
                 </button>
                 {selectedProject.url && (
                   <a
-                    href={selectedProject.url}
+                    href={sanitizeHref(selectedProject.url) || undefined}
                     target="_blank"
                     rel="noreferrer"
                     className={`min-h-[44px] px-4 py-2 rounded-xl text-white text-xs font-bold inline-flex items-center gap-1.5 ${accent.btnPrimary}`}

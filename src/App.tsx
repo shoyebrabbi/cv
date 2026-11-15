@@ -57,6 +57,7 @@ import {
   exportJSONBackup,
   copyAllCVText,
 } from './utils/exporters';
+import { escapeHtml, sanitizeHref } from './utils/sanitizeHtml';
 import { Navbar } from './components/Navbar';
 import { CVDocument } from './components/CVDocument';
 import { WebPortfolioView } from './components/WebPortfolioView';
@@ -1325,8 +1326,8 @@ export default function App() {
     showToast(
       res.savedToCloud
         ? 'আপনার মেসেজ সরাসরি পোর্টফোলিও ইনবক্সে পাঠানো হয়েছে!'
-        : 'আপনার মেসেজ ইনবক্সে সেভ হয়েছে!',
-      'success'
+        : 'মেসেজটি cloud-এ পাঠানো যায়নি; শুধু এই browser-এ রাখা হয়েছে। মালিককে পাঠাতে Email App ব্যবহার করুন।',
+      res.savedToCloud ? 'success' : 'error'
     );
     return { savedToCloud: res.savedToCloud };
   }
@@ -1999,23 +2000,33 @@ export default function App() {
   }
 
   function handleApplyHyperlink(text: string, url: string) {
+    const safeUrl = sanitizeHref(url);
+    if (!safeUrl) {
+      showToast('এই URL নিরাপদ নয়। http(s), mailto বা tel লিংক ব্যবহার করুন।', 'error');
+      return;
+    }
+
     if (linkTarget.type === 'contact' && linkTarget.id) {
       applyCVUpdate((prev) => ({
         ...prev,
-        contacts: prev.contacts.map((c) => (c.id === linkTarget.id ? { ...c, label: text, url } : c)),
+        contacts: prev.contacts.map((c) =>
+          c.id === linkTarget.id ? { ...c, label: text, url: safeUrl } : c
+        ),
       }));
       showToast('কন্টাক্ট লিংক আপডেট হয়েছে!', 'success');
     } else if (linkTarget.type === 'project' && linkTarget.id) {
       applyCVUpdate((prev) => ({
         ...prev,
-        projects: prev.projects.map((p) => (p.id === linkTarget.id ? { ...p, title: text, url } : p)),
+        projects: prev.projects.map((p) =>
+          p.id === linkTarget.id ? { ...p, title: text, url: safeUrl } : p
+        ),
       }));
       showToast('প্রজেক্ট লিংক আপডেট হয়েছে!', 'success');
     } else {
       document.execCommand(
         'insertHTML',
         false,
-        `<a href="${url}" target="_blank" class="theme-text font-semibold underline">${text || url}</a>`
+        `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="theme-text font-semibold underline">${escapeHtml(text || safeUrl)}</a>`
       );
       showToast('নতুন হাইপারলিঙ্ক যুক্ত হয়েছে!', 'success');
     }

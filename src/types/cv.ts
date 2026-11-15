@@ -3,6 +3,7 @@ export interface ContactItem {
   label: string;
   url: string;
   type: 'location' | 'phone' | 'email' | 'website' | 'linkedin' | 'github' | 'custom';
+  icon?: string;
 }
 
 export interface SkillRow {

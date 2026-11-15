@@ -677,7 +677,8 @@ export async function submitPublicInquiry(input: {
   try {
     await setDoc(doc(db, 'public_inquiries', inquiryId), payload);
     return { savedToCloud: true, item };
-  } catch {
+  } catch (error) {
+    console.error('Public inquiry could not be saved to Firestore:', error);
     // Gracefully fall back to local mirror when external project rules have not yet enabled public_inquiries
     return { savedToCloud: false, item };
   }
