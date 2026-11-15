@@ -1,11 +1,21 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import type { User } from 'firebase/auth';
 import confetti from 'canvas-confetti';
-import { CVData, StudioSettings, CVTemplateKey, PhotoPosition, CVProfile, CustomTemplatePreset, JobApplication } from './types/cv';
+import {
+  CVData,
+  StudioSettings,
+  CVTemplateKey,
+  PhotoPosition,
+  CVProfile,
+  CustomTemplatePreset,
+  JobApplication,
+  PortfolioSettings,
+  PortfolioAnalyticsSummary,
+  PublicInquiry,
+} from './types/cv';
 import { INITIAL_CV_DATA, INITIAL_SETTINGS, INITIAL_PROFILES } from './data/initialCV';
 import {
   FIREBASE_PROJECT_ID,
-  OWNER_ADMIN_EMAIL,
   isOwnerEmail,
   isAuthorizedOwner,
   subscribeAuth,
@@ -28,6 +38,10 @@ import {
   upsertCustomTemplateCloud,
   deleteCustomTemplateCloud,
   upsertJobApplicationCloud,
+  submitPublicInquiry,
+  subscribePublicInquiries,
+  markPublicInquiryReadCloud,
+  deletePublicInquiryCloud,
 } from './firebase';
 import {
   exportDirectPDF,
@@ -42,17 +56,34 @@ import {
   copyAllCVText,
 } from './utils/exporters';
 import { Navbar } from './components/Navbar';
-import { StyleCombinerDrawer } from './components/StyleCombinerDrawer';
-import { UnifiedToolsDrawer } from './components/UnifiedToolsDrawer';
 import { CVDocument } from './components/CVDocument';
-import { SignatureModal } from './components/SignatureModal';
 import { WebPortfolioView } from './components/WebPortfolioView';
-import { OwnerLoginModal } from './components/OwnerLoginModal';
-import { ExportHubModal } from './components/ExportHubModal';
-import { ProfileManagerModal } from './components/ProfileManagerModal';
-import { TemplateGalleryModal } from './components/TemplateGalleryModal';
-import { PrintPreviewModal } from './components/PrintPreviewModal';
 import { StudioRightRail, ShortcutsModal } from './components/StudioRightRail';
+
+const StyleCombinerDrawer = lazy(() =>
+  import('./components/StyleCombinerDrawer').then((m) => ({ default: m.StyleCombinerDrawer }))
+);
+const UnifiedToolsDrawer = lazy(() =>
+  import('./components/UnifiedToolsDrawer').then((m) => ({ default: m.UnifiedToolsDrawer }))
+);
+const SignatureModal = lazy(() =>
+  import('./components/SignatureModal').then((m) => ({ default: m.SignatureModal }))
+);
+const OwnerLoginModal = lazy(() =>
+  import('./components/OwnerLoginModal').then((m) => ({ default: m.OwnerLoginModal }))
+);
+const ExportHubModal = lazy(() =>
+  import('./components/ExportHubModal').then((m) => ({ default: m.ExportHubModal }))
+);
+const ProfileManagerModal = lazy(() =>
+  import('./components/ProfileManagerModal').then((m) => ({ default: m.ProfileManagerModal }))
+);
+const TemplateGalleryModal = lazy(() =>
+  import('./components/TemplateGalleryModal').then((m) => ({ default: m.TemplateGalleryModal }))
+);
+const PrintPreviewModal = lazy(() =>
+  import('./components/PrintPreviewModal').then((m) => ({ default: m.PrintPreviewModal }))
+);
 import { MobileCVEditor } from './components/MobileCVEditor';
 import {
   HyperlinkModal,
@@ -121,6 +152,7 @@ function mergeStudioSettings(raw?: Partial<StudioSettings> | null): StudioSettin
         Array.isArray(raw.portfolio?.metrics) && raw.portfolio.metrics.length > 0
           ? raw.portfolio.metrics
           : INITIAL_SETTINGS.portfolio!.metrics,
+      websiteOverrides: raw.portfolio?.websiteOverrides,
     },
     hiddenSections: Array.isArray(raw.hiddenSections) ? raw.hiddenSections : INITIAL_SETTINGS.hiddenSections,
     sidebarSections: Array.isArray(raw.sidebarSections) ? raw.sidebarSections : INITIAL_SETTINGS.sidebarSections,
@@ -263,6 +295,49 @@ export default function App() {
   const hasPasswordProvider = Boolean(
     authUser?.providerData?.some((p) => p.providerId === 'password')
   );
+  const [websiteDraft, setWebsiteDraft] = useState<PortfolioSettings | null>(null);
+
+  useEffect(() => {
+    if (!ownerUid) {
+      setWebsiteDraft(null);
+      return;
+    }
+    try {
+      const savedDraft = localStorage.getItem(`shoyeb_website_draft_v1_${ownerUid}`);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft) as PortfolioSettings;
+        if (parsed && typeof parsed === 'object') {
+          setWebsiteDraft(parsed);
+        }
+      }
+    } catch {
+      // ignore invalid draft JSON
+    }
+  }, [ownerUid]);
+
+  useEffect(() => {
+    if (!ownerUid) return;
+    const key = `shoyeb_website_draft_v1_${ownerUid}`;
+    try {
+      if (websiteDraft) {
+        localStorage.setItem(key, JSON.stringify(websiteDraft));
+      } else {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      // ignore storage quota
+    }
+  }, [websiteDraft, ownerUid]);
+
+  const effectiveWebsiteSettings: StudioSettings = useMemo(() => {
+    if (isStudioUnlocked && websiteDraft) {
+      return {
+        ...settings,
+        portfolio: websiteDraft,
+      };
+    }
+    return settings;
+  }, [isStudioUnlocked, websiteDraft, settings]);
 
   const suppressCloudSyncRef = useRef(false);
   const hasCloudHydratedRef = useRef(false);
@@ -276,7 +351,14 @@ export default function App() {
     }
   }, []);
 
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      return sp.get('studio') === '1' || sp.get('admin') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [exportHubOpen, setExportHubOpen] = useState(false);
   const [exportHubTab, setExportHubTab] = useState<'all' | 'docs' | 'data' | 'security'>('all');
   const [profileManagerOpen, setProfileManagerOpen] = useState(false);
@@ -328,6 +410,83 @@ export default function App() {
   const [showRulerGuides, setShowRulerGuides] = useState(true);
 
   const showPublicWebsite = !isStudioUnlocked || Boolean(settings.portfolioMode);
+
+  // Portfolio Analytics Summary (Views, Role Lens Clicks, PDF Downloads)
+  const [analyticsSummary, setAnalyticsSummary] = useState<PortfolioAnalyticsSummary>(() => {
+    try {
+      const saved = localStorage.getItem('shoyeb_portfolio_analytics_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<PortfolioAnalyticsSummary>;
+        return {
+          totalViews: Number(parsed.totalViews || 0),
+          pdfDownloads: Number(parsed.pdfDownloads || 0),
+          roleClicks:
+            parsed.roleClicks && typeof parsed.roleClicks === 'object' ? parsed.roleClicks : {},
+          lastVisitedAt: typeof parsed.lastVisitedAt === 'string' ? parsed.lastVisitedAt : '',
+        };
+      }
+    } catch {
+      // ignore storage read errors
+    }
+    return { totalViews: 0, pdfDownloads: 0, roleClicks: {}, lastVisitedAt: '' };
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('shoyeb_portfolio_analytics_v1', JSON.stringify(analyticsSummary));
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [analyticsSummary]);
+
+  // Public Recruiter & Visitor Direct Inquiries (synced with Firestore when rules permit + local mirror)
+  const [inquiries, setInquiries] = useState<PublicInquiry[]>(() => {
+    try {
+      const saved = localStorage.getItem('shoyeb_public_inquiries_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed as PublicInquiry[];
+      }
+    } catch {
+      // ignore storage read errors
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('shoyeb_public_inquiries_v1', JSON.stringify(inquiries));
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [inquiries]);
+
+  // Track once-per-session Public Website visit & active role lens
+  useEffect(() => {
+    if (!showPublicWebsite) return;
+    try {
+      if (sessionStorage.getItem('shoyeb_session_viewed_v1') === '1') return;
+      sessionStorage.setItem('shoyeb_session_viewed_v1', '1');
+    } catch {
+      // ignore sessionStorage restrictions
+    }
+    const roleKey = activeRoleLabel || 'Master CV';
+    setAnalyticsSummary((prev) => ({
+      ...prev,
+      totalViews: (prev.totalViews || 0) + 1,
+      roleClicks: {
+        ...(prev.roleClicks || {}),
+        [roleKey]: ((prev.roleClicks || {})[roleKey] || 0) + 1,
+      },
+      lastVisitedAt: new Date().toISOString(),
+    }));
+  }, [showPublicWebsite, activeRoleLabel]);
+
+  // Keep Studio document title crisp when returning from Live Website
+  useEffect(() => {
+    if (showPublicWebsite) return;
+    document.title = `${cvData.name || 'Md Shoyeb Rabbi'} — Unified CV Master Studio`;
+  }, [showPublicWebsite, cvData.name]);
 
   // Keyboard shortcuts: Ctrl/Cmd+Z / Ctrl+Y Undo/Redo, Ctrl/Cmd+P Print Preview, Ctrl+\ Toggle Inspector, Ctrl+E Edit/Preview, ? Shortcuts HUD, Esc Exit Focus Mode
   useEffect(() => {
@@ -410,7 +569,7 @@ export default function App() {
         void signOutOwner();
         setAuthUser(null);
         setAuthError(
-          `Access denied: ${user.email} is not authorized. Only ${OWNER_ADMIN_EMAIL} can unlock the Studio.`
+          'Access denied: this account is not authorized to unlock the Studio.'
         );
         return;
       }
@@ -540,9 +699,27 @@ export default function App() {
       }
     });
 
+    const unsubInquiries = subscribePublicInquiries((cloudInqs) => {
+      setInquiries((prevLocal) => {
+        const mergedMap = new Map<string, PublicInquiry>();
+        prevLocal.forEach((item) => mergedMap.set(item.id, item));
+        cloudInqs.forEach((cloudItem) => {
+          const existing = mergedMap.get(cloudItem.id);
+          mergedMap.set(
+            cloudItem.id,
+            existing ? { ...existing, ...cloudItem, isRead: Boolean(cloudItem.isRead || existing.isRead) } : cloudItem
+          );
+        });
+        return Array.from(mergedMap.values()).sort((a, b) =>
+          b.createdAt.localeCompare(a.createdAt)
+        );
+      });
+    });
+
     return () => {
       active = false;
       unsubTpls();
+      unsubInquiries();
     };
   }, [ownerUid, showToast]);
 
@@ -587,7 +764,7 @@ export default function App() {
     const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code?: unknown }).code) : '';
     switch (code) {
       case 'auth/unauthorized-owner-email':
-        return `Security lock: only ${OWNER_ADMIN_EMAIL} is authorized to access this studio.`;
+        return 'Security lock: only the verified site owner account is authorized to access this studio.';
       case 'auth/invalid-credential':
       case 'auth/wrong-password':
       case 'auth/user-not-found':
@@ -636,7 +813,7 @@ export default function App() {
     try {
       await registerOwnerWithEmailPassword(email, password);
       setAuthSuccess(
-        `Verification link sent to ${OWNER_ADMIN_EMAIL}. Open your Gmail inbox (or Spam folder), click the link, then press "I've Verified My Email" below.`
+        'Verification link sent to your authorized email address. Open your inbox (or Spam folder), click the link, then press "I\'ve Verified My Email" below.'
       );
     } catch (err: unknown) {
       setAuthError(mapFirebaseAuthError(err, 'Unable to complete initial setup.'));
@@ -649,7 +826,7 @@ export default function App() {
     try {
       await sendOwnerPasswordReset(email);
       setAuthSuccess(
-        `Password reset email sent to ${OWNER_ADMIN_EMAIL}. Follow the link in your inbox to choose a new password.`
+        'Password reset email sent to your authorized email address. Follow the link in your inbox to choose a new password.'
       );
     } catch (err: unknown) {
       setAuthError(mapFirebaseAuthError(err, 'Failed to send password reset email.'));
@@ -661,7 +838,7 @@ export default function App() {
     setAuthSuccess('');
     try {
       await resendOwnerVerificationEmail();
-      setAuthSuccess(`A new verification link has been sent to ${OWNER_ADMIN_EMAIL}.`);
+      setAuthSuccess('A new verification link has been sent to your authorized email address.');
     } catch (err: unknown) {
       setAuthError(mapFirebaseAuthError(err, 'Unable to send verification link right now.'));
     }
@@ -692,7 +869,7 @@ export default function App() {
       const user = await signInOwnerWithGoogle();
       if (!isAuthorizedOwner(user)) {
         setAuthError(
-          `This account (${user.email || 'Unknown'}) is not authorized. Please sign in with ${OWNER_ADMIN_EMAIL}.`
+          'This account is not authorized. Please sign in with the verified site owner account.'
         );
       }
     } catch (err: unknown) {
@@ -766,6 +943,53 @@ export default function App() {
       setCloudSyncStatus('error');
       showToast('ক্লাউড সিঙ্কে সমস্যা হয়েছে — কনসোল চেক করুন।', 'error');
     }
+  }
+
+  async function handlePublishWebsiteDraft() {
+    if (!isAuthorizedOwner(authUser) || !ownerUid || !websiteDraft) return;
+    const nextSettings: StudioSettings = {
+      ...settingsRef.current,
+      portfolio: websiteDraft,
+    };
+    suppressCloudSyncRef.current = true;
+    setSettings(nextSettings);
+    setWebsiteDraft(null);
+    setProfiles((prev) =>
+      prev.map((p) =>
+        p.id === activeProfileIdRef.current
+          ? { ...p, settings: nextSettings, updatedAt: new Date().toISOString() }
+          : p
+      )
+    );
+    setCloudSyncStatus('syncing');
+    try {
+      await savePublicSiteState(ownerUid, {
+        activeProfileId: activeProfileIdRef.current,
+        activeData: cvDataRef.current,
+        activeSettings: nextSettings,
+      });
+      const currentIdx = profilesRef.current.findIndex((p) => p.id === activeProfileIdRef.current);
+      if (currentIdx >= 0) {
+        const updatedProfile: CVProfile = {
+          ...profilesRef.current[currentIdx],
+          data: cvDataRef.current,
+          settings: nextSettings,
+          updatedAt: new Date().toISOString(),
+        };
+        await upsertPublicProfile(ownerUid, updatedProfile, currentIdx);
+      }
+      setCloudSyncStatus('synced');
+      showToast('ওয়েবসাইটের পরিবর্তন লাইভ পাবলিশ হয়েছে (Master CV / PDF অপরিবর্তিত)!', 'success');
+    } catch (err) {
+      console.error('Website draft publish failed:', err);
+      setCloudSyncStatus('error');
+      showToast('লাইভ পাবলিশ করতে সমস্যা হয়েছে — পুনরায় চেষ্টা করুন।', 'error');
+    }
+  }
+
+  function handleDiscardWebsiteDraft() {
+    setWebsiteDraft(null);
+    showToast('ওয়েবসাইটের ড্রাফট বাতিল করে লাইভ ভার্সন ফিরিয়ে আনা হয়েছে।', 'info');
   }
 
   // Auto-Save to localStorage (only when Document CV Studio is unlocked so public visitors never overwrite owner data)
@@ -1051,7 +1275,44 @@ export default function App() {
     setActiveRoleLabel(target.id === 'prof_master' ? undefined : target.name);
     setHistoryPast([]);
     setHistoryFuture([]);
+    const roleKey = target.name || newProfileId;
+    setAnalyticsSummary((prev) => ({
+      ...prev,
+      roleClicks: {
+        ...(prev.roleClicks || {}),
+        [roleKey]: ((prev.roleClicks || {})[roleKey] || 0) + 1,
+      },
+    }));
     showToast(`পোর্টফোলিও লেন্স পরিবর্তন হয়েছে: ${target.name}`, 'info');
+  }
+
+  async function handleSubmitPublicInquiry(payload: {
+    senderName: string;
+    senderEmail: string;
+    subject: string;
+    message: string;
+    targetRole?: string;
+  }): Promise<{ savedToCloud: boolean }> {
+    const res = await submitPublicInquiry(payload);
+    setInquiries((prev) => [res.item, ...prev.filter((i) => i.id !== res.item.id)]);
+    showToast(
+      res.savedToCloud
+        ? 'আপনার মেসেজ সরাসরি পোর্টফোলিও ইনবক্সে পাঠানো হয়েছে!'
+        : 'আপনার মেসেজ ইনবক্সে সেভ হয়েছে!',
+      'success'
+    );
+    return { savedToCloud: res.savedToCloud };
+  }
+
+  function handleMarkInquiryRead(id: string, isRead: boolean) {
+    setInquiries((prev) => prev.map((item) => (item.id === id ? { ...item, isRead } : item)));
+    void markPublicInquiryReadCloud(id, isRead);
+  }
+
+  function handleDeleteInquiry(id: string) {
+    setInquiries((prev) => prev.filter((item) => item.id !== id));
+    void deletePublicInquiryCloud(id);
+    showToast('মেসেজটি ইনবক্স থেকে মুছে ফেলা হয়েছে।', 'info');
   }
 
   // Profile Switching & Custom Profile Manager handlers
@@ -1795,7 +2056,10 @@ export default function App() {
   }
 
   // Import Full JSON Workspace Backup
-  function handleImportJSON(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleImportJSON(
+    e: React.ChangeEvent<HTMLInputElement>,
+    preserveWebsiteEdits: boolean = true
+  ) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -1803,17 +2067,52 @@ export default function App() {
       try {
         const parsed = JSON.parse(event.target?.result as string);
         const nextData = parsed.data ? mergeCVData(parsed.data) : null;
-        const nextSettings = parsed.settings ? mergeStudioSettings(parsed.settings) : null;
+        const parsedSettings = parsed.settings ? mergeStudioSettings(parsed.settings) : null;
+
+        const currentPortfolio = settingsRef.current.portfolio;
+        const currentOverrides = currentPortfolio?.websiteOverrides;
+
+        const nextSettings: StudioSettings | null = parsedSettings
+          ? preserveWebsiteEdits
+            ? {
+                ...parsedSettings,
+                portfolio: {
+                  ...(parsedSettings.portfolio || INITIAL_SETTINGS.portfolio!),
+                  ...(currentPortfolio || {}),
+                  websiteOverrides:
+                    currentOverrides || parsedSettings.portfolio?.websiteOverrides,
+                },
+              }
+            : parsedSettings
+          : null;
 
         if (nextData) applyCVUpdate(nextData);
         if (nextSettings) setSettings(nextSettings);
 
         if (Array.isArray(parsed.profiles) && parsed.profiles.length > 0) {
-          const restoredProfiles: CVProfile[] = parsed.profiles.map((p: CVProfile) => ({
-            ...p,
-            data: mergeCVData(p.data),
-            settings: mergeStudioSettings(p.settings),
-          }));
+          const restoredProfiles: CVProfile[] = parsed.profiles.map((p: CVProfile) => {
+            const mergedProfileSettings = mergeStudioSettings(p.settings);
+            const existingProfile = profilesRef.current.find((ep) => ep.id === p.id);
+            const preservedProfileSettings: StudioSettings =
+              preserveWebsiteEdits && existingProfile?.settings?.portfolio
+                ? {
+                    ...mergedProfileSettings,
+                    portfolio: {
+                      ...(mergedProfileSettings.portfolio || INITIAL_SETTINGS.portfolio!),
+                      ...existingProfile.settings.portfolio,
+                      websiteOverrides:
+                        existingProfile.settings.portfolio.websiteOverrides ||
+                        mergedProfileSettings.portfolio?.websiteOverrides,
+                    },
+                  }
+                : mergedProfileSettings;
+
+            return {
+              ...p,
+              data: mergeCVData(p.data),
+              settings: preservedProfileSettings,
+            };
+          });
           setProfiles(restoredProfiles);
           if (ownerUid) {
             void Promise.all(
@@ -1850,7 +2149,12 @@ export default function App() {
           }
         }
 
-        showToast('সম্পূর্ণ প্রজেক্ট ব্যাকআপ সফলভাবে রিস্টোর ও সিঙ্ক হয়েছে!', 'success');
+        showToast(
+          preserveWebsiteEdits
+            ? 'ব্যাকআপ রিস্টোর হয়েছে (Live Website কাস্টম এডিট অক্ষুণ্ণ রাখা হয়েছে)!'
+            : 'সম্পূর্ণ প্রজেক্ট ব্যাকআপ সফলভাবে রিস্টোর ও সিঙ্ক হয়েছে!',
+          'success'
+        );
       } catch {
         showToast('JSON ফাইলটি পড়া যায়নি', 'error');
       }
@@ -1863,6 +2167,10 @@ export default function App() {
     showToast('পিডিএফ তৈরি হচ্ছে...', 'info');
     const result = await exportDirectPDF('cvDocument', cvData.name);
     if (result === 'downloaded') {
+      setAnalyticsSummary((prev) => ({
+        ...prev,
+        pdfDownloads: (prev.pdfDownloads || 0) + 1,
+      }));
       confetti({ particleCount: 50, spread: 60 });
       showToast('PDF ডাউনলোড সম্পন্ন হয়েছে!', 'success');
     } else {
@@ -1890,8 +2198,11 @@ export default function App() {
         <>
           <WebPortfolioView
             cvData={cvData}
-            settings={settings}
+            settings={effectiveWebsiteSettings}
             isStudioUnlocked={isStudioUnlocked}
+            hasUnpublishedDraft={Boolean(isStudioUnlocked && websiteDraft)}
+            onPublishDraft={isStudioUnlocked ? handlePublishWebsiteDraft : undefined}
+            onDiscardDraft={isStudioUnlocked ? handleDiscardWebsiteDraft : undefined}
             activeRoleLabel={activeRoleLabel}
             profiles={profiles.map((p) => ({
               id: p.id,
@@ -1908,16 +2219,31 @@ export default function App() {
             onOpenPrintPreview={() => setPrintPreviewOpen(true)}
             onUpdatePortfolioStyle={
               isStudioUnlocked
-                ? (designStyle) =>
-                    setSettings((s) => ({
-                      ...s,
-                      portfolio: {
-                        ...(s.portfolio || INITIAL_SETTINGS.portfolio!),
+                ? (designStyle) => {
+                    if (!isAuthorizedOwner(authUser)) return;
+                    setWebsiteDraft((prevDraft) => {
+                      const base = prevDraft || settingsRef.current.portfolio || INITIAL_SETTINGS.portfolio!;
+                      return {
+                        ...base,
                         designStyle,
-                      },
-                    }))
+                      };
+                    });
+                  }
                 : undefined
             }
+            onUpdatePortfolioSettings={
+              isStudioUnlocked
+                ? (updater) => {
+                    if (!isAuthorizedOwner(authUser)) return;
+                    setWebsiteDraft((prevDraft) => {
+                      const base = prevDraft || settingsRef.current.portfolio || INITIAL_SETTINGS.portfolio!;
+                      return updater(base);
+                    });
+                  }
+                : undefined
+            }
+            onSubmitInquiry={handleSubmitPublicInquiry}
+            onShowToast={showToast}
           />
           {/* Offscreen clean A4 document for 1-click PDF & Print directly from Live Website */}
           <div
@@ -2087,6 +2413,8 @@ export default function App() {
             zenMode={zenMode}
             onToggleZenMode={() => setZenMode((z) => !z)}
             onOpenShortcuts={() => setShortcutsModalOpen(true)}
+            hasUnpublishedWebsiteDraft={Boolean(websiteDraft)}
+            cloudSyncStatus={cloudSyncStatus}
           />
           )}
 
@@ -2111,19 +2439,25 @@ export default function App() {
 
           <div className="print-shell-reset flex-1 min-h-0 flex relative overflow-hidden">
             {/* Left Design Inspector Drawer (Hidden in Zen Focus Mode) */}
-            {!zenMode && (
-              <StyleCombinerDrawer
-                isOpen={isStudioOpen}
-                onClose={() => setIsStudioOpen(false)}
-                settings={settings}
-                onUpdateSettings={(newVals) => setSettings((prev) => ({ ...prev, ...newVals }))}
-                onResetClick={() => setResetModalOpen(true)}
-                onOpenSignatureModal={() => setSignatureModalOpen(true)}
-                onAutoFit1Page={handleAutoFit1Page}
-                onAutoFit2Pages={handleAutoFit2Pages}
-                onSaveCustomTemplate={handleSaveCustomTemplate}
-                onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}
-              />
+            {!zenMode && isStudioOpen && (
+              <Suspense fallback={null}>
+                <StyleCombinerDrawer
+                  isOpen={isStudioOpen}
+                  onClose={() => setIsStudioOpen(false)}
+                  settings={settings}
+                  onUpdateSettings={(newVals) => setSettings((prev) => ({ ...prev, ...newVals }))}
+                  onResetClick={() => setResetModalOpen(true)}
+                  onOpenSignatureModal={() => setSignatureModalOpen(true)}
+                  onAutoFit1Page={handleAutoFit1Page}
+                  onAutoFit2Pages={handleAutoFit2Pages}
+                  onSaveCustomTemplate={handleSaveCustomTemplate}
+                  onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}
+                  onOpenLiveWebsiteEditor={() => {
+                    setIsStudioOpen(false);
+                    setSettings((prev) => ({ ...prev, portfolioMode: true }));
+                  }}
+                />
+              </Suspense>
             )}
 
             {/* Center Live A4 Canvas (+ Mobile App Editor on < 1024px when mobileStudioView === 'app') */}
@@ -2565,157 +2899,174 @@ export default function App() {
           )}
 
           {/* Right Unified Tools Drawer */}
-          <UnifiedToolsDrawer
-            isOpen={isUnifiedToolsOpen}
-            onClose={() => setIsUnifiedToolsOpen(false)}
-            cvData={cvData}
-            settings={settings}
-            score={score}
-            ownerUid={ownerUid}
-            activeProfileName={profiles.find((p) => p.id === activeProfileId)?.name}
-            jdHighlightKeywords={jdHighlightKeywords}
-            onToggleJDHighlight={(kws) => {
-              setJdHighlightKeywords(kws);
-              showToast(
-                kws.length > 0
-                  ? `${kws.length}টি ম্যাচিং কিওয়ার্ড সিভিতে হাইলাইট করা হয়েছে!`
-                  : 'JD Highlight বন্ধ করা হয়েছে।',
-                'info'
-              );
-            }}
-            onInsertXYZBullet={handleInsertXYZBullet}
-            onApplyRolePreset={handleApplyRolePreset}
-            onOpenATSModal={() => setAtsModalOpen(true)}
-            onAddSkillKeyword={handleAddSkillKeyword}
-            onShowToast={showToast}
-          />
+          {isUnifiedToolsOpen && (
+            <Suspense fallback={null}>
+              <UnifiedToolsDrawer
+                isOpen={isUnifiedToolsOpen}
+                onClose={() => setIsUnifiedToolsOpen(false)}
+                cvData={cvData}
+                settings={settings}
+                score={score}
+                ownerUid={ownerUid}
+                activeProfileName={profiles.find((p) => p.id === activeProfileId)?.name}
+                jdHighlightKeywords={jdHighlightKeywords}
+                onToggleJDHighlight={(kws) => {
+                  setJdHighlightKeywords(kws);
+                  showToast(
+                    kws.length > 0
+                      ? `${kws.length}টি ম্যাচিং কিওয়ার্ড সিভিতে হাইলাইট করা হয়েছে!`
+                      : 'JD Highlight বন্ধ করা হয়েছে।',
+                    'info'
+                  );
+                }}
+                onInsertXYZBullet={handleInsertXYZBullet}
+                onApplyRolePreset={handleApplyRolePreset}
+                onOpenATSModal={() => setAtsModalOpen(true)}
+                onAddSkillKeyword={handleAddSkillKeyword}
+                analyticsSummary={analyticsSummary}
+                inquiries={inquiries}
+                onMarkInquiryRead={handleMarkInquiryRead}
+                onDeleteInquiry={handleDeleteInquiry}
+                onShowToast={showToast}
+              />
+            </Suspense>
+          )}
         </>
       )}
 
-      {/* Visual Template Gallery Modal (12 Built-in + Custom Saved Templates) */}
-      <TemplateGalleryModal
-        isOpen={templateGalleryOpen}
-        onClose={() => setTemplateGalleryOpen(false)}
-        selectedTemplate={settings.template}
-        onSelectTemplate={handleSelectTemplate}
-        customTemplates={customTemplates}
-        activeCustomTemplateId={settings.customTemplateId}
-        onSelectCustomTemplate={handleSelectCustomTemplate}
-        onSaveCurrentAsTemplate={handleSaveCustomTemplate}
-        onDeleteCustomTemplate={handleDeleteCustomTemplate}
-        onImportCustomTemplates={handleImportCustomTemplates}
-      />
+      {/* Lazy-Loaded Studio Modals */}
+      <Suspense fallback={null}>
+        {templateGalleryOpen && (
+          <TemplateGalleryModal
+            isOpen={templateGalleryOpen}
+            onClose={() => setTemplateGalleryOpen(false)}
+            selectedTemplate={settings.template}
+            onSelectTemplate={handleSelectTemplate}
+            customTemplates={customTemplates}
+            activeCustomTemplateId={settings.customTemplateId}
+            onSelectCustomTemplate={handleSelectCustomTemplate}
+            onSaveCurrentAsTemplate={handleSaveCustomTemplate}
+            onDeleteCustomTemplate={handleDeleteCustomTemplate}
+            onImportCustomTemplates={handleImportCustomTemplates}
+          />
+        )}
 
-      {/* Custom Profile Manager & Shareable Link Modal */}
-      <ProfileManagerModal
-        isOpen={profileManagerOpen}
-        onClose={() => setProfileManagerOpen(false)}
-        profiles={profiles}
-        activeProfileId={activeProfileId}
-        onSelectProfile={handleSelectProfile}
-        onCreateProfile={handleCreateProfile}
-        onRenameProfile={handleRenameProfile}
-        onDeleteProfile={handleDeleteProfile}
-        onCopyShareLink={handleCopyShareLink}
-      />
+        {profileManagerOpen && (
+          <ProfileManagerModal
+            isOpen={profileManagerOpen}
+            onClose={() => setProfileManagerOpen(false)}
+            profiles={profiles}
+            activeProfileId={activeProfileId}
+            onSelectProfile={handleSelectProfile}
+            onCreateProfile={handleCreateProfile}
+            onRenameProfile={handleRenameProfile}
+            onDeleteProfile={handleDeleteProfile}
+            onCopyShareLink={handleCopyShareLink}
+          />
+        )}
 
-      {/* Owner Access & Unified Export Modals */}
-      <OwnerLoginModal
-        isOpen={loginModalOpen}
-        onClose={() => setLoginModalOpen(false)}
-        onEmailPasswordLogin={handleEmailPasswordLogin}
-        onFirstTimeSetup={handleFirstTimeSetup}
-        onSendPasswordReset={handleSendPasswordReset}
-        onResendVerification={handleResendVerification}
-        onRefreshVerification={handleRefreshVerification}
-        onGoogleLogin={handleGoogleLogin}
-        onSignOut={handleSignOutOwner}
-        signedInEmail={authUser?.email || null}
-        isEmailVerified={Boolean(authUser?.emailVerified)}
-        isAuthorized={isStudioUnlocked}
-        authError={authError}
-        authSuccess={authSuccess}
-        onClearMessages={() => {
-          setAuthError('');
-          setAuthSuccess('');
-        }}
-      />
+        {loginModalOpen && (
+          <OwnerLoginModal
+            isOpen={loginModalOpen}
+            onClose={() => setLoginModalOpen(false)}
+            onEmailPasswordLogin={handleEmailPasswordLogin}
+            onFirstTimeSetup={handleFirstTimeSetup}
+            onSendPasswordReset={handleSendPasswordReset}
+            onResendVerification={handleResendVerification}
+            onRefreshVerification={handleRefreshVerification}
+            onGoogleLogin={handleGoogleLogin}
+            onSignOut={handleSignOutOwner}
+            signedInEmail={authUser?.email || null}
+            isEmailVerified={Boolean(authUser?.emailVerified)}
+            isAuthorized={isStudioUnlocked}
+            authError={authError}
+            authSuccess={authSuccess}
+            onClearMessages={() => {
+              setAuthError('');
+              setAuthSuccess('');
+            }}
+          />
+        )}
 
-      <ExportHubModal
-        isOpen={exportHubOpen}
-        onClose={() => setExportHubOpen(false)}
-        initialTab={exportHubTab}
-        onExportPDF={handleDownloadPDF}
-        onExportPNG={handleDownloadPNG}
-        onPrint={() => window.print()}
-        onExportWord={(ext) => {
-          exportWordDoc(ext, cvData, settings);
-          showToast(`Microsoft Word (.${ext}) ডাউনলোড সম্পন্ন হয়েছে!`, 'success');
-        }}
-        onExportExcel={() => {
-          exportExcel(cvData);
-          showToast('৫-শিটের এক্সেল (.xlsx) ফাইল ডাউনলোড সম্পন্ন হয়েছে!', 'success');
-        }}
-        onExportCSV={() => {
-          exportCSV(cvData);
-          showToast('CSV স্প্রেডশিট ডাউনলোড সম্পন্ন হয়েছে!', 'success');
-        }}
-        onExportHTML={() => {
-          exportHTMLFile(cvData, settings);
-          showToast('Standalone HTML (.html) ফাইল ডাউনলোড সম্পন্ন হয়েছে!', 'success');
-        }}
-        onExportMarkdown={() => {
-          exportMarkdown(cvData, settings);
-          showToast('Markdown (.md) ফাইল ডাউনলোড সম্পন্ন হয়েছে!', 'success');
-        }}
-        onExportPlainText={() => {
-          exportPlainText(cvData, settings);
-          showToast('Plain Text (.txt) ফাইল ডাউনলোড সম্পন্ন হয়েছে!', 'success');
-        }}
-        onExportJSON={() => {
-          let jobApplications: JobApplication[] = [];
-          try {
-            const rawApps = localStorage.getItem('shoyeb_job_tracker_v1');
-            if (rawApps) jobApplications = JSON.parse(rawApps);
-          } catch {
-            // ignore
-          }
-          const latestProfiles = profiles.map((p) =>
-            p.id === activeProfileId
-              ? { ...p, data: cvData, settings, updatedAt: new Date().toISOString() }
-              : p
-          );
-          exportJSONBackup(cvData, settings, {
-            activeProfileId,
-            profiles: latestProfiles,
-            customTemplates,
-            jobApplications,
-          });
-          showToast('সম্পূর্ণ A-to-Z প্রজেক্ট ব্যাকআপ (.json) ডাউনলোড হয়েছে!', 'success');
-        }}
-        onImportJSON={handleImportJSON}
-        onCopyAllText={async () => {
-          await copyAllCVText(cvData, settings);
-          showToast('সম্পূর্ণ সিভির টেক্সট ক্লিপবোর্ডে কপি হয়েছে!', 'success');
-        }}
-        ownerEmail={authUser?.email || null}
-        cloudSyncStatus={cloudSyncStatus}
-        onSyncCloudNow={handleSyncCloudNow}
-        onLockStudio={handleLockStudio}
-        hasPasswordProvider={hasPasswordProvider}
-        onChangePassword={handleChangePassword}
-        onLinkPassword={handleLinkPassword}
-        onSendPasswordReset={() => handleSendPasswordReset(OWNER_ADMIN_EMAIL)}
-      />
+        {exportHubOpen && (
+          <ExportHubModal
+            isOpen={exportHubOpen}
+            onClose={() => setExportHubOpen(false)}
+            initialTab={exportHubTab}
+            onExportPDF={handleDownloadPDF}
+            onExportPNG={handleDownloadPNG}
+            onPrint={() => window.print()}
+            onExportWord={(ext) => {
+              exportWordDoc(ext, cvData, settings);
+              showToast(`Microsoft Word (.${ext}) ডাউনলোড সম্পন্ন হয়েছে!`, 'success');
+            }}
+            onExportExcel={async () => {
+              await exportExcel(cvData);
+              showToast('৫-শিটের এক্সেল (.xlsx) ফাইল ডাউনলোড সম্পন্ন হয়েছে!', 'success');
+            }}
+            onExportCSV={() => {
+              exportCSV(cvData);
+              showToast('CSV স্প্রেডশিট ডাউনলোড সম্পন্ন হয়েছে!', 'success');
+            }}
+            onExportHTML={() => {
+              exportHTMLFile(cvData, settings);
+              showToast('Standalone HTML (.html) ফাইল ডাউনলোড সম্পন্ন হয়েছে!', 'success');
+            }}
+            onExportMarkdown={() => {
+              exportMarkdown(cvData, settings);
+              showToast('Markdown (.md) ফাইল ডাউনলোড সম্পন্ন হয়েছে!', 'success');
+            }}
+            onExportPlainText={() => {
+              exportPlainText(cvData, settings);
+              showToast('Plain Text (.txt) ফাইল ডাউনলোড সম্পন্ন হয়েছে!', 'success');
+            }}
+            onExportJSON={() => {
+              let jobApplications: JobApplication[] = [];
+              try {
+                const rawApps = localStorage.getItem('shoyeb_job_tracker_v1');
+                if (rawApps) jobApplications = JSON.parse(rawApps);
+              } catch {
+                // ignore
+              }
+              const latestProfiles = profiles.map((p) =>
+                p.id === activeProfileId
+                  ? { ...p, data: cvData, settings, updatedAt: new Date().toISOString() }
+                  : p
+              );
+              exportJSONBackup(cvData, settings, {
+                activeProfileId,
+                profiles: latestProfiles,
+                customTemplates,
+                jobApplications,
+              });
+              showToast('সম্পূর্ণ A-to-Z প্রজেক্ট ব্যাকআপ (.json) ডাউনলোড হয়েছে!', 'success');
+            }}
+            onImportJSON={handleImportJSON}
+            onCopyAllText={async () => {
+              await copyAllCVText(cvData, settings);
+              showToast('সম্পূর্ণ সিভির টেক্সট ক্লিপবোর্ডে কপি হয়েছে!', 'success');
+            }}
+            ownerEmail={authUser?.email || null}
+            cloudSyncStatus={cloudSyncStatus}
+            onSyncCloudNow={handleSyncCloudNow}
+            onLockStudio={handleLockStudio}
+            hasPasswordProvider={hasPasswordProvider}
+            onChangePassword={handleChangePassword}
+            onLinkPassword={handleLinkPassword}
+            onSendPasswordReset={() => handleSendPasswordReset(authUser?.email || '')}
+          />
+        )}
 
-      {/* Studio Modals */}
-      <SignatureModal
-        isOpen={signatureModalOpen}
-        onClose={() => setSignatureModalOpen(false)}
-        initialImage={settings.signature?.image || ''}
-        candidateName={cvData.name || 'Md Shoyeb Rabbi'}
-        onSave={handleSaveSignature}
-      />
+        {signatureModalOpen && (
+          <SignatureModal
+            isOpen={signatureModalOpen}
+            onClose={() => setSignatureModalOpen(false)}
+            initialImage={settings.signature?.image || ''}
+            candidateName={cvData.name || 'Md Shoyeb Rabbi'}
+            onSave={handleSaveSignature}
+          />
+        )}
+      </Suspense>
 
       <HyperlinkModal
         isOpen={linkModalOpen}
@@ -2759,15 +3110,19 @@ export default function App() {
         }}
       />
 
-      <PrintPreviewModal
-        isOpen={printPreviewOpen}
-        onClose={() => setPrintPreviewOpen(false)}
-        onPrint={() => window.print()}
-        onExportPDF={handleDownloadPDF}
-        estimatedPages={estimatedPages}
-        docHeightPx={docHeight}
-        hideBrowserPrintChrome={settings.hideBrowserPrintChrome !== false}
-      />
+      {printPreviewOpen && (
+        <Suspense fallback={null}>
+          <PrintPreviewModal
+            isOpen={printPreviewOpen}
+            onClose={() => setPrintPreviewOpen(false)}
+            onPrint={() => window.print()}
+            onExportPDF={handleDownloadPDF}
+            estimatedPages={estimatedPages}
+            docHeightPx={docHeight}
+            hideBrowserPrintChrome={settings.hideBrowserPrintChrome !== false}
+          />
+        </Suspense>
+      )}
 
       <ShortcutsModal
         isOpen={shortcutsModalOpen}

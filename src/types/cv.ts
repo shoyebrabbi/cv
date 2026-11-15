@@ -133,6 +133,79 @@ export interface PortfolioMetricItem {
 export type PortfolioAccentTheme = 'auto' | 'cobalt' | 'emerald' | 'teal' | 'indigo' | 'rose';
 export type PortfolioDesignStyle = 'bento' | 'editorial' | 'blueprint';
 
+export type WebsiteSectionKey =
+  | 'metrics'
+  | 'skills'
+  | 'experience'
+  | 'projects'
+  | 'education'
+  | 'highlights'
+  | 'contact';
+
+export interface WebsiteProjectEnhancement {
+  imageUrl?: string;
+  galleryUrls?: string[];
+  problem?: string;
+  solution?: string;
+  impact?: string;
+  architectureSteps?: string[];
+  deliverables?: string;
+}
+
+export interface PublicInquiry {
+  id: string;
+  senderName: string;
+  senderEmail: string;
+  subject: string;
+  message: string;
+  targetRole?: string;
+  createdAt: string;
+  isRead?: boolean;
+}
+
+export interface PortfolioAnalyticsSummary {
+  totalViews: number;
+  pdfDownloads: number;
+  roleClicks: Record<string, number>;
+  lastVisitedAt?: string;
+}
+
+export interface WebsiteSpecializationCard {
+  id: string;
+  label: string;
+  proof: string;
+  metric: string;
+}
+
+export interface WebsiteContentOverrides {
+  name?: string;
+  title?: string;
+  summary?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  linkedin?: string;
+  github?: string;
+  website?: string;
+  heroPhotoSrc?: string;
+  skillsIntro?: string;
+  skills?: SkillRow[];
+  experienceIntro?: string;
+  experiences?: ExperienceItem[];
+  projectsIntro?: string;
+  projects?: ProjectItem[];
+  projectEnhancements?: Record<string, WebsiteProjectEnhancement>;
+  hiddenSections?: WebsiteSectionKey[];
+  education?: EducationData;
+  certifications?: string[];
+  languages?: string;
+  strengths?: string;
+  customSections?: CustomSection[];
+  contactHeading?: string;
+  contactSubtext?: string;
+  specializations?: WebsiteSpecializationCard[];
+}
+
 export interface PortfolioSettings {
   availabilityText: string;
   availabilityActive: boolean;
@@ -140,6 +213,7 @@ export interface PortfolioSettings {
   accentTheme?: PortfolioAccentTheme;
   designStyle?: PortfolioDesignStyle;
   metrics: PortfolioMetricItem[];
+  websiteOverrides?: WebsiteContentOverrides;
 }
 
 export interface CustomTemplatePreset {

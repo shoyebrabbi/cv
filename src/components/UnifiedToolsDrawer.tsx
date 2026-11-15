@@ -17,8 +17,17 @@ import {
   ExternalLink,
   Highlighter,
   FileDown,
+  Inbox,
+  BarChart3,
+  CheckCircle2,
 } from 'lucide-react';
-import { CVData, JobApplication, StudioSettings } from '../types/cv';
+import {
+  CVData,
+  JobApplication,
+  PortfolioAnalyticsSummary,
+  PublicInquiry,
+  StudioSettings,
+} from '../types/cv';
 import { exportCoverLetterPDF, exportCoverLetterDoc } from '../utils/exporters';
 import {
   subscribeJobApplications,
@@ -41,6 +50,10 @@ interface UnifiedToolsDrawerProps {
   onOpenATSModal: () => void;
   onAddSkillKeyword: (kw: string) => void;
   onShowToast: (msg: string, type: 'info' | 'success' | 'error') => void;
+  analyticsSummary?: PortfolioAnalyticsSummary;
+  inquiries?: PublicInquiry[];
+  onMarkInquiryRead?: (id: string, isRead: boolean) => void;
+  onDeleteInquiry?: (id: string) => void;
 }
 
 const UNIFIED_SAMPLE_JDS = {
@@ -87,9 +100,14 @@ export function UnifiedToolsDrawer({
   onOpenATSModal,
   onAddSkillKeyword,
   onShowToast,
+  analyticsSummary,
+  inquiries = [],
+  onMarkInquiryRead,
+  onDeleteInquiry,
 }: UnifiedToolsDrawerProps) {
-  const [activeTab, setActiveTab] = useState<'ats' | 'verbs' | 'linkedin' | 'signature' | 'cover' | 'tracker' | 'pdf'>('ats');
+  const [activeTab, setActiveTab] = useState<'ats' | 'verbs' | 'linkedin' | 'signature' | 'cover' | 'tracker' | 'inbox' | 'pdf'>('ats');
   const [selectedRole, setSelectedRole] = useState<'master' | 'data' | 'sqa' | 'netops'>('master');
+  const unreadInquiriesCount = inquiries.filter((inq) => !inq.isRead).length;
 
   // Job Application Tracker state (backed by Firestore when signed in + localStorage mirror)
   const [applications, setApplications] = useState<JobApplication[]>(() => {
@@ -361,6 +379,20 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
             }`}
           >
             <Briefcase className="w-3.5 h-3.5 shrink-0" /> Job Tracker ({applications.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('inbox')}
+            className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeTab === 'inbox' ? 'bg-cyan-600 text-white shadow-sm' : 'bg-[#111827] border border-slate-800 text-slate-300 hover:text-white'
+            }`}
+          >
+            <Inbox className="w-3.5 h-3.5 shrink-0" /> Inbox &amp; Stats
+            {unreadInquiriesCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                {unreadInquiriesCount}
+              </span>
+            )}
           </button>
           <button
             type="button"
@@ -1327,7 +1359,171 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
           </div>
         )}
 
-        {/* Tab 7: PDF Reference Viewer */}
+        {/* Tab 7: Portfolio Analytics & Recruiter Inquiries Inbox */}
+        {activeTab === 'inbox' && (
+          <div className="space-y-4 p-4 text-xs">
+            {/* Private Portfolio Analytics Summary */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-bold text-cyan-300 flex items-center gap-1.5">
+                  <BarChart3 className="w-4 h-4" /> Portfolio Activity &amp; PDF Stats
+                </h3>
+                {analyticsSummary?.lastVisitedAt && (
+                  <span className="text-[10.5px] text-slate-400">
+                    Last view: {new Date(analyticsSummary.lastVisitedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg bg-slate-950 border border-slate-800 p-3 text-center">
+                  <div className="text-lg font-extrabold text-white tabular-nums">
+                    {analyticsSummary?.totalViews ?? 0}
+                  </div>
+                  <div className="text-[10.5px] text-slate-400 mt-0.5">Website Views</div>
+                </div>
+                <div className="rounded-lg bg-slate-950 border border-slate-800 p-3 text-center">
+                  <div className="text-lg font-extrabold text-emerald-400 tabular-nums">
+                    {analyticsSummary?.pdfDownloads ?? 0}
+                  </div>
+                  <div className="text-[10.5px] text-slate-400 mt-0.5">CV PDF Downloads</div>
+                </div>
+                <div className="rounded-lg bg-slate-950 border border-slate-800 p-3 text-center">
+                  <div className="text-lg font-extrabold text-cyan-400 tabular-nums">
+                    {inquiries.length}
+                  </div>
+                  <div className="text-[10.5px] text-slate-400 mt-0.5">Direct Messages</div>
+                </div>
+              </div>
+
+              {analyticsSummary?.roleClicks && Object.keys(analyticsSummary.roleClicks).length > 0 && (
+                <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                  <div className="text-[10.5px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Role Lens Breakdown
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(analyticsSummary.roleClicks).map(([roleKey, count]) => (
+                      <span
+                        key={roleKey}
+                        className="px-2.5 py-1 rounded-md bg-slate-950 border border-slate-800 text-[11px] text-slate-300 font-mono"
+                      >
+                        {roleKey}: <strong className="text-cyan-300">{count}</strong>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Recruiter Direct Messages Inbox */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-white flex items-center gap-1.5">
+                    <Inbox className="w-4 h-4 text-blue-400" /> Recruiter &amp; Visitor Inbox
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Live Website-এর Contact ফর্ম থেকে পাঠানো মেসেজগুলো এখানে জমা হয়
+                  </p>
+                </div>
+                {unreadInquiriesCount > 0 && (
+                  <span className="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[10.5px] font-bold">
+                    {unreadInquiriesCount} Unread
+                  </span>
+                )}
+              </div>
+
+              {inquiries.length === 0 ? (
+                <div className="border border-dashed border-slate-800 rounded-xl p-6 text-center text-slate-500">
+                  এখনো কোনো ভিজিটর মেসেজ আসেনি। Live Website-এর Contact সেকশন থেকে কেউ মেসেজ পাঠালে এখানে দেখা যাবে।
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                  {inquiries.map((inq) => (
+                    <div
+                      key={inq.id}
+                      className={`p-3 rounded-xl border space-y-2 ${
+                        inq.isRead
+                          ? 'bg-slate-950/70 border-slate-800'
+                          : 'bg-blue-950/25 border-blue-500/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-bold text-white flex items-center gap-1.5 flex-wrap">
+                            <span>{inq.senderName}</span>
+                            {!inq.isRead && (
+                              <span className="px-1.5 py-0.2 rounded bg-blue-600 text-white text-[9.5px] font-bold">
+                                NEW
+                              </span>
+                            )}
+                            {inq.targetRole && (
+                              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-cyan-300 text-[10px]">
+                                {inq.targetRole}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-cyan-300 truncate">{inq.senderEmail}</div>
+                        </div>
+                        <span className="text-[10px] text-slate-500 shrink-0 font-mono">
+                          {new Date(inq.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] font-semibold text-amber-300">{inq.subject}</div>
+                      <p className="text-[11.5px] text-slate-200 leading-relaxed whitespace-pre-wrap bg-slate-900/70 p-2.5 rounded-lg">
+                        {inq.message}
+                      </p>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <a
+                            href={`mailto:${inq.senderEmail}?subject=${encodeURIComponent(`Re: ${inq.subject}`)}`}
+                            className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold inline-flex items-center gap-1"
+                          >
+                            <Mail className="w-3 h-3" /> Reply
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(inq.senderEmail, 'Sender Email')}
+                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold inline-flex items-center gap-1"
+                          >
+                            <Copy className="w-3 h-3" /> Copy Contact
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {onMarkInquiryRead && (
+                            <button
+                              type="button"
+                              onClick={() => onMarkInquiryRead(inq.id, !inq.isRead)}
+                              className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 text-[11px] font-semibold inline-flex items-center gap-1"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              {inq.isRead ? 'Mark Unread' : 'Mark Read'}
+                            </button>
+                          )}
+                          {onDeleteInquiry && (
+                            <button
+                              type="button"
+                              onClick={() => onDeleteInquiry(inq.id)}
+                              className="p-1 rounded text-slate-500 hover:text-rose-400"
+                              title="Delete message"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 8: PDF Reference Viewer */}
         {activeTab === 'pdf' && (
           <div className="space-y-4 p-4 text-xs">
             <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">

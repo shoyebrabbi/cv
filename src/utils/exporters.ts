@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import {
   CVData,
   CVProfile,
@@ -659,8 +658,9 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
   triggerDownload(blob, `${safeFileBase || 'Candidate'}_CV.${ext}`);
 }
 
-// 3. 5-Sheet Excel Workbook
-export function exportExcel(data: CVData) {
+// 3. 5-Sheet Excel Workbook (lazy-loaded on demand so initial page stays fast)
+export async function exportExcel(data: CVData) {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
 
   // Sheet 1: Overview
@@ -776,8 +776,9 @@ export function exportCSV(data: CVData) {
     ['Languages', 'Languages', '', '', data.languages],
     ['Strengths', 'Key Strengths', '', '', data.strengths],
   ];
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const csvOutput = XLSX.utils.sheet_to_csv(ws);
+  const csvOutput = rows
+    .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\n');
   const blob = new Blob(['\ufeff' + csvOutput], { type: 'text/csv;charset=utf-8;' });
   triggerDownload(blob, `${getSafeFileBase(data.name)}_CV.csv`);
 }

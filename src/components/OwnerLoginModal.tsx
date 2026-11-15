@@ -16,7 +16,7 @@ import {
   ShieldAlert,
   ArrowRight,
 } from 'lucide-react';
-import { OWNER_ADMIN_EMAIL, isOwnerEmail } from '../firebase';
+import { isOwnerEmail } from '../firebase';
 
 type AuthMode = 'login' | 'setup' | 'forgot';
 
@@ -56,7 +56,7 @@ export function OwnerLoginModal({
   onClearMessages,
 }: OwnerLoginModalProps) {
   const [mode, setMode] = useState<AuthMode>('login');
-  const [email, setEmail] = useState(OWNER_ADMIN_EMAIL);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -72,7 +72,7 @@ export function OwnerLoginModal({
       setLocalError('');
       setPassword('');
       setConfirmPassword('');
-      setEmail(OWNER_ADMIN_EMAIL);
+      setEmail('');
     }
   }, [isOpen]);
 
@@ -139,7 +139,7 @@ export function OwnerLoginModal({
     }
 
     if (!isOwnerEmail(email)) {
-      setLocalError(`Access restricted: only ${OWNER_ADMIN_EMAIL} is authorized to sign in.`);
+      setLocalError('Access restricted: only the verified site owner account is authorized to sign in.');
       return;
     }
 
@@ -237,7 +237,7 @@ export function OwnerLoginModal({
                 <span className="font-mono tabular-nums text-[11px] text-slate-500 shrink-0">01</span>
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-slate-200">Single-Owner Lock</div>
-                  <div className="text-[11.5px] text-slate-400 truncate">{OWNER_ADMIN_EMAIL}</div>
+                  <div className="text-[11.5px] text-slate-400 truncate">Restricted to Verified Admin Account</div>
                 </div>
               </div>
               <div className="py-3 flex items-baseline gap-3">
@@ -276,7 +276,7 @@ export function OwnerLoginModal({
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   {isPendingVerification
-                    ? `Confirm ownership of ${OWNER_ADMIN_EMAIL} to unlock editing.`
+                    ? 'Confirm ownership of your authorized owner email to unlock editing.'
                     : modeSubtitle}
                 </p>
               </div>
@@ -295,10 +295,10 @@ export function OwnerLoginModal({
               <div className="rounded-xl bg-rose-950/50 border border-rose-500/40 p-4 text-xs text-rose-200 space-y-2.5">
                 <div className="flex items-center gap-2 font-semibold text-rose-300">
                   <ShieldAlert className="w-4 h-4 shrink-0" />
-                  <span>Unauthorized Account ({signedInEmail})</span>
+                  <span>Unauthorized Account</span>
                 </div>
                 <p className="text-[11.5px] text-rose-200/90 leading-relaxed">
-                  Only the verified owner account ({OWNER_ADMIN_EMAIL}) is permitted to unlock this studio.
+                  Only the verified site owner account is permitted to unlock this studio.
                 </p>
                 <button
                   type="button"
@@ -320,8 +320,7 @@ export function OwnerLoginModal({
                     <span>Email Verification Required</span>
                   </div>
                   <p className="text-[12px] text-slate-300 leading-relaxed">
-                    A verification link has been sent to{' '}
-                    <span className="font-semibold text-white">{OWNER_ADMIN_EMAIL}</span>. Check your inbox or spam folder, click the link, and then press the button below.
+                    A verification link has been sent to your authorized owner email. Check your inbox or spam folder, click the link, and then press the button below.
                   </p>
                 </div>
 
@@ -455,7 +454,7 @@ export function OwnerLoginModal({
                         required
                         autoComplete="username"
                         className="w-full h-11 bg-[#070B14] border border-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25 rounded-xl pl-10 pr-3.5 text-[13px] text-white placeholder-slate-500 transition-colors"
-                        placeholder={OWNER_ADMIN_EMAIL}
+                        placeholder="Enter authorized owner email"
                       />
                     </div>
                   </div>

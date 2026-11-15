@@ -38,7 +38,7 @@ interface ExportHubModalProps {
   onExportMarkdown: () => void;
   onExportPlainText: () => void;
   onExportJSON: () => void;
-  onImportJSON: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onImportJSON: (e: React.ChangeEvent<HTMLInputElement>, preserveWebsiteEdits?: boolean) => void;
   onCopyAllText: () => void;
   ownerEmail?: string | null;
   cloudSyncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
@@ -84,6 +84,7 @@ export function ExportHubModal({
   const [showPw, setShowPw] = useState(false);
   const [pwLoading, setPwLoading] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [preserveWebsiteOnRestore, setPreserveWebsiteOnRestore] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -394,12 +395,23 @@ export function ExportHubModal({
                       accept=".json"
                       className="hidden"
                       onChange={(e) => {
-                        onImportJSON(e);
+                        onImportJSON(e, preserveWebsiteOnRestore);
                         onClose();
                       }}
                     />
                   </label>
                 </div>
+                <label className="flex items-start gap-2 cursor-pointer bg-slate-950/70 border border-slate-700/80 rounded-lg p-2 text-[11px] text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={preserveWebsiteOnRestore}
+                    onChange={(e) => setPreserveWebsiteOnRestore(e.target.checked)}
+                    className="mt-0.5 rounded accent-emerald-500"
+                  />
+                  <span>
+                    <strong className="text-emerald-300">Preserve Live Website Edits:</strong> শুধু CV কনটেন্ট আপডেট হবে, আপনার বর্তমান ওয়েবসাইট-অনলি ছবি/কেস-স্টাডি/গ্যালারি মুছবে না।
+                  </span>
+                </label>
                 <p className="text-[10.5px] text-slate-400">
                   আপনার অ্যাক্টিভ CV, সব প্রোফাইল, কাস্টম টেমপ্লেট, জব ট্র্যাকার এবং ডিজাইন সেটিংস এক ফাইলে সেভ বা রিস্টোর করুন।
                 </p>

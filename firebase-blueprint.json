@@ -203,6 +203,46 @@
         }
       },
       "required": ["email", "role"]
+    },
+    "PublicInquiry": {
+      "title": "PublicInquiry",
+      "description": "Recruiter or visitor inquiry submitted from the Live Portfolio Contact form.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "senderEmail": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "subject": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 3000
+        },
+        "targetRole": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "isRead": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "senderName", "senderEmail", "subject", "message", "isRead", "createdAt"]
     }
   },
   "firestore": {
@@ -225,6 +265,10 @@
     "/admins/{uid}": {
       "schema": { "$ref": "#/entities/AdminMarker" },
       "description": "Admin role verification markers."
+    },
+    "/public_inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/PublicInquiry" },
+      "description": "Public recruiter contact messages (write-once by visitors, read/manage exclusively by owner)."
     }
   }
 }

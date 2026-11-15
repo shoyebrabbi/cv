@@ -39,6 +39,7 @@ import {
   CVProfile,
   CustomTemplatePreset,
   JobApplication,
+  PublicInquiry,
   StudioSettings,
 } from './types/cv';
 
@@ -635,5 +636,97 @@ export async function deleteJobApplicationCloud(
     await deleteDoc(doc(db, 'owner_workspaces', ownerUid, 'job_applications', safeId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export async function submitPublicInquiry(input: {
+  senderName: string;
+  senderEmail: string;
+  subject: string;
+  message: string;
+  targetRole?: string;
+}): Promise<{ savedToCloud: boolean; item: PublicInquiry }> {
+  const inquiryId = sanitizeId(`inq_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, 'inq');
+  const nowIso = new Date().toISOString();
+  const item: PublicInquiry = {
+    id: inquiryId,
+    senderName: clipText(input.senderName.trim(), 120, 'Visitor'),
+    senderEmail: clipText(input.senderEmail.trim(), 160, 'N/A'),
+    subject: clipText(input.subject.trim(), 160, 'General Inquiry'),
+    message: clipText(input.message.trim(), 3000, ''),
+    targetRole: input.targetRole ? clipText(input.targetRole.trim(), 120) : undefined,
+    createdAt: nowIso,
+    isRead: false,
+  };
+
+  const payload: Record<string, unknown> = {
+    id: inquiryId,
+    senderName: item.senderName,
+    senderEmail: item.senderEmail,
+    subject: item.subject,
+    message: item.message,
+    isRead: false,
+    createdAt: serverTimestamp(),
+  };
+  if (item.targetRole) {
+    payload.targetRole = item.targetRole;
+  }
+
+  try {
+    await setDoc(doc(db, 'public_inquiries', inquiryId), payload);
+    return { savedToCloud: true, item };
+  } catch {
+    // Gracefully fall back to local mirror when external project rules have not yet enabled public_inquiries
+    return { savedToCloud: false, item };
+  }
+}
+
+export function subscribePublicInquiries(
+  onData: (inquiries: PublicInquiry[]) => void
+): Unsubscribe {
+  const colRef = collection(db, 'public_inquiries');
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const list: PublicInquiry[] = snapshot.docs.map((docSnap) => {
+        const d = docSnap.data();
+        return {
+          id: String(d.id || docSnap.id),
+          senderName: String(d.senderName || 'Visitor'),
+          senderEmail: String(d.senderEmail || ''),
+          subject: String(d.subject || 'Inquiry'),
+          message: String(d.message || ''),
+          targetRole: typeof d.targetRole === 'string' && d.targetRole ? d.targetRole : undefined,
+          isRead: Boolean(d.isRead),
+          createdAt:
+            typeof d.createdAt?.toDate === 'function'
+              ? d.createdAt.toDate().toISOString()
+              : new Date().toISOString(),
+        };
+      });
+      list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      onData(list);
+    },
+    () => {
+      // Silently tolerate permission-denied if rules are not yet synced in external Firebase project
+    }
+  );
+}
+
+export async function markPublicInquiryReadCloud(inquiryId: string, isRead: boolean): Promise<void> {
+  const safeId = sanitizeId(inquiryId);
+  try {
+    await updateDoc(doc(db, 'public_inquiries', safeId), { isRead });
+  } catch {
+    // Silent resilience fallback
+  }
+}
+
+export async function deletePublicInquiryCloud(inquiryId: string): Promise<void> {
+  const safeId = sanitizeId(inquiryId);
+  try {
+    await deleteDoc(doc(db, 'public_inquiries', safeId));
+  } catch {
+    // Silent resilience fallback
   }
 }

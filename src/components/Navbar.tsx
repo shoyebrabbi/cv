@@ -78,6 +78,8 @@ interface NavbarProps {
   onToggleZenMode?: () => void;
   onOpenShortcuts?: () => void;
   onOpenSecuritySettings?: () => void;
+  hasUnpublishedWebsiteDraft?: boolean;
+  cloudSyncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
 }
 
 export function Navbar({
@@ -122,6 +124,8 @@ export function Navbar({
   onToggleZenMode,
   onOpenShortcuts,
   onOpenSecuritySettings,
+  hasUnpublishedWebsiteDraft = false,
+  cloudSyncStatus = 'idle',
 }: NavbarProps) {
   const [insertMenuOpen, setInsertMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -243,7 +247,9 @@ export function Navbar({
                 [
                   {
                     title: portfolioMode ? 'CV Editor-এ ফিরে যান' : 'Live Website দেখুন',
-                    desc: 'পাবলিক পোর্টফোলিও ওয়েবসাইট ও ডিজাইন প্রিভিউ',
+                    desc: hasUnpublishedWebsiteDraft
+                      ? 'লাইভ পোর্টফোলিও প্রিভিউ (অপ্রকাশিত ওয়েবসাইট Draft পেন্ডিং আছে)'
+                      : 'পাবলিক পোর্টফোলিও ওয়েবসাইট ও ডিজাইন প্রিভিউ',
                     icon: Globe,
                     tint: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30',
                     action: onTogglePortfolioMode,
@@ -453,6 +459,36 @@ export function Navbar({
               {isStrictATS ? 'Global Ready' : 'BD · Photo'}
             </span>
           </button>
+
+          {cloudSyncStatus !== 'idle' && (
+            <span
+              className={`hidden 2xl:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-semibold border whitespace-nowrap shrink-0 ${
+                cloudSyncStatus === 'syncing'
+                  ? 'bg-blue-950/50 border-blue-500/35 text-blue-200'
+                  : cloudSyncStatus === 'error'
+                  ? 'bg-rose-950/60 border-rose-500/40 text-rose-200'
+                  : 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
+              }`}
+              title="Cloud synchronization status"
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  cloudSyncStatus === 'syncing'
+                    ? 'bg-blue-400 animate-pulse'
+                    : cloudSyncStatus === 'error'
+                    ? 'bg-rose-400'
+                    : 'bg-emerald-400'
+                }`}
+              />
+              <span>
+                {cloudSyncStatus === 'syncing'
+                  ? 'Syncing'
+                  : cloudSyncStatus === 'error'
+                  ? 'Sync Retry'
+                  : 'Cloud Live'}
+              </span>
+            </span>
+          )}
         </div>
 
         {/* Right Zone: Mode Segmented Toggle + Primary Actions + Clean Utility Dropdown */}
@@ -497,10 +533,19 @@ export function Navbar({
             type="button"
             onClick={onTogglePortfolioMode}
             className="px-2.5 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
-            title="লাইভ পার্সোনাল ওয়েবসাইট মোডে দেখুন"
+            title={
+              hasUnpublishedWebsiteDraft
+                ? 'লাইভ ওয়েবসাইট ওপেন করুন (একটি অপ্রকাশিত Draft পেন্ডিং আছে)'
+                : 'লাইভ পার্সোনাল ওয়েবসাইট মোডে দেখুন'
+            }
           >
             <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span>{portfolioMode ? 'CV Editor' : 'Website'}</span>
+            {hasUnpublishedWebsiteDraft && !portfolioMode && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold">
+                Draft
+              </span>
+            )}
           </button>
 
           <button

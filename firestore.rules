@@ -123,6 +123,30 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function isValidPublicInquiry(data) {
+      return data.keys().hasAll(['id', 'senderName', 'senderEmail', 'subject', 'message', 'isRead', 'createdAt'])
+        && data.keys().hasOnly(['id', 'senderName', 'senderEmail', 'subject', 'message', 'targetRole', 'isRead', 'createdAt'])
+        && data.id is string
+        && data.id.size() > 0
+        && data.id.size() <= 80
+        && data.id.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.senderName is string
+        && data.senderName.size() > 0
+        && data.senderName.size() <= 120
+        && data.senderEmail is string
+        && data.senderEmail.size() > 0
+        && data.senderEmail.size() <= 160
+        && data.subject is string
+        && data.subject.size() > 0
+        && data.subject.size() <= 160
+        && data.message is string
+        && data.message.size() > 0
+        && data.message.size() <= 3000
+        && (!('targetRole' in data) || (data.targetRole is string && data.targetRole.size() <= 120))
+        && data.isRead is bool
+        && data.createdAt is timestamp;
+    }
+
     // 1. Published live website & default CV document (public get, admin-only write)
     match /public_site/{siteId} {
       allow get: if isValidId(siteId) && siteId == 'main';
@@ -242,6 +266,21 @@ service cloud.firestore {
     match /admins/{uid} {
       allow get: if isSignedIn() && isValidId(uid) && request.auth.uid == uid;
       allow list, create, update, delete: if false;
+    }
+
+    // 5. Public visitor contact inquiries (public create-only inbox; strictly admin read/manage)
+    match /public_inquiries/{inquiryId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidId(inquiryId)
+        && isValidPublicInquiry(incoming())
+        && incoming().id == inquiryId
+        && incoming().isRead == false
+        && incoming().createdAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(inquiryId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['isRead'])
+        && incoming().isRead is bool;
+      allow delete: if isAdmin() && isValidId(inquiryId);
     }
   }
 }

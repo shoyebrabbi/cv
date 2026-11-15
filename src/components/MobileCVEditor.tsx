@@ -23,6 +23,10 @@ import {
   LayoutGrid,
   CheckCircle2,
   AlertTriangle,
+  Bold,
+  Italic,
+  Link as LinkIcon,
+  Eraser,
 } from 'lucide-react';
 import {
   CVData,
@@ -116,6 +120,10 @@ export function MobileCVEditor({
 }: MobileCVEditorProps) {
   const [openSection, setOpenSection] = useState<EditorSectionKey>('header');
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const bulletRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [activeLinkBulletKey, setActiveLinkBulletKey] = useState<string | null>(null);
+  const [linkUrlDraft, setLinkUrlDraft] = useState('https://');
+  const savedRangeRef = useRef<Range | null>(null);
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -128,6 +136,67 @@ export function MobileCVEditor({
       onShowToast('ছবি প্রসেস করতে সমস্যা হয়েছে।', 'error');
     }
     e.target.value = '';
+  }
+
+  function syncBulletHtml(expIdx: number, bIdx: number, bulletId: string) {
+    const el = bulletRefs.current[bulletId];
+    if (!el) return;
+    const nextHtml = el.innerHTML;
+    onUpdateCVData((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((item, i) =>
+        i === expIdx
+          ? {
+              ...item,
+              bullets: item.bullets.map((bul, bi) =>
+                bi === bIdx ? { ...bul, text: nextHtml } : bul
+              ),
+            }
+          : item
+      ),
+    }));
+  }
+
+  function applyBulletCommand(
+    expIdx: number,
+    bIdx: number,
+    bulletId: string,
+    cmd: 'bold' | 'italic' | 'removeFormat'
+  ) {
+    const el = bulletRefs.current[bulletId];
+    if (el) el.focus();
+    document.execCommand(cmd, false);
+    syncBulletHtml(expIdx, bIdx, bulletId);
+  }
+
+  function openBulletLinkBar(bulletId: string) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    } else {
+      savedRangeRef.current = null;
+    }
+    setLinkUrlDraft('https://');
+    setActiveLinkBulletKey((prev) => (prev === bulletId ? null : bulletId));
+  }
+
+  function applyBulletLink(expIdx: number, bIdx: number, bulletId: string) {
+    const cleanUrl = linkUrlDraft.trim();
+    if (!cleanUrl || cleanUrl === 'https://') {
+      setActiveLinkBulletKey(null);
+      return;
+    }
+    const el = bulletRefs.current[bulletId];
+    if (el) el.focus();
+    const sel = window.getSelection();
+    if (sel && savedRangeRef.current) {
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+    }
+    document.execCommand('createLink', false, cleanUrl);
+    syncBulletHtml(expIdx, bIdx, bulletId);
+    setActiveLinkBulletKey(null);
+    savedRangeRef.current = null;
   }
 
   function toggleSection(key: EditorSectionKey) {
@@ -793,47 +862,116 @@ export function MobileCVEditor({
                             </div>
                             {exp.bullets.map((b, bIdx) => (
                               <div key={b.id} className="space-y-1.5 rounded-lg bg-[#080D1A] border border-slate-800 p-2.5">
-                                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
                                   <span>Bullet #{bIdx + 1}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      onUpdateCVData((prev) => ({
-                                        ...prev,
-                                        experiences: prev.experiences.map((item, i) =>
-                                          i === idx
-                                            ? {
-                                                ...item,
-                                                bullets: item.bullets.filter((_, bi) => bi !== bIdx),
-                                              }
-                                            : item
-                                        ),
-                                      }))
-                                    }
-                                    className="text-rose-400 hover:underline font-semibold px-2 py-1"
-                                  >
-                                    Delete
-                                  </button>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        applyBulletCommand(idx, bIdx, b.id, 'bold');
+                                      }}
+                                      className="min-h-[30px] min-w-[30px] rounded bg-slate-900 border border-slate-700 text-slate-200 flex items-center justify-center"
+                                      title="Bold selected text"
+                                      aria-label="Bold"
+                                    >
+                                      <Bold className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        applyBulletCommand(idx, bIdx, b.id, 'italic');
+                                      }}
+                                      className="min-h-[30px] min-w-[30px] rounded bg-slate-900 border border-slate-700 text-slate-200 flex items-center justify-center"
+                                      title="Italic selected text"
+                                      aria-label="Italic"
+                                    >
+                                      <Italic className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        openBulletLinkBar(b.id);
+                                      }}
+                                      className={`min-h-[30px] min-w-[30px] rounded border flex items-center justify-center ${
+                                        activeLinkBulletKey === b.id
+                                          ? 'bg-blue-600 border-blue-500 text-white'
+                                          : 'bg-slate-900 border-slate-700 text-slate-200'
+                                      }`}
+                                      title="Add hyperlink"
+                                      aria-label="Add hyperlink"
+                                    >
+                                      <LinkIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        applyBulletCommand(idx, bIdx, b.id, 'removeFormat');
+                                      }}
+                                      className="min-h-[30px] min-w-[30px] rounded bg-slate-900 border border-slate-700 text-slate-300 flex items-center justify-center"
+                                      title="Clear formatting"
+                                      aria-label="Clear formatting"
+                                    >
+                                      <Eraser className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        onUpdateCVData((prev) => ({
+                                          ...prev,
+                                          experiences: prev.experiences.map((item, i) =>
+                                            i === idx
+                                              ? {
+                                                  ...item,
+                                                  bullets: item.bullets.filter((_, bi) => bi !== bIdx),
+                                                }
+                                              : item
+                                          ),
+                                        }))
+                                      }
+                                      className="text-rose-400 hover:underline font-semibold px-2 py-1 ml-1"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
                                 </div>
+
+                                {activeLinkBulletKey === b.id && (
+                                  <div className="flex items-center gap-1.5 bg-slate-900 border border-blue-500/40 rounded-lg p-1.5">
+                                    <input
+                                      type="url"
+                                      value={linkUrlDraft}
+                                      onChange={(e) => setLinkUrlDraft(e.target.value)}
+                                      placeholder="https://..."
+                                      className="flex-1 min-w-0 bg-[#080D1A] border border-slate-700 rounded px-2 py-1 text-xs text-white font-mono"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => applyBulletLink(idx, bIdx, b.id)}
+                                      className="px-2.5 py-1 rounded bg-blue-600 text-white text-[11px] font-bold shrink-0"
+                                    >
+                                      Apply
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveLinkBulletKey(null)}
+                                      className="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[11px] shrink-0"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                )}
+
                                 <div
+                                  ref={(el) => {
+                                    bulletRefs.current[b.id] = el;
+                                  }}
                                   contentEditable
                                   suppressContentEditableWarning
-                                  onBlur={(e) => {
-                                    const nextHtml = e.currentTarget.innerHTML;
-                                    onUpdateCVData((prev) => ({
-                                      ...prev,
-                                      experiences: prev.experiences.map((item, i) =>
-                                        i === idx
-                                          ? {
-                                              ...item,
-                                              bullets: item.bullets.map((bul, bi) =>
-                                                bi === bIdx ? { ...bul, text: nextHtml } : bul
-                                              ),
-                                            }
-                                          : item
-                                      ),
-                                    }));
-                                  }}
+                                  onBlur={() => syncBulletHtml(idx, bIdx, b.id)}
                                   dangerouslySetInnerHTML={{ __html: b.text }}
                                   className="min-h-[60px] rounded-lg bg-[#0B1221] border border-slate-700 p-2.5 text-sm text-slate-100 leading-relaxed focus:outline-none focus:border-blue-500"
                                 />

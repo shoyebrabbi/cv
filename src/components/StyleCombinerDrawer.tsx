@@ -24,6 +24,7 @@ import {
   SkillsMode,
   BulletStyle,
 } from '../types/cv';
+import { compressImageFileToDataUrl } from '../utils/imageCompress';
 
 interface StyleCombinerDrawerProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ interface StyleCombinerDrawerProps {
   onAutoFit2Pages: () => void;
   onSaveCustomTemplate?: (name: string, description: string) => void;
   onOpenTemplateGallery?: () => void;
+  onOpenLiveWebsiteEditor?: () => void;
 }
 
 type InspectorTab = 'layout' | 'style' | 'media' | 'print';
@@ -51,6 +53,7 @@ export function StyleCombinerDrawer({
   onAutoFit2Pages,
   onSaveCustomTemplate,
   onOpenTemplateGallery,
+  onOpenLiveWebsiteEditor,
 }: StyleCombinerDrawerProps) {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<InspectorTab>('layout');
@@ -60,16 +63,22 @@ export function StyleCombinerDrawer({
 
   if (!isOpen) return null;
 
-  function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        onUpdateSettings({ photoSrc: event.target.result });
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFileToDataUrl(file);
+      onUpdateSettings({ photoSrc: compressed });
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (typeof event.target?.result === 'string') {
+          onUpdateSettings({ photoSrc: event.target.result });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = '';
   }
 
   return (
@@ -1107,11 +1116,11 @@ export function StyleCombinerDrawer({
               </div>
             </div>
 
-            {/* Live Website Availability & KPIs */}
+            {/* Live Website Appearance & Shortcut */}
             <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold tracking-wide text-slate-300 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-emerald-400" /> Live Website Controls
+                  <Globe className="w-3.5 h-3.5 text-emerald-400" /> Live Website Theme &amp; Quick Controls
                 </span>
                 <input
                   type="checkbox"
@@ -1136,6 +1145,17 @@ export function StyleCombinerDrawer({
                   className="accent-emerald-500 w-4 h-4 cursor-pointer"
                 />
               </div>
+
+              {onOpenLiveWebsiteEditor && (
+                <button
+                  type="button"
+                  onClick={onOpenLiveWebsiteEditor}
+                  className="w-full py-2 px-3 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/35 text-emerald-300 text-[11px] font-bold flex items-center justify-between transition"
+                >
+                  <span>Website-Only Copy, Photos &amp; Sections</span>
+                  <span>Open Site →</span>
+                </button>
+              )}
 
               <label className="flex items-center justify-between bg-[#111827] px-3 py-2 rounded-lg border border-slate-800 cursor-pointer">
                 <span className="text-[11px] text-slate-200 font-medium">Show Section Numbers (01, 02...)</span>
