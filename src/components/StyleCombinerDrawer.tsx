@@ -74,13 +74,13 @@ export function StyleCombinerDrawer({
 
   return (
     <>
-      {/* Mobile & Tablet Backdrop Overlay (<1024px) */}
+      {/* Mobile, Tablet & Small-Laptop Backdrop Overlay (<1280px) */}
       <div
-        className="no-print lg:hidden fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-sm"
+        className="no-print xl:hidden fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
-      <aside className="no-print fixed lg:static inset-y-0 left-0 w-[94vw] max-w-[390px] lg:w-[356px] rounded-r-3xl lg:rounded-none bg-[#090E1A] border-r border-slate-800/90 text-slate-200 flex flex-col shrink-0 z-50 lg:z-30 h-full overflow-hidden shadow-2xl lg:shadow-none">
+      <aside className="no-print fixed xl:static inset-y-0 left-0 w-[92vw] max-w-[380px] xl:w-[324px] 2xl:w-[348px] rounded-r-3xl xl:rounded-none bg-[#090E1A] border-r border-slate-800/90 text-slate-200 flex flex-col shrink-0 z-50 xl:z-20 h-full overflow-hidden shadow-2xl xl:shadow-none">
         {/* Inspector Header */}
         <div className="px-4 py-3 border-b border-slate-800/90 flex items-center justify-between shrink-0 bg-[#080D1A]">
           <div className="flex items-center gap-2.5">
@@ -88,7 +88,7 @@ export function StyleCombinerDrawer({
               <Sliders className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-bold text-sm lg:text-xs tracking-wide text-slate-100">
+              <h2 className="font-bold text-sm xl:text-xs tracking-wide text-slate-100">
                 Design Inspector
               </h2>
               <p className="text-[11px] text-slate-400">লেআউট, কালার, ওয়েবসাইট ও প্রিন্ট</p>
@@ -97,11 +97,11 @@ export function StyleCombinerDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] lg:min-h-0 lg:min-w-0 p-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center justify-center"
+            className="min-h-[44px] min-w-[44px] xl:min-h-0 xl:min-w-0 p-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center justify-center"
             title="প্যানেল বন্ধ করুন"
             aria-label="Close Design Inspector"
           >
-            <X className="w-5 h-5 lg:w-4 lg:h-4" />
+            <X className="w-5 h-5 xl:w-4 xl:h-4" />
           </button>
         </div>
 
@@ -135,7 +135,7 @@ export function StyleCombinerDrawer({
       </div>
 
       {/* Scrollable Active Tab Content */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-800/75 text-xs">
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-800/75 text-xs pb-20 xl:pb-4">
         {/* ================= TAB 1: LAYOUT & SECTIONS ================= */}
         {activeTab === 'layout' && (
           <>

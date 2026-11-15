@@ -597,11 +597,11 @@ export function ExportHubModal({
                     </div>
                   </div>
 
-                  <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <div className="sm:col-span-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1">
                     <button
                       type="submit"
                       disabled={pwLoading}
-                      className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs flex items-center gap-1.5 transition"
+                      className="w-full sm:w-auto min-h-[42px] sm:min-h-0 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition"
                     >
                       {pwLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <KeyRound className="w-3.5 h-3.5" />}
                       <span>{hasPasswordProvider ? 'Update Password' : 'Save Login Password'}</span>
@@ -628,7 +628,7 @@ export function ExportHubModal({
                             setPwLoading(false);
                           }
                         }}
-                        className="px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-[11px] flex items-center gap-1.5 transition"
+                        className="w-full sm:w-auto min-h-[40px] sm:min-h-0 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition"
                       >
                         <Send className="w-3.5 h-3.5 text-blue-400" />
                         <span>Send Reset Email</span>

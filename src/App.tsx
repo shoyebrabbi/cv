@@ -244,9 +244,9 @@ export default function App() {
     showToast('পরবর্তী CV স্টেটে এগিয়ে যাওয়া হয়েছে (Redo)', 'info');
   }, [historyFuture, showToast]);
 
-  // Drawer toggles (Closed by default below lg/1024px so mobile & tablet show CV canvas immediately)
+  // Drawer toggles (Left Design Inspector docks at xl/1280px+ so 1024px-1279px laptops keep generous canvas width)
   const [isStudioOpen, setIsStudioOpen] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+    typeof window !== 'undefined' ? window.innerWidth >= 1280 : true
   );
   const [isRightRailOpen, setIsRightRailOpen] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 1440 : false
@@ -1951,6 +1951,7 @@ export default function App() {
             <Navbar
               score={score}
               isEditMode={settings.isEditMode}
+              isStudioOpen={isStudioOpen}
               onToggleEditMode={() =>
                 setSettings((prev) => ({ ...prev, isEditMode: !prev.isEditMode }))
               }
@@ -1963,8 +1964,30 @@ export default function App() {
             onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}
             onOpenATSModal={() => setAtsModalOpen(true)}
             onOpenGitHubModal={() => setGithubModalOpen(true)}
-            onToggleUnifiedTools={() => setIsUnifiedToolsOpen(!isUnifiedToolsOpen)}
-            onToggleStudioSidebar={() => setIsStudioOpen(!isStudioOpen)}
+            onToggleUnifiedTools={() => {
+              setIsUnifiedToolsOpen((prev) => {
+                const next = !prev;
+                if (next) {
+                  setIsRightRailOpen(false);
+                  if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+                    setIsStudioOpen(false);
+                  }
+                }
+                return next;
+              });
+            }}
+            onToggleStudioSidebar={() => {
+              setIsStudioOpen((prev) => {
+                const next = !prev;
+                if (next) {
+                  setIsUnifiedToolsOpen(false);
+                  if (typeof window !== 'undefined' && window.innerWidth < 1536) {
+                    setIsRightRailOpen(false);
+                  }
+                }
+                return next;
+              });
+            }}
             onOpenLinkModal={handleOpenLinkModalSelection}
             onOpenAddSectionModal={() => setAddSectionModalOpen(true)}
             onAddContact={() => {
@@ -2053,22 +2076,18 @@ export default function App() {
             activeProfileId={activeProfileId}
             onSelectProfile={handleSelectProfile}
             profiles={profiles.map((p) => ({ id: p.id, name: p.name }))}
-            wordCount={wordCount}
-            readTimeSeconds={readTimeSeconds}
             onAutoFit1Page={handleAutoFit1Page}
             onAutoFit2Pages={handleAutoFit2Pages}
             onOpenProfileManager={() => setProfileManagerOpen(true)}
             canUndoCV={historyPast.length > 0}
             canRedoCV={historyFuture.length > 0}
-              onUndoCV={handleUndoCV}
-              onRedoCV={handleRedoCV}
-              onOpenPrintPreview={() => setPrintPreviewOpen(true)}
-              zenMode={zenMode}
-              onToggleZenMode={() => setZenMode((z) => !z)}
-              onOpenShortcuts={() => setShortcutsModalOpen(true)}
-              mobileStudioView={mobileStudioView}
-              onSetMobileStudioView={setMobileStudioView}
-            />
+            onUndoCV={handleUndoCV}
+            onRedoCV={handleRedoCV}
+            onOpenPrintPreview={() => setPrintPreviewOpen(true)}
+            zenMode={zenMode}
+            onToggleZenMode={() => setZenMode((z) => !z)}
+            onOpenShortcuts={() => setShortcutsModalOpen(true)}
+          />
           )}
 
           {zenMode && (
@@ -2126,7 +2145,6 @@ export default function App() {
                   onRedoCV={handleRedoCV}
                   onUpdateCVData={applyCVUpdate}
                   onUpdateSettings={(newVals) => setSettings((prev) => ({ ...prev, ...newVals }))}
-                  onSwitchToPaperView={() => setMobileStudioView('paper')}
                   onOpenATSModal={() => setAtsModalOpen(true)}
                   onOpenProfileManager={() => setProfileManagerOpen(true)}
                   onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}
@@ -2135,6 +2153,11 @@ export default function App() {
                   onTogglePortfolioMode={() =>
                     setSettings((prev) => ({ ...prev, portfolioMode: true }))
                   }
+                  onToggleUnifiedTools={() => {
+                    setIsStudioOpen(false);
+                    setIsRightRailOpen(false);
+                    setIsUnifiedToolsOpen(true);
+                  }}
                   onShowToast={showToast}
                 />
               )}
@@ -2143,18 +2166,21 @@ export default function App() {
               <div
                 className={`${
                   mobileStudioView === 'app' ? 'hidden lg:flex' : 'flex'
-                } no-print max-w-[210mm] mx-auto mb-2.5 sm:mb-4 bg-[#090E1A] border border-slate-800/90 rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs shadow-lg`}
+                } no-print max-w-[210mm] mx-auto mb-2.5 sm:mb-4 bg-[#090E1A] border border-slate-800/90 rounded-xl px-2.5 sm:px-3.5 py-2 flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs shadow-lg`}
               >
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2 sm:gap-2.5">
                   <span className="font-semibold text-slate-200 tabular-nums whitespace-nowrap text-[11px] sm:text-xs">
                     {estimatedPages} {estimatedPages > 1 ? 'Pages' : 'Page'} · {Math.round(docHeight * 0.264583)}mm
+                  </span>
+                  <span className="hidden md:inline text-[11px] text-slate-400 tabular-nums whitespace-nowrap border-l border-slate-800 pl-2.5">
+                    {wordCount} words · ~{readTimeSeconds}s scan
                   </span>
 
                   {overflowPx > 0 ? (
                     <div className="flex items-center gap-1.5 text-amber-300 bg-amber-950/50 border border-amber-500/40 px-2 sm:px-2.5 py-0.5 rounded-md text-[11px] font-medium whitespace-nowrap">
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                       <span className="tabular-nums">
-                        +{Math.round(overflowPx)}px overflow on Page {estimatedPages - 1}
+                        +{Math.round(overflowPx)}px overflow (P{estimatedPages - 1})
                       </span>
                       <button
                         type="button"
@@ -2165,21 +2191,21 @@ export default function App() {
                       </button>
                     </div>
                   ) : (
-                    <span className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-semibold whitespace-nowrap">
+                    <span className="flex items-center gap-1 text-emerald-400 text-[11px] font-semibold whitespace-nowrap">
                       <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                       Clean A4 Fit
                     </span>
                   )}
                 </div>
 
-                {/* Canvas Zoom, Page Break Guide, Ruler, 2-Page Spread & Right Rail Toggle */}
-                <div className="flex items-center gap-1 bg-[#0D1424] px-2 py-1 rounded-lg border border-slate-800 ml-auto overflow-x-auto no-scrollbar max-w-full">
+                {/* Canvas Zoom, Page Break Guide, Ruler, 2-Page Spread, Print Preview & Monitor Rail Toggle */}
+                <div className="flex items-center gap-1 bg-[#0D1424] px-2 py-1 rounded-lg border border-slate-800 sm:ml-auto overflow-x-auto no-scrollbar max-w-full">
                   {estimatedPages >= 2 && (
                     <>
                       <button
                         type="button"
                         onClick={handleToggleSpread}
-                        className={`hidden lg:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap ${
+                        className={`hidden lg:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 ${
                           sideBySideSpread
                             ? 'bg-emerald-600/25 text-emerald-300'
                             : 'text-slate-300 hover:text-white'
@@ -2189,13 +2215,13 @@ export default function App() {
                         <Columns2 className="w-3.5 h-3.5" />
                         <span>{sideBySideSpread ? 'Back to Edit' : '2-Page Spread'}</span>
                       </button>
-                      <div className="hidden lg:block h-3.5 w-px bg-slate-800 mx-0.5" />
+                      <div className="hidden lg:block h-3.5 w-px bg-slate-800 mx-0.5 shrink-0" />
                     </>
                   )}
                   <button
                     type="button"
                     onClick={() => setShowRulerGuides(!showRulerGuides)}
-                    className={`hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap ${
+                    className={`hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 ${
                       showRulerGuides
                         ? 'bg-slate-800 text-cyan-300'
                         : 'text-slate-400 hover:text-white'
@@ -2208,7 +2234,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setShowPageGuide(!showPageGuide)}
-                    className={`px-2 sm:px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap ${
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 ${
                       showPageGuide
                         ? 'bg-blue-600/25 text-blue-300'
                         : 'text-slate-400 hover:text-white'
@@ -2217,22 +2243,22 @@ export default function App() {
                   >
                     {showPageGuide ? 'Guides: On' : 'Guides: Off'}
                   </button>
-                  <div className="h-3.5 w-px bg-slate-800 mx-0.5" />
+                  <div className="h-3.5 w-px bg-slate-800 mx-0.5 shrink-0" />
                   <button
                     type="button"
                     onClick={() => handleZoomChange(-0.1)}
-                    className="p-1 rounded hover:bg-slate-800 text-slate-300 hover:text-white"
+                    className="p-1 rounded hover:bg-slate-800 text-slate-300 hover:text-white shrink-0"
                     title="Zoom Out"
                   >
                     <ZoomOut className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[11px] font-mono tabular-nums font-semibold text-slate-200 min-w-[38px] text-center">
+                  <span className="text-[11px] font-mono tabular-nums font-semibold text-slate-200 min-w-[36px] text-center shrink-0">
                     {Math.round(effectiveZoomScale * 100)}%
                   </span>
                   <button
                     type="button"
                     onClick={() => handleZoomChange(0.1)}
-                    className="p-1 rounded hover:bg-slate-800 text-slate-300 hover:text-white"
+                    className="p-1 rounded hover:bg-slate-800 text-slate-300 hover:text-white shrink-0"
                     title="Zoom In"
                   >
                     <ZoomIn className="w-3.5 h-3.5" />
@@ -2240,7 +2266,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleFitHeight}
-                    className="hidden lg:inline-block px-1.5 py-0.5 rounded hover:bg-slate-800 text-[11px] font-semibold text-slate-400 hover:text-white whitespace-nowrap"
+                    className="hidden lg:inline-block px-1.5 py-0.5 rounded hover:bg-slate-800 text-[11px] font-semibold text-slate-400 hover:text-white whitespace-nowrap shrink-0"
                     title="পুরো A4 পাতা ল্যাপটপ স্ক্রিনের উচ্চতা অনুযায়ী ফিট করুন"
                   >
                     Fit H
@@ -2248,34 +2274,49 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleResetZoom}
-                    className="px-1.5 sm:px-2 py-0.5 rounded hover:bg-slate-800 text-[11px] font-semibold text-slate-400 hover:text-white whitespace-nowrap"
+                    className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-[11px] font-semibold text-slate-400 hover:text-white whitespace-nowrap shrink-0"
                     title={viewportFitScale < 1 ? 'Fit to Screen' : 'Reset 100%'}
                   >
                     {viewportFitScale < 1 ? 'Fit' : 'Reset'}
                   </button>
 
-                  <div className="lg:hidden h-3.5 w-px bg-slate-800 mx-0.5" />
+                  <div className="h-3.5 w-px bg-slate-800 mx-0.5 shrink-0" />
                   <button
                     type="button"
                     onClick={() => setPrintPreviewOpen(true)}
-                    className="lg:hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 text-[11px] font-semibold text-cyan-300 transition whitespace-nowrap"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 text-[11px] font-semibold text-cyan-300 transition whitespace-nowrap shrink-0"
                     title="A4 Print Preview"
                   >
                     <Printer className="w-3 h-3" />
                     <span>Preview</span>
                   </button>
 
-                  {!isRightRailOpen && !zenMode && (
+                  {!zenMode && (
                     <>
-                      <div className="hidden lg:block h-3.5 w-px bg-slate-800 mx-0.5" />
+                      <div className="hidden lg:block h-3.5 w-px bg-slate-800 mx-0.5 shrink-0" />
                       <button
                         type="button"
-                        onClick={() => setIsRightRailOpen(true)}
-                        className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-blue-300 transition whitespace-nowrap"
-                        title="Open Live Studio Monitor & Section Navigator"
+                        onClick={() =>
+                          setIsRightRailOpen((prev) => {
+                            const next = !prev;
+                            if (next) {
+                              setIsUnifiedToolsOpen(false);
+                              if (typeof window !== 'undefined' && window.innerWidth < 1536) {
+                                setIsStudioOpen(false);
+                              }
+                            }
+                            return next;
+                          })
+                        }
+                        className={`hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition whitespace-nowrap shrink-0 ${
+                          isRightRailOpen
+                            ? 'bg-blue-600/25 text-blue-300 border border-blue-500/40'
+                            : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                        }`}
+                        title="Toggle Document Monitor & Auto-Fit Rail"
                       >
                         <PanelRightOpen className="w-3 h-3" />
-                        <span>Live Audit</span>
+                        <span>Monitor</span>
                       </button>
                     </>
                   )}
@@ -2384,30 +2425,26 @@ export default function App() {
                     />
                   )}
 
-                  {/* Visual A4 Page Break Guidelines (Non-printable) */}
+                  {/* Visual A4 Page Break Guidelines (Right-aligned edge flag so CV text is never covered) */}
                   {showPageGuide && (
                     <div
-                      className="no-print absolute left-0 right-0 pointer-events-none flex items-center justify-between z-30"
+                      className="no-print absolute left-0 right-0 pointer-events-none z-30 border-t-2 border-dashed border-rose-500/80 flex justify-end"
                       style={{ top: '1123px' }}
                     >
-                      <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
-                      <span className="bg-rose-950 border border-rose-500/80 text-rose-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap mx-2">
-                        A4 Page 1 End (297mm) / Page 2 Start
+                      <span className="-mt-[18px] mr-1 bg-rose-950/95 border border-b-0 border-rose-500/75 text-rose-200 text-[9.5px] font-bold px-2 py-0.5 rounded-t shadow-md whitespace-nowrap">
+                        Page 1 End (297mm) ↓ Page 2
                       </span>
-                      <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
                     </div>
                   )}
 
                   {showPageGuide && docHeight > 2246 && (
                     <div
-                      className="no-print absolute left-0 right-0 pointer-events-none flex items-center justify-between z-30"
+                      className="no-print absolute left-0 right-0 pointer-events-none z-30 border-t-2 border-dashed border-rose-500/80 flex justify-end"
                       style={{ top: '2246px' }}
                     >
-                      <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
-                      <span className="bg-rose-950 border border-rose-500/80 text-rose-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap mx-2">
-                        A4 Page 2 End (594mm) / Page 3 Start
+                      <span className="-mt-[18px] mr-1 bg-rose-950/95 border border-b-0 border-rose-500/75 text-rose-200 text-[9.5px] font-bold px-2 py-0.5 rounded-t shadow-md whitespace-nowrap">
+                        Page 2 End (594mm) ↓ Page 3
                       </span>
-                      <div className="h-[2px] flex-1 border-b-2 border-dashed border-rose-500/80"></div>
                     </div>
                   )}
 
@@ -2453,16 +2490,17 @@ export default function App() {
           {!zenMode && (
             <nav
               aria-label="Mobile Studio Actions"
-              className="no-print lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#080D1A]/95 backdrop-blur-md border-t border-slate-800/90 px-2 py-1.5 grid grid-cols-4 gap-1.5 shadow-[0_-8px_24px_rgba(2,6,23,0.45)]"
+              className="no-print lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#080D1A]/95 backdrop-blur-md border-t border-slate-800/90 px-2 py-1 grid grid-cols-4 gap-1.5 shadow-[0_-8px_24px_rgba(2,6,23,0.45)]"
             >
               <button
                 type="button"
                 onClick={() => {
                   setIsStudioOpen(false);
+                  setIsRightRailOpen(false);
                   setIsUnifiedToolsOpen(false);
                   setMobileStudioView('app');
                 }}
-                className={`min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
                   mobileStudioView === 'app' && !isStudioOpen && !isUnifiedToolsOpen
                     ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
                     : 'text-slate-300 hover:bg-slate-900 border border-transparent'
@@ -2476,10 +2514,11 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setIsStudioOpen(false);
+                  setIsRightRailOpen(false);
                   setIsUnifiedToolsOpen(false);
                   setMobileStudioView('paper');
                 }}
-                className={`min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
                   mobileStudioView === 'paper' && !isStudioOpen && !isUnifiedToolsOpen
                     ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
                     : 'text-slate-300 hover:bg-slate-900 border border-transparent'
@@ -2493,9 +2532,10 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setIsUnifiedToolsOpen(false);
+                  setIsRightRailOpen(false);
                   setIsStudioOpen((v) => !v);
                 }}
-                className={`min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
                   isStudioOpen
                     ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
                     : 'text-slate-300 hover:bg-slate-900 border border-transparent'
@@ -2509,9 +2549,10 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setIsStudioOpen(false);
+                  setIsRightRailOpen(false);
                   setIsUnifiedToolsOpen((v) => !v);
                 }}
-                className={`min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
                   isUnifiedToolsOpen
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                     : 'text-slate-300 hover:bg-slate-900 border border-transparent'

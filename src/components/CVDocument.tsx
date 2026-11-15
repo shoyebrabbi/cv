@@ -544,7 +544,7 @@ export function CVDocument({
                 {/* Individual Contact Controls */}
                 <div
                   onMouseDown={(e) => e.preventDefault()}
-                  className="builder-control no-print hidden group-hover/citem:inline-flex items-center gap-0.5 bg-slate-900 text-white px-1 py-0.5 rounded text-[9px] ml-1 shadow z-20"
+                  className="builder-control no-print hidden group-hover/citem:flex absolute -top-4 left-0 items-center gap-0.5 bg-slate-900/95 text-white px-1.5 py-0.5 rounded text-[9px] shadow-md z-30"
                 >
                   <button
                     type="button"
@@ -591,9 +591,6 @@ export function CVDocument({
       {(() => {
         const summarySection = (
           <section className="cv-section group/sec" data-section-id="summary">
-            <div className="builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
-              <span className="text-slate-400">Section 1</span>
-            </div>
             <h2
               className="cv-section-title"
               contentEditable={effectiveEditMode}
@@ -631,7 +628,7 @@ export function CVDocument({
 
         const skillsSection = (
           <section className="cv-section group/sec" data-section-id="skills">
-            <div className="cv-section-header-bar builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
+            <div className="cv-section-header-bar builder-control no-print hidden group-hover/sec:flex absolute right-0 -top-5 items-center gap-1 bg-slate-900/95 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-30">
               <button
                 type="button"
                 onClick={() => {
@@ -739,8 +736,8 @@ export function CVDocument({
 
                       <div
                         onMouseDown={(e) => e.preventDefault()}
-                        className={`builder-control no-print opacity-0 group-hover/row:opacity-100 absolute top-1 right-1 flex items-center gap-1 bg-slate-900 text-white px-1.5 py-0.5 rounded shadow text-[9px] z-20 ${
-                          activeTouchKey === `s:${row.id}` ? '!opacity-100' : ''
+                        className={`builder-control no-print hidden group-hover/row:flex absolute -top-3.5 right-1 items-center gap-1 bg-slate-900/95 text-white px-1.5 py-0.5 rounded shadow-md text-[9px] z-30 ${
+                          activeTouchKey === `s:${row.id}` ? '!flex' : ''
                         }`}
                       >
                         <button type="button" onClick={() => moveSkill(index, -1)} className="hover:text-blue-300" title="Move Up">
@@ -766,7 +763,7 @@ export function CVDocument({
 
         const experienceSection = (
           <section className="cv-section group/sec" data-section-id="experience">
-            <div className="cv-section-header-bar builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
+            <div className="cv-section-header-bar builder-control no-print hidden group-hover/sec:flex absolute right-0 -top-5 items-center gap-1 bg-slate-900/95 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-30">
               <button
                 type="button"
                 onClick={() => {
@@ -907,7 +904,7 @@ export function CVDocument({
                         />
                         <span
                           onMouseDown={(e) => e.preventDefault()}
-                          className="builder-control no-print hidden group-hover/bullet:inline-flex items-center gap-1 bg-slate-900 text-white px-1.5 py-0.5 rounded text-[9px] ml-1 shadow z-20"
+                          className="builder-control no-print hidden group-hover/bullet:flex absolute -top-4 right-0 items-center gap-1 bg-slate-900/95 text-white px-1.5 py-0.5 rounded text-[9px] shadow-md z-30"
                         >
                           <button type="button" onClick={() => moveBullet(expIdx, bIdx, -1)} title="Move Bullet Up">
                             <ArrowUp className="w-2.5 h-2.5" />
@@ -926,27 +923,27 @@ export function CVDocument({
                     ))}
                   </ul>
 
-                  {/* Role item bar */}
+                  {/* Role item bar (out of normal flow so unhovered role height is 100% true-to-print) */}
                   <div
                     onMouseDown={(e) => e.preventDefault()}
-                    className={`builder-control no-print opacity-0 group-hover/item:opacity-100 flex flex-wrap items-center gap-2 mt-1 text-[10px] bg-slate-100 px-2 py-1 rounded border border-slate-200 ${
-                      activeTouchKey === `e:${exp.id}` ? '!opacity-100' : ''
+                    className={`builder-control no-print hidden group-hover/item:flex absolute -bottom-3.5 right-0 flex-wrap items-center gap-2 text-[10px] bg-slate-900/95 text-slate-100 px-2.5 py-0.5 rounded-md border border-slate-700 shadow-lg z-30 ${
+                      activeTouchKey === `e:${exp.id}` ? '!flex' : ''
                     }`}
                   >
-                    <button type="button" onClick={() => addBullet(expIdx)} className="text-blue-600 hover:underline font-semibold">
+                    <button type="button" onClick={() => addBullet(expIdx)} className="text-emerald-300 hover:underline font-semibold">
                       + Bullet
                     </button>
-                    <button type="button" onClick={() => moveExperience(expIdx, -1)} className="text-slate-600 hover:text-blue-600">
-                      ▲ Role Up
+                    <button type="button" onClick={() => moveExperience(expIdx, -1)} className="text-slate-300 hover:text-blue-300">
+                      ▲ Up
                     </button>
-                    <button type="button" onClick={() => moveExperience(expIdx, 1)} className="text-slate-600 hover:text-blue-600">
-                      ▼ Role Down
+                    <button type="button" onClick={() => moveExperience(expIdx, 1)} className="text-slate-300 hover:text-blue-300">
+                      ▼ Down
                     </button>
-                    <button type="button" onClick={() => togglePageBreakExp(expIdx)} className="text-indigo-600 hover:underline font-semibold flex items-center gap-0.5">
-                      <Scissors className="w-3 h-3" /> ⤵ Toggle Page 2 Break
+                    <button type="button" onClick={() => togglePageBreakExp(expIdx)} className="text-cyan-300 hover:underline font-semibold flex items-center gap-0.5">
+                      <Scissors className="w-3 h-3" /> Page 2 Break
                     </button>
-                    <button type="button" onClick={() => deleteExperience(exp.id)} className="text-red-500 hover:underline ml-auto flex items-center gap-0.5">
-                      <Trash2 className="w-3 h-3" /> Delete Role
+                    <button type="button" onClick={() => deleteExperience(exp.id)} className="text-rose-400 hover:underline flex items-center gap-0.5">
+                      <Trash2 className="w-3 h-3" /> Delete
                     </button>
                   </div>
                 </div>
@@ -957,7 +954,7 @@ export function CVDocument({
 
         const projectsSection = (
           <section className="cv-section group/sec" data-section-id="projects">
-            <div className="cv-section-header-bar builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-10">
+            <div className="cv-section-header-bar builder-control no-print hidden group-hover/sec:flex absolute right-0 -top-5 items-center gap-1 bg-slate-900/95 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-30">
               <button
                 type="button"
                 onClick={() => {
@@ -1073,8 +1070,8 @@ export function CVDocument({
                   {/* Project controls */}
                   <div
                     onMouseDown={(e) => e.preventDefault()}
-                    className={`builder-control no-print opacity-0 group-hover/proj:opacity-100 absolute right-0 -top-1 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded text-[9px] shadow z-20 ${
-                      activeTouchKey === `p:${proj.id}` ? '!opacity-100' : ''
+                    className={`builder-control no-print hidden group-hover/proj:flex absolute right-0 -bottom-3.5 items-center gap-1.5 bg-slate-900/95 text-white px-2 py-0.5 rounded-md text-[9.5px] shadow-lg z-30 ${
+                      activeTouchKey === `p:${proj.id}` ? '!flex' : ''
                     }`}
                   >
                     <button type="button" onClick={() => onOpenLinkModalForProject(proj.id, proj.title, proj.url)} className="text-blue-300 hover:underline">
@@ -1238,7 +1235,7 @@ export function CVDocument({
                   </span>
                   <span
                     onMouseDown={(e) => e.preventDefault()}
-                    className="builder-control no-print hidden group-hover/cert:inline-flex items-center gap-0.5 bg-slate-900 text-white px-1 rounded text-[9px] ml-1 z-20"
+                    className="builder-control no-print hidden group-hover/cert:flex absolute -top-4 right-0 items-center gap-0.5 bg-slate-900/95 text-white px-1.5 py-0.5 rounded text-[9px] shadow-md z-30"
                   >
                     <button type="button" onClick={() => moveCert(cIdx, -1)}>
                       <ArrowUp className="w-2.5 h-2.5" />
@@ -1314,7 +1311,7 @@ export function CVDocument({
           >
             <div
               onMouseDown={(e) => e.preventDefault()}
-              className="cv-section-header-bar builder-control no-print opacity-0 group-hover/sec:opacity-100 absolute right-0 -top-2 flex items-center gap-1 bg-slate-900 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-20"
+              className="cv-section-header-bar builder-control no-print hidden group-hover/sec:flex absolute right-0 -top-5 items-center gap-1 bg-slate-900/95 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-30"
             >
               {sec.type !== 'paragraph' && (
                 <button
@@ -1476,7 +1473,7 @@ export function CVDocument({
                             ),
                           }));
                         }}
-                        className="builder-control no-print hidden group-hover/citem:inline-flex ml-1.5 text-rose-500 hover:text-rose-700 align-middle"
+                        className="builder-control no-print hidden group-hover/citem:flex absolute -top-3.5 right-0 bg-slate-900/95 text-rose-400 hover:text-rose-300 p-0.5 rounded shadow z-30"
                         title="Remove Item"
                       >
                         <X className="w-3 h-3" />
@@ -1645,7 +1642,7 @@ export function CVDocument({
                     >
                       <div
                         onMouseDown={(e) => e.preventDefault()}
-                        className="builder-control no-print opacity-0 group-hover/wrap:opacity-100 absolute right-0 -top-2 md:-left-7 md:right-auto md:top-3 flex flex-row md:flex-col gap-0.5 bg-slate-900 text-white p-0.5 rounded shadow z-20 text-[9px]"
+                        className="builder-control no-print hidden group-hover/wrap:flex absolute right-0 -top-5 md:-left-7 md:right-auto md:top-0 flex-row md:flex-col gap-0.5 bg-slate-900/95 text-white p-0.5 rounded shadow-md z-30 text-[9px]"
                       >
                         <button
                           type="button"

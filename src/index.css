@@ -83,58 +83,60 @@ body {
 
 /* Page-by-Page Split Visual Mode on Screen */
 .page-split-view .force-page-break {
-  margin-top: 38px !important;
-  padding-top: 26px !important;
-  border-top: 14px solid #0f172a !important;
+  margin-top: 36px !important;
+  padding-top: 22px !important;
+  border-top: 18px solid #0f172a !important;
   position: relative;
 }
 .page-split-view .force-page-break::before {
-  content: "End of Page 1   |   A4 Print Boundary";
+  content: "End of Page 1  ·  A4 Boundary";
   position: absolute;
-  top: -34px;
-  left: 0;
+  top: -36px;
   right: 0;
   text-align: right;
-  font-size: 10px;
-  color: #94a3b8;
-  font-weight: 500;
+  font-size: 9.5px;
+  color: #64748b;
+  font-weight: 600;
   pointer-events: none;
 }
 .page-split-view .force-page-break::after {
-  content: "📄 PAGE 2 OF 2 (Exact Print & PDF Page Break)";
+  content: "PAGE 2 OF 2 · PRINT BREAK";
   position: absolute;
-  top: -13px;
+  top: -16px;
   left: 50%;
   transform: translateX(-50%);
   background: #2563eb;
   color: #ffffff;
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
-  padding: 2px 14px;
-  border-radius: 999px;
+  padding: 1px 12px;
+  border-radius: 4px;
   letter-spacing: 0.05em;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  white-space: nowrap;
   pointer-events: none;
 }
 
 /* Continuous View Page Break Badge */
 body:not(.page-split-view) .force-page-break {
   border-top: 2px dashed #6366f1 !important;
-  margin-top: 16px !important;
-  padding-top: 12px !important;
+  margin-top: 24px !important;
+  padding-top: 18px !important;
   position: relative;
 }
 body:not(.page-split-view) .force-page-break::after {
-  content: "⤵ Page 2 Break Active";
+  content: "⤵ Page 2 Break";
   position: absolute;
-  top: -10px;
-  right: 12px;
+  top: -11px;
+  left: 0;
   background: #4f46e5;
-  color: #fff;
+  color: #ffffff;
   font-size: 9px;
   font-weight: 700;
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* Theme Dynamic Utility Classes */
@@ -541,14 +543,14 @@ body:not(.edit-active) .builder-control {
 .edit-active [class*="group/"]:focus-within > .builder-control.hidden,
 .edit-active [class*="group/"].cv-touch-active > .builder-control.hidden,
 .edit-active .cv-touch-active > .builder-control.hidden {
-  display: inline-flex !important;
+  display: flex !important;
 }
 
 @media screen and (hover: none), screen and (pointer: coarse) {
   .edit-active .photo-touch-badge {
     display: inline-flex !important;
   }
-  .edit-active .cv-section-header-bar > .builder-control.opacity-0,
+  .edit-active .cv-section-header-bar.builder-control,
   .edit-active .cv-section-touch-add {
     opacity: 0.95 !important;
     display: inline-flex !important;

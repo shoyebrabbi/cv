@@ -286,26 +286,28 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
         onClick={onClose}
       />
       <aside className="no-print fixed inset-y-0 right-0 z-50 w-[96vw] sm:w-full max-w-2xl rounded-l-3xl sm:rounded-none overflow-y-auto border-l border-slate-800 bg-[#090E1A] text-white shadow-2xl">
-        {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800/90 bg-[#080D1A]/95 px-4 sm:px-5 py-3 backdrop-blur">
-          <div>
-            <h2 className="text-base font-bold flex items-center gap-2 text-white">
-              <Sparkles className="w-4 h-4 text-blue-400" /> Career &amp; ATS Toolkit
-            </h2>
-            <p className="text-[11px] text-slate-400">সব টুল বর্তমান Master CV থেকে রিয়েল-টাইমে কাজ করে</p>
+        {/* Combined Sticky Header & Tab Strip (prevents 360px wrapped header overlap) */}
+        <div className="sticky top-0 z-10 bg-[#080D1A]/95 backdrop-blur border-b border-slate-800/90">
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3">
+            <div className="min-w-0 pr-2">
+              <h2 className="text-sm sm:text-base font-bold flex items-center gap-2 text-white">
+                <Sparkles className="w-4 h-4 text-blue-400 shrink-0" />
+                <span className="truncate">Career &amp; ATS Toolkit</span>
+              </h2>
+              <p className="text-[11px] text-slate-400 truncate">সব টুল বর্তমান Master CV থেকে রিয়েল-টাইমে কাজ করে</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-xl bg-slate-900 border border-slate-800 p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-center shrink-0"
+              aria-label="Close Career Toolkit"
+            >
+              <X className="w-5 h-5 sm:w-4 sm:h-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-xl bg-slate-900 border border-slate-800 p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-center"
-            aria-label="Close Career Toolkit"
-          >
-            <X className="w-5 h-5 sm:w-4 sm:h-4" />
-          </button>
-        </div>
 
-        {/* Clean Unclipped Tab Strip (1-row horizontal scroll on mobile, wrapped grid on tablet/desktop) */}
-        <nav className="sticky top-[65px] z-10 flex flex-nowrap overflow-x-auto no-scrollbar sm:flex-wrap gap-1.5 border-b border-slate-800/90 bg-[#0B1221] px-3 sm:px-4 py-2 sm:py-2.5">
+          {/* Clean Unclipped Tab Strip (1-row horizontal scroll on mobile, wrapped grid on tablet/desktop) */}
+          <nav className="flex flex-nowrap overflow-x-auto no-scrollbar sm:flex-wrap gap-1.5 border-t border-slate-800/80 bg-[#0B1221] px-3 sm:px-4 py-2">
           <button
             type="button"
             onClick={() => setActiveTab('ats')}
@@ -370,10 +372,11 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
             <FileSearch className="w-3.5 h-3.5 shrink-0" /> PDF Compare
           </button>
         </nav>
+        </div>
 
         {/* Tab 1: ATS & JD Match */}
         {activeTab === 'ats' && (
-          <div className="space-y-4 p-5 text-xs">
+          <div className="space-y-4 p-3.5 sm:p-5 pb-20 sm:pb-6 text-xs">
             {/* Role Preset */}
             <div className="rounded-xl border border-slate-800 bg-[#0D1424] p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">

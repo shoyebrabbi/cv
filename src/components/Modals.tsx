@@ -566,32 +566,32 @@ export function ATSAuditModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-3.5 bg-[#080D1A] border-t border-slate-800/90 flex flex-wrap justify-between items-center gap-2 shrink-0">
+        <div className="px-4 sm:px-6 py-3.5 bg-[#080D1A] border-t border-slate-800/90 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={onRestoreBDCorporate}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 whitespace-nowrap transition"
+            className="w-full sm:w-auto min-h-[40px] sm:min-h-0 px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 whitespace-nowrap transition text-center"
           >
             BD Corporate Mode (90%)
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-[40px] sm:min-h-0 px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 whitespace-nowrap transition text-center"
+            >
+              Close
+            </button>
             <button
               type="button"
               onClick={() => {
                 onBoost100();
                 confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
               }}
-              className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm flex items-center gap-1.5 transition whitespace-nowrap"
+              className="min-h-[42px] sm:min-h-0 px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm flex items-center justify-center gap-1.5 transition whitespace-nowrap"
             >
-              <Zap className="w-4 h-4 fill-slate-950" />
+              <Zap className="w-4 h-4 fill-slate-950 shrink-0" />
               <span>1-Click Boost to 100% ATS</span>
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 whitespace-nowrap transition"
-            >
-              Close
             </button>
           </div>
         </div>

@@ -12,8 +12,6 @@ import {
   AlignJustify,
   Link as LinkIcon,
   Eraser,
-  Undo,
-  Redo,
   Edit3,
   Eye,
   Plus,
@@ -34,12 +32,14 @@ import {
   Menu,
   X,
   Palette,
+  MoreVertical,
 } from 'lucide-react';
 import { CVTemplateKey, PhotoPosition } from '../types/cv';
 
 interface NavbarProps {
   score: number;
   isEditMode: boolean;
+  isStudioOpen?: boolean;
   onToggleEditMode: () => void;
   photoPosition: PhotoPosition;
   onSetPhotoPosition: (pos: PhotoPosition) => void;
@@ -65,8 +65,6 @@ interface NavbarProps {
   activeProfileId: string;
   onSelectProfile: (id: string) => void;
   profiles: Array<{ id: string; name: string }>;
-  wordCount: number;
-  readTimeSeconds: number;
   onAutoFit1Page: () => void;
   onAutoFit2Pages: () => void;
   onOpenProfileManager: () => void;
@@ -80,13 +78,12 @@ interface NavbarProps {
   onToggleZenMode?: () => void;
   onOpenShortcuts?: () => void;
   onOpenSecuritySettings?: () => void;
-  mobileStudioView?: 'app' | 'paper';
-  onSetMobileStudioView?: (view: 'app' | 'paper') => void;
 }
 
 export function Navbar({
   score,
   isEditMode,
+  isStudioOpen = false,
   onToggleEditMode,
   photoPosition,
   onSetPhotoPosition,
@@ -112,8 +109,6 @@ export function Navbar({
   activeProfileId,
   onSelectProfile,
   profiles,
-  wordCount,
-  readTimeSeconds,
   onAutoFit1Page,
   onAutoFit2Pages,
   onOpenProfileManager,
@@ -127,17 +122,20 @@ export function Navbar({
   onToggleZenMode,
   onOpenShortcuts,
   onOpenSecuritySettings,
-  mobileStudioView = 'app',
-  onSetMobileStudioView,
 }: NavbarProps) {
   const [insertMenuOpen, setInsertMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [mobileStudioMenuOpen, setMobileStudioMenuOpen] = useState(false);
   const insertRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
       if (insertRef.current && !insertRef.current.contains(e.target as Node)) {
         setInsertMenuOpen(false);
+      }
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleOutside);
@@ -145,65 +143,39 @@ export function Navbar({
   }, []);
 
   const isStrictATS = score === 100 || photoPosition === 'hide';
+  const activeProfileName = profiles.find((p) => p.id === activeProfileId)?.name || 'Master CV';
 
   return (
     <header className="no-print sticky top-0 z-40 bg-[#080D1A] border-b border-slate-800/90 text-slate-100 select-none shrink-0">
-      {/* MOBILE NATIVE APP HEADER (< 1024px) */}
-      <div className="lg:hidden px-3 h-14 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <button
-            type="button"
-            onClick={() => setMobileStudioMenuOpen(true)}
-            className="min-h-[40px] px-3 rounded-xl bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-slate-100 text-xs font-bold flex items-center gap-1.5 shrink-0"
-            aria-label="Open Studio Menu"
-          >
-            <Menu className="w-4 h-4 text-blue-400" />
-            <span>Menu</span>
-          </button>
+      {/* MOBILE NATIVE APP HEADER (< 1024px) — 48px compact bar (Edit/A4 view tabs live uniquely in Bottom Nav) */}
+      <div className="lg:hidden px-3 h-12 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setMobileStudioMenuOpen(true)}
+          className="min-h-[38px] px-2.5 rounded-xl bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-slate-100 text-xs font-bold flex items-center gap-1.5 shrink-0"
+          aria-label="Open Studio Menu"
+        >
+          <Menu className="w-4 h-4 text-blue-400" />
+          <span>Menu</span>
+        </button>
 
-          <div className="min-w-0">
-            <div className="text-xs font-extrabold text-white truncate leading-tight">
-              Shoyeb Studio
-            </div>
-            <div className="text-[11px] text-slate-400 truncate leading-tight">
-              {profiles.find((p) => p.id === activeProfileId)?.name || 'Master CV'}
-            </div>
+        <div className="min-w-0 flex-1 text-center px-1">
+          <div className="text-xs font-extrabold text-white truncate leading-tight">
+            {activeProfileName}
+          </div>
+          <div className="text-[10.5px] text-slate-400 truncate leading-tight">
+            ATS {score}% · {isStrictATS ? 'Global' : 'BD Photo'}
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {onSetMobileStudioView && (
-            <div className="flex items-center bg-[#0F172A] border border-slate-800 rounded-xl p-0.5 text-[11px]">
-              <button
-                type="button"
-                onClick={() => onSetMobileStudioView('app')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition ${
-                  mobileStudioView === 'app' ? 'bg-blue-600 text-white' : 'text-slate-400'
-                }`}
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetMobileStudioView('paper')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition ${
-                  mobileStudioView === 'paper' ? 'bg-blue-600 text-white' : 'text-slate-400'
-                }`}
-              >
-                A4
-              </button>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={onExportPDF}
-            className="min-h-[40px] px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-sm"
-          >
-            <FileDown className="w-4 h-4" />
-            <span>PDF</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onExportPDF}
+          className="min-h-[38px] px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-sm"
+        >
+          <FileDown className="w-3.5 h-3.5" />
+          <span>PDF</span>
+        </button>
       </div>
 
       {/* MOBILE STUDIO FULL-EXPLANATION APP MENU SHEET */}
@@ -357,7 +329,7 @@ export function Navbar({
                       setMobileStudioMenuOpen(false);
                       item.action();
                     }}
-                    className="w-full min-h-[64px] p-3.5 rounded-2xl bg-[#0F172A] hover:bg-slate-800/80 border border-slate-800 flex items-center gap-3.5 text-left transition"
+                    className="w-full min-h-[60px] p-3.5 rounded-2xl bg-[#0F172A] hover:bg-slate-800/80 border border-slate-800 flex items-center gap-3.5 text-left transition"
                   >
                     <div
                       className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${item.tint}`}
@@ -380,7 +352,7 @@ export function Navbar({
                     setMobileStudioMenuOpen(false);
                     onAutoFit1Page();
                   }}
-                  className="min-h-[46px] rounded-xl bg-[#0F172A] border border-slate-800 text-xs font-bold text-slate-200"
+                  className="min-h-[44px] rounded-xl bg-[#0F172A] border border-slate-800 text-xs font-bold text-slate-200"
                 >
                   Auto-Fit 1 Page
                 </button>
@@ -390,7 +362,7 @@ export function Navbar({
                     setMobileStudioMenuOpen(false);
                     onAutoFit2Pages();
                   }}
-                  className="min-h-[46px] rounded-xl bg-[#0F172A] border border-slate-800 text-xs font-bold text-slate-200"
+                  className="min-h-[44px] rounded-xl bg-[#0F172A] border border-slate-800 text-xs font-bold text-slate-200"
                 >
                   Auto-Fit 2 Pages
                 </button>
@@ -403,7 +375,7 @@ export function Navbar({
                   setMobileStudioMenuOpen(false);
                   onLockStudio();
                 }}
-                className="w-full min-h-[52px] mt-2 rounded-2xl bg-rose-950/40 hover:bg-rose-950/60 border border-rose-500/35 text-rose-200 text-sm font-bold flex items-center justify-center gap-2"
+                className="w-full min-h-[48px] mt-2 rounded-2xl bg-rose-950/40 hover:bg-rose-950/60 border border-rose-500/35 text-rose-200 text-sm font-bold flex items-center justify-center gap-2"
               >
                 <Lock className="w-4 h-4" />
                 <span>Studio লক করে পাবলিক মোডে যান</span>
@@ -413,29 +385,28 @@ export function Navbar({
         </div>
       )}
 
-      {/* TIER 1: Primary Desktop Studio Command Bar */}
-      <div className="hidden lg:flex max-w-[1800px] mx-auto px-4 xl:px-5 py-1.5 flex-row items-center justify-between gap-2 xl:gap-4">
-        {/* Left Zone: Brand Identity + Unclipped Profile Version + Clear ATS Scorecard Trigger */}
-        <div className="flex items-center justify-between sm:justify-start gap-1.5 xl:gap-2 min-w-0">
+      {/* TIER 1: Primary Desktop Studio Command Bar (3 clean zones, zero overflow on 1024px–1440px+) */}
+      <div className="hidden lg:flex max-w-[1800px] mx-auto px-4 xl:px-5 h-12 items-center justify-between gap-3">
+        {/* Left Zone: Brand + Profile Version Switcher + ATS Trigger */}
+        <div className="flex items-center gap-2 min-w-0">
           <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center tracking-tight shadow-sm">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center tracking-tight shadow-sm">
               S
             </div>
             <span className="font-bold text-xs xl:text-sm tracking-tight text-white whitespace-nowrap shrink-0">
-              <span className="sm:hidden">Shoyeb Studio</span>
-              <span className="hidden sm:inline lg:hidden xl:inline">Shoyeb CV Studio</span>
-              <span className="hidden lg:inline xl:hidden">CV Studio</span>
+              <span className="xl:hidden">Studio</span>
+              <span className="hidden xl:inline">Shoyeb CV Studio</span>
             </span>
           </div>
 
-          <div className="hidden md:block h-4 w-px bg-slate-800 shrink-0" />
+          <div className="h-4 w-px bg-slate-800 shrink-0" />
 
-          {/* Multi-Profile Version Switcher (Accessible on ALL Mobile, Tablet & Desktop viewports) */}
-          <div className="flex items-center gap-1 bg-[#0F172A] border border-slate-800 rounded-lg px-1.5 xl:px-2 py-1 min-w-0">
+          {/* Active Profile Switcher */}
+          <div className="flex items-center gap-1 bg-[#0F172A] border border-slate-800 rounded-lg px-2 py-1 min-w-0">
             <select
               value={activeProfileId}
               onChange={(e) => onSelectProfile(e.target.value)}
-              className="bg-transparent text-[11px] xl:text-xs font-medium text-slate-100 focus:outline-none min-w-[90px] sm:min-w-[130px] lg:min-w-[110px] xl:min-w-[155px] max-w-[125px] sm:max-w-[180px] xl:max-w-[230px] truncate cursor-pointer pr-0.5 sm:pr-1"
+              className="bg-transparent text-xs font-medium text-slate-100 focus:outline-none min-w-[100px] xl:min-w-[140px] max-w-[135px] xl:max-w-[200px] 2xl:max-w-[240px] truncate cursor-pointer pr-1"
               title="Switch Active Role CV Profile"
             >
               {profiles.map((p) => (
@@ -447,7 +418,7 @@ export function Navbar({
             <button
               type="button"
               onClick={onOpenProfileManager}
-              className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition flex items-center gap-1 text-[11px] font-medium whitespace-nowrap shrink-0 border-l border-slate-800 pl-1.5 xl:pl-2"
+              className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition flex items-center gap-1 text-[11px] font-medium whitespace-nowrap shrink-0 border-l border-slate-800 pl-2"
               title="প্রোফাইল তৈরি / ডুপ্লিকেট / শেয়ার লিংক"
             >
               <FolderKanban className="w-3.5 h-3.5 text-blue-400" />
@@ -455,11 +426,11 @@ export function Navbar({
             </button>
           </div>
 
-          {/* Crystal-Clear ATS Scorecard Trigger */}
+          {/* ATS Scorecard Trigger */}
           <button
             type="button"
             onClick={onOpenATSModal}
-            className={`px-2 xl:px-3 py-1 xl:py-1.5 rounded-lg text-[11px] xl:text-xs font-semibold flex items-center gap-1.5 border transition whitespace-nowrap shrink-0 ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition whitespace-nowrap shrink-0 ${
               score === 100
                 ? 'bg-emerald-950/70 border-emerald-500/45 text-emerald-200 hover:bg-emerald-900/60'
                 : score >= 85
@@ -478,20 +449,20 @@ export function Navbar({
               }`}
             />
             <span className="tabular-nums font-bold">ATS {score}%</span>
-            <span className="text-[10.5px] opacity-80 border-l border-current/25 pl-1.5 hidden xl:inline font-medium">
-              {isStrictATS ? 'Global Ready' : 'BD · Photo Mode'}
+            <span className="text-[10.5px] opacity-80 border-l border-current/25 pl-1.5 hidden 2xl:inline font-medium">
+              {isStrictATS ? 'Global Ready' : 'BD · Photo'}
             </span>
           </button>
         </div>
 
-        {/* Right Zone: Horizontal Scrollable on Mobile/Tablet, Crisp Single-Row Fit on Laptop & Desktop */}
-        <div className="flex items-center gap-1.5 xl:gap-2 overflow-x-auto no-scrollbar max-w-full lg:overflow-visible shrink-0 pb-0.5 lg:pb-0">
+        {/* Right Zone: Mode Segmented Toggle + Primary Actions + Clean Utility Dropdown */}
+        <div className="flex items-center gap-1.5 xl:gap-2 shrink-0">
           {/* Edit / Preview Segmented Toggle */}
-          <div className="flex items-center bg-[#0F172A] border border-slate-800 rounded-lg p-0.5 text-[11px] xl:text-xs shrink-0">
+          <div className="flex items-center bg-[#0F172A] border border-slate-800 rounded-lg p-0.5 text-xs shrink-0">
             <button
               type="button"
               onClick={() => !isEditMode && onToggleEditMode()}
-              className={`px-2 xl:px-2.5 py-1 rounded-md font-semibold flex items-center gap-1 xl:gap-1.5 transition whitespace-nowrap shrink-0 ${
+              className={`px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
                 isEditMode ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-100'
               }`}
               title="ক্যানভাসে সরাসরি লেখা এডিট করুন (Ctrl+E)"
@@ -502,7 +473,7 @@ export function Navbar({
             <button
               type="button"
               onClick={() => isEditMode && onToggleEditMode()}
-              className={`px-2 xl:px-2.5 py-1 rounded-md font-semibold flex items-center gap-1 xl:gap-1.5 transition whitespace-nowrap shrink-0 ${
+              className={`px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
                 !isEditMode ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-slate-100'
               }`}
               title="পরিষ্কার প্রিভিউ মোড (Ctrl+E)"
@@ -515,7 +486,7 @@ export function Navbar({
           <button
             type="button"
             onClick={onToggleUnifiedTools}
-            className="px-2 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-[11px] xl:text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
+            className="px-2.5 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
             title="ATS Matcher, XYZ Bullets, LinkedIn, Cover Letter & Job Tracker"
           >
             <Briefcase className="w-3.5 h-3.5 text-blue-400 shrink-0" />
@@ -525,18 +496,18 @@ export function Navbar({
           <button
             type="button"
             onClick={onTogglePortfolioMode}
-            className="px-2 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-[11px] xl:text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
+            className="px-2.5 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
             title="লাইভ পার্সোনাল ওয়েবসাইট মোডে দেখুন"
           >
             <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>{portfolioMode ? 'CV Editor' : 'Live Website'}</span>
+            <span>{portfolioMode ? 'CV Editor' : 'Website'}</span>
           </button>
 
           <button
             type="button"
             onClick={onOpenExportHub}
-            className="px-2 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-[11px] xl:text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
-            title="Print, Word, Excel, Backup ও পাসকোড সেটিংস"
+            className="px-2.5 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
+            title="Print, Word, Excel, Backup ও সিকিউরিটি সেটিংস"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>Export Hub</span>
@@ -545,35 +516,15 @@ export function Navbar({
           <button
             type="button"
             onClick={onExportPDF}
-            className="px-2.5 xl:px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] xl:text-xs font-bold flex items-center gap-1.5 transition shadow-sm whitespace-nowrap shrink-0"
+            className="px-3 xl:px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm whitespace-nowrap shrink-0"
             title="১ ক্লিকে A4 PDF ডাউনলোড করুন"
           >
             <FileDown className="w-3.5 h-3.5 shrink-0" />
             <span>PDF</span>
           </button>
 
-          {/* Compact Utility Icons */}
-          <div className="flex items-center gap-1 border-l border-slate-800 pl-1.5 xl:pl-2 shrink-0">
-            <button
-              type="button"
-              onClick={onOpenGitHubModal}
-              className="p-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition"
-              title="GitHub Pages Deploy Guide"
-            >
-              <Github className="w-4 h-4" />
-            </button>
-
-            {onOpenShortcuts && (
-              <button
-                type="button"
-                onClick={onOpenShortcuts}
-                className="hidden sm:inline-flex p-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition"
-                title="Keyboard Shortcuts (?)"
-              >
-                <Keyboard className="w-4 h-4" />
-              </button>
-            )}
-
+          {/* Compact Utility Cluster */}
+          <div className="flex items-center gap-1 border-l border-slate-800 pl-2 shrink-0">
             {onToggleZenMode && (
               <button
                 type="button"
@@ -589,16 +540,79 @@ export function Navbar({
               </button>
             )}
 
-            {onOpenSecuritySettings && (
+            <div className="relative" ref={moreRef}>
               <button
                 type="button"
-                onClick={onOpenSecuritySettings}
-                className="p-1.5 rounded-lg bg-[#0F172A] hover:bg-emerald-950/60 border border-slate-800 hover:border-emerald-500/40 text-slate-300 hover:text-emerald-300 transition"
-                title="পাসওয়ার্ড পরিবর্তন ও সিকিউরিটি সেটিংস"
+                onClick={() => setMoreMenuOpen((v) => !v)}
+                className={`p-1.5 rounded-lg border transition ${
+                  moreMenuOpen
+                    ? 'bg-slate-800 border-slate-600 text-white'
+                    : 'bg-[#0F172A] hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white'
+                }`}
+                title="More Studio Tools (GitHub, Security, Shortcuts)"
+                aria-label="More Studio Tools"
               >
-                <KeyRound className="w-4 h-4" />
+                <MoreVertical className="w-4 h-4" />
               </button>
-            )}
+
+              {moreMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50 text-xs">
+                  {onOpenSecuritySettings && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        onOpenSecuritySettings();
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-slate-800 text-slate-200 flex items-center gap-2.5"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>Password &amp; Security</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      onOpenGitHubModal();
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-slate-800 text-slate-200 flex items-center gap-2.5"
+                  >
+                    <Github className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                    <span>GitHub Pages Deploy</span>
+                  </button>
+                  {onOpenShortcuts && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        onOpenShortcuts();
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between gap-2"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Keyboard className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                        <span>Keyboard Shortcuts</span>
+                      </span>
+                      <kbd className="text-[10px] studio-mono text-slate-400">?</kbd>
+                    </button>
+                  )}
+                  {onOpenPrintPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        onOpenPrintPreview();
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-slate-800 text-slate-200 flex items-center gap-2.5"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span>Full Print Preview</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
 
             <button
               type="button"
@@ -612,31 +626,34 @@ export function Navbar({
         </div>
       </div>
 
-      {/* TIER 2: Contextual Design, Template, Photo & Formatting Workbench (Desktop lg+) */}
+      {/* TIER 2: Contextual Design, Template, Insert & Formatting Workbench (Desktop lg+) */}
       <div className="hidden lg:block bg-[#0D1424] border-t border-slate-800/80">
-        <div className="max-w-[1800px] mx-auto px-5 py-1.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-1.5 text-xs">
-          {/* Row A: Design Panel, Unclipped Template Picker, Insert & Print Preview (Outside overflow-x-auto so dropdown never clips!) */}
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="max-w-[1800px] mx-auto px-4 xl:px-5 py-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-xs">
+          {/* Left Group: Design Inspector Toggle, Template Picker, + Insert & Single Unambiguous CV Undo/Redo */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={onToggleStudioSidebar}
-              className="px-2.5 sm:px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
-              title="বাম দিকের Design Inspector প্যানেল চালু/বন্ধ করুন"
+              className={`px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
+                isStudioOpen
+                  ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
+                  : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-100'
+              }`}
+              title="বাম দিকের Design Inspector প্যানেল চালু/বন্ধ করুন (Ctrl+\)"
             >
-              <Sliders className="w-3.5 h-3.5 text-blue-400" />
+              <Sliders className={`w-3.5 h-3.5 ${isStudioOpen ? 'text-white' : 'text-blue-400'}`} />
               <span>Design</span>
-              <span className="hidden sm:inline">Panel</span>
             </button>
 
-            <div className="flex items-center bg-[#080D1A] border border-slate-800 rounded-lg overflow-hidden min-w-0 flex-1 sm:flex-initial">
-              <span className="px-2.5 text-[11px] text-slate-400 hidden 2xl:inline-flex items-center gap-1 border-r border-slate-800 py-1 whitespace-nowrap">
+            <div className="flex items-center bg-[#080D1A] border border-slate-800 rounded-lg overflow-hidden min-w-0">
+              <span className="px-2 text-[11px] text-slate-400 hidden 2xl:inline-flex items-center gap-1 border-r border-slate-800 py-1 whitespace-nowrap">
                 <Layers className="w-3 h-3 text-blue-400" />
                 Template
               </span>
               <select
                 value={selectedTemplate}
                 onChange={(e) => onSelectTemplate(e.target.value as CVTemplateKey)}
-                className="bg-transparent text-slate-100 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium focus:outline-none min-w-0 w-full sm:w-auto sm:min-w-[195px] sm:max-w-[260px] cursor-pointer truncate"
+                className="bg-transparent text-slate-100 px-2.5 py-1 text-xs font-medium focus:outline-none min-w-[175px] max-w-[235px] cursor-pointer truncate"
               >
                 <option value="bd-corporate" className="bg-slate-900">1. BD Corporate Executive</option>
                 <option value="strict-ats" className="bg-slate-900">2. Strict ATS Harvard</option>
@@ -654,20 +671,20 @@ export function Navbar({
               <button
                 type="button"
                 onClick={onOpenTemplateGallery}
-                className="px-2 sm:px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 border-l border-slate-800 text-blue-300 font-semibold flex items-center gap-1 sm:gap-1.5 transition whitespace-nowrap shrink-0"
+                className="px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 border-l border-slate-800 text-blue-300 font-semibold flex items-center gap-1 transition whitespace-nowrap shrink-0"
                 title="ভিজ্যুয়াল গ্যালারি ও Custom Template Manager খুলুন"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Gallery</span>
+                <span>Gallery</span>
               </button>
             </div>
 
-            {/* + Insert Dropdown Menu (kept outside horizontal scroll containers) */}
+            {/* + Insert Dropdown Menu */}
             <div className="relative shrink-0" ref={insertRef}>
               <button
                 type="button"
                 onClick={() => setInsertMenuOpen(!insertMenuOpen)}
-                className="px-2 sm:px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 font-semibold flex items-center gap-1 transition whitespace-nowrap shrink-0"
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 font-semibold flex items-center gap-1 transition whitespace-nowrap shrink-0"
               >
                 <Plus className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Insert</span>
@@ -675,7 +692,7 @@ export function Navbar({
               </button>
 
               {insertMenuOpen && (
-                <div className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-52 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50 text-xs">
+                <div className="absolute left-0 mt-1.5 w-52 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50 text-xs">
                   <button
                     type="button"
                     onClick={() => {
@@ -735,49 +752,7 @@ export function Navbar({
               )}
             </div>
 
-            {onOpenPrintPreview && (
-              <button
-                type="button"
-                onClick={onOpenPrintPreview}
-                className="px-2.5 py-1 rounded-lg bg-[#080D1A] hover:bg-slate-800 border border-slate-800 text-[11px] font-semibold text-slate-200 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
-                title="Full-Screen A4 Print Preview দেখুন"
-              >
-                <Printer className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span className="hidden sm:inline">Print Preview</span>
-              </button>
-            )}
-          </div>
-
-          {/* Row B: Horizontal Scrollable Formatting, Photo & Auto-Fit Workbench */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full xl:overflow-visible pb-0.5 xl:pb-0">
-            {/* Crystal-Clear Photo Position Switcher */}
-            <div className="flex items-center bg-[#080D1A] border border-slate-800 rounded-lg p-0.5 text-[11px] shrink-0">
-              <span className="px-2 text-slate-500 font-medium whitespace-nowrap">Photo:</span>
-              {(
-                [
-                  { id: 'right', label: 'Right', tip: 'Photo Right (BD Corporate Standard)' },
-                  { id: 'left', label: 'Left', tip: 'Photo Left' },
-                  { id: 'center', label: 'Center', tip: 'Photo Centered' },
-                  { id: 'hide', label: 'No Photo', tip: 'Hide Photo (100% Global Strict ATS)' },
-                ] as Array<{ id: PhotoPosition; label: string; tip: string }>
-              ).map((pos) => (
-                <button
-                  key={pos.id}
-                  type="button"
-                  onClick={() => onSetPhotoPosition(pos.id)}
-                  className={`px-2 py-0.5 rounded-md font-medium transition whitespace-nowrap shrink-0 ${
-                    photoPosition === pos.id
-                      ? 'bg-slate-700 text-white font-semibold shadow-sm'
-                      : 'text-slate-400 hover:text-slate-100'
-                  }`}
-                  title={pos.tip}
-                >
-                  {pos.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Global Undo/Redo */}
+            {/* Single Unambiguous CV Undo/Redo */}
             <div className="flex items-center bg-[#080D1A] border border-slate-800 rounded-lg p-0.5 shrink-0">
               <button
                 type="button"
@@ -798,189 +773,175 @@ export function Navbar({
                 <RotateCw className="w-3.5 h-3.5" />
               </button>
             </div>
+          </div>
 
-            {/* Inline Formatting Strip */}
-            <div className="flex items-center bg-[#080D1A] border border-slate-800 rounded-lg p-0.5 gap-0.5 shrink-0">
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onFormatDoc('bold');
-                }}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-200"
-                title="Bold"
-              >
-                <Bold className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onFormatDoc('italic');
-                }}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-200"
-                title="Italic"
-              >
-                <Italic className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onFormatDoc('underline');
-                }}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-200"
-                title="Underline"
-              >
-                <Underline className="w-3.5 h-3.5" />
-              </button>
+          {/* Right Group: Contextual Inline Rich-Text Bar (only in Edit Mode) + Photo Quick Control */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {isEditMode ? (
+              <div className="flex items-center bg-[#080D1A] border border-slate-800 rounded-lg p-0.5 gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onFormatDoc('bold');
+                  }}
+                  className="p-1.5 rounded hover:bg-slate-800 text-slate-200"
+                  title="Bold"
+                >
+                  <Bold className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onFormatDoc('italic');
+                  }}
+                  className="p-1.5 rounded hover:bg-slate-800 text-slate-200"
+                  title="Italic"
+                >
+                  <Italic className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onFormatDoc('underline');
+                  }}
+                  className="p-1.5 rounded hover:bg-slate-800 text-slate-200"
+                  title="Underline"
+                >
+                  <Underline className="w-3.5 h-3.5" />
+                </button>
 
-              <div className="h-3.5 w-px bg-slate-800 mx-0.5" />
+                <div className="h-3.5 w-px bg-slate-800 mx-0.5" />
 
-              <label className="px-1.5 py-0.5 rounded hover:bg-slate-800 cursor-pointer flex items-center gap-1" title="Text Color">
-                <span className="font-bold text-blue-400 text-[11px]">A</span>
-                <input
-                  type="color"
-                  defaultValue="#0f4c81"
-                  onChange={(e) => onFormatDoc('foreColor', e.target.value)}
-                  className="w-3 h-3 bg-transparent border-0 cursor-pointer"
-                />
-              </label>
-              <label className="px-1.5 py-0.5 rounded hover:bg-slate-800 cursor-pointer flex items-center gap-1" title="Highlight Color">
-                <span className="bg-amber-300 text-slate-950 font-bold px-1 rounded text-[9.5px]">H</span>
-                <input
-                  type="color"
-                  defaultValue="#fef08a"
-                  onChange={(e) => onFormatDoc('hiliteColor', e.target.value)}
-                  className="w-3 h-3 bg-transparent border-0 cursor-pointer"
-                />
-              </label>
+                <label className="px-1.5 py-0.5 rounded hover:bg-slate-800 cursor-pointer flex items-center gap-1" title="Text Color">
+                  <span className="font-bold text-blue-400 text-[11px]">A</span>
+                  <input
+                    type="color"
+                    defaultValue="#0f4c81"
+                    onChange={(e) => onFormatDoc('foreColor', e.target.value)}
+                    className="w-3 h-3 bg-transparent border-0 cursor-pointer"
+                  />
+                </label>
+                <label className="px-1.5 py-0.5 rounded hover:bg-slate-800 cursor-pointer flex items-center gap-1" title="Highlight Color">
+                  <span className="bg-amber-300 text-slate-950 font-bold px-1 rounded text-[9.5px]">H</span>
+                  <input
+                    type="color"
+                    defaultValue="#fef08a"
+                    onChange={(e) => onFormatDoc('hiliteColor', e.target.value)}
+                    className="w-3 h-3 bg-transparent border-0 cursor-pointer"
+                  />
+                </label>
 
-              <div className="h-3.5 w-px bg-slate-800 mx-0.5" />
+                <div className="h-3.5 w-px bg-slate-800 mx-0.5" />
 
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onFormatDoc('justifyLeft');
-                }}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-300"
-                title="Align Left"
-              >
-                <AlignLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onFormatDoc('justifyCenter');
-                }}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-300"
-                title="Align Center"
-              >
-                <AlignCenter className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onFormatDoc('justifyFull');
-                }}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-300"
-                title="Justify"
-              >
-                <AlignJustify className="w-3.5 h-3.5" />
-              </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onFormatDoc('justifyLeft');
+                  }}
+                  className="p-1.5 rounded hover:bg-slate-800 text-slate-300"
+                  title="Align Left"
+                >
+                  <AlignLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onFormatDoc('justifyCenter');
+                  }}
+                  className="p-1.5 rounded hover:bg-slate-800 text-slate-300"
+                  title="Align Center"
+                >
+                  <AlignCenter className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onFormatDoc('justifyFull');
+                  }}
+                  className="p-1.5 rounded hover:bg-slate-800 text-slate-300"
+                  title="Justify"
+                >
+                  <AlignJustify className="w-3.5 h-3.5" />
+                </button>
 
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onOpenLinkModal();
-                }}
-                className="px-2 py-1 rounded hover:bg-slate-800 text-blue-300 font-semibold flex items-center gap-1 whitespace-nowrap"
-                title="Insert / Edit Hyperlink"
-              >
-                <LinkIcon className="w-3 h-3" /> Link
-              </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onOpenLinkModal();
+                  }}
+                  className="px-2 py-1 rounded hover:bg-slate-800 text-blue-300 font-semibold flex items-center gap-1 whitespace-nowrap"
+                  title="Insert / Edit Hyperlink"
+                >
+                  <LinkIcon className="w-3 h-3" /> Link
+                </button>
 
-              <div className="hidden xl:flex items-center border-l border-slate-800 pl-1 gap-0.5">
-                {[' | ', ' • ', ' — ', ' → ', ' ✓ '].map((sym) => (
-                  <button
-                    key={sym}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      onInsertSymbol(sym);
-                    }}
-                    className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-300 font-mono text-[11px]"
-                    title={`Insert ${sym.trim()}`}
-                  >
-                    {sym.trim()}
-                  </button>
-                ))}
+                <div className="hidden 2xl:flex items-center border-l border-slate-800 pl-1 gap-0.5">
+                  {[' | ', ' • ', ' — ', ' → ', ' ✓ '].map((sym) => (
+                    <button
+                      key={sym}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onInsertSymbol(sym);
+                      }}
+                      className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-300 font-mono text-[11px]"
+                      title={`Insert ${sym.trim()}`}
+                    >
+                      {sym.trim()}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onFormatDoc('removeFormat');
+                  }}
+                  className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-300 border-l border-slate-800 ml-0.5"
+                  title="Clear Formatting"
+                >
+                  <Eraser className="w-3.5 h-3.5" />
+                </button>
               </div>
+            ) : (
+              <span className="text-[11px] text-slate-400 px-2 py-1">
+                Preview Mode — প্রিন্ট-রেডি ভিউ (Edit চাপলে সরাসরি টেক্সট ফরম্যাটিং টুল খুলবে)
+              </span>
+            )}
 
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onFormatDoc('removeFormat');
-                }}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-300 border-l border-slate-800 ml-0.5"
-                title="Clear Formatting"
-              >
-                <Eraser className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onFormatDoc('undo');
-                }}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-400"
-                title="Text Undo"
-              >
-                <Undo className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onFormatDoc('redo');
-                }}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-400"
-                title="Text Redo"
-              >
-                <Redo className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Auto-Fit 1P / 2P */}
+            {/* Quick Photo Mode Segmented Control */}
             <div className="flex items-center bg-[#080D1A] border border-slate-800 rounded-lg p-0.5 text-[11px] shrink-0">
-              <button
-                type="button"
-                onClick={onAutoFit1Page}
-                className="px-2 py-0.5 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition whitespace-nowrap"
-                title="১ পৃষ্ঠায় ফিট করুন"
-              >
-                1-Page Fit
-              </button>
-              <button
-                type="button"
-                onClick={onAutoFit2Pages}
-                className="px-2 py-0.5 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition whitespace-nowrap"
-                title="২ পৃষ্ঠায় ফিট করুন"
-              >
-                2-Page Fit
-              </button>
-            </div>
-
-            {/* Quiet Word & Scan Counter */}
-            <div className="hidden 2xl:flex items-center gap-1.5 px-2 py-1 text-[11px] text-slate-400 tabular-nums whitespace-nowrap shrink-0">
-              <span>{wordCount} words</span>
-              <span>·</span>
-              <span>{readTimeSeconds}s scan</span>
+              <span className="px-2 text-slate-500 font-medium whitespace-nowrap">Photo:</span>
+              {(
+                [
+                  { id: 'right', label: 'Right', tip: 'Photo Right (BD Corporate Standard)' },
+                  { id: 'left', label: 'Left', tip: 'Photo Left' },
+                  { id: 'center', label: 'Center', tip: 'Photo Centered' },
+                  { id: 'hide', label: 'Off', tip: 'Hide Photo (100% Global Strict ATS)' },
+                ] as Array<{ id: PhotoPosition; label: string; tip: string }>
+              ).map((pos) => (
+                <button
+                  key={pos.id}
+                  type="button"
+                  onClick={() => onSetPhotoPosition(pos.id)}
+                  className={`px-2 py-0.5 rounded-md font-medium transition whitespace-nowrap shrink-0 ${
+                    photoPosition === pos.id
+                      ? 'bg-slate-700 text-white font-semibold shadow-sm'
+                      : 'text-slate-400 hover:text-slate-100'
+                  }`}
+                  title={pos.tip}
+                >
+                  {pos.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
