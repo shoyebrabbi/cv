@@ -147,6 +147,18 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
+    function isValidPublicAnalytics(data) {
+      return data.keys().hasAll(['totalViews', 'pdfDownloads', 'roleClicks', 'lastVisitedAt'])
+        && data.keys().hasOnly(['totalViews', 'pdfDownloads', 'roleClicks', 'lastVisitedAt'])
+        && data.totalViews is number
+        && data.totalViews >= 0
+        && data.pdfDownloads is number
+        && data.pdfDownloads >= 0
+        && data.roleClicks is map
+        && data.roleClicks.size() <= 30
+        && data.lastVisitedAt is timestamp;
+    }
+
     // 1. Published live website & default CV document (public get, admin-only write)
     match /public_site/{siteId} {
       allow get: if isValidId(siteId) && siteId == 'main';
@@ -278,9 +290,34 @@ service cloud.firestore {
         && incoming().createdAt == request.time;
       allow update: if isAdmin()
         && isValidId(inquiryId)
+        && isValidPublicInquiry(incoming())
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
         && incoming().diff(existing()).affectedKeys().hasOnly(['isRead'])
         && incoming().isRead is bool;
       allow delete: if isAdmin() && isValidId(inquiryId);
+    }
+
+    // 6. Aggregate cross-device portfolio analytics (public counter write-increment, admin read)
+    match /public_analytics/{docId} {
+      allow get: if isAdmin() && isValidId(docId) && docId == 'main';
+      allow list: if false;
+      allow create: if isValidId(docId)
+        && docId == 'main'
+        && isValidPublicAnalytics(incoming())
+        && incoming().totalViews <= 1
+        && incoming().pdfDownloads <= 1
+        && incoming().lastVisitedAt == request.time;
+      allow update: if isValidId(docId)
+        && docId == 'main'
+        && isValidPublicAnalytics(incoming())
+        && incoming().totalViews >= existing().totalViews
+        && incoming().totalViews <= existing().totalViews + 1
+        && incoming().pdfDownloads >= existing().pdfDownloads
+        && incoming().pdfDownloads <= existing().pdfDownloads + 1
+        && incoming().lastVisitedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['totalViews', 'pdfDownloads', 'roleClicks', 'lastVisitedAt']);
+      allow delete: if false;
     }
   }
 }

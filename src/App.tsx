@@ -42,6 +42,8 @@ import {
   subscribePublicInquiries,
   markPublicInquiryReadCloud,
   deletePublicInquiryCloud,
+  recordPortfolioAnalyticsEvent,
+  subscribePublicAnalytics,
 } from './firebase';
 import {
   exportDirectPDF,
@@ -58,7 +60,6 @@ import {
 import { Navbar } from './components/Navbar';
 import { CVDocument } from './components/CVDocument';
 import { WebPortfolioView } from './components/WebPortfolioView';
-import { StudioRightRail, ShortcutsModal } from './components/StudioRightRail';
 
 const StyleCombinerDrawer = lazy(() =>
   import('./components/StyleCombinerDrawer').then((m) => ({ default: m.StyleCombinerDrawer }))
@@ -84,7 +85,15 @@ const TemplateGalleryModal = lazy(() =>
 const PrintPreviewModal = lazy(() =>
   import('./components/PrintPreviewModal').then((m) => ({ default: m.PrintPreviewModal }))
 );
-import { MobileCVEditor } from './components/MobileCVEditor';
+const MobileCVEditor = lazy(() =>
+  import('./components/MobileCVEditor').then((m) => ({ default: m.MobileCVEditor }))
+);
+const StudioRightRail = lazy(() =>
+  import('./components/StudioRightRail').then((m) => ({ default: m.StudioRightRail }))
+);
+const ShortcutsModal = lazy(() =>
+  import('./components/StudioRightRail').then((m) => ({ default: m.ShortcutsModal }))
+);
 import {
   HyperlinkModal,
   ATSAuditModal,
@@ -480,6 +489,7 @@ export default function App() {
       },
       lastVisitedAt: new Date().toISOString(),
     }));
+    void recordPortfolioAnalyticsEvent({ type: 'view', roleKey });
   }, [showPublicWebsite, activeRoleLabel]);
 
   // Keep Studio document title crisp when returning from Live Website
@@ -716,10 +726,26 @@ export default function App() {
       });
     });
 
+    const unsubAnalytics = subscribePublicAnalytics((cloudStats) => {
+      setAnalyticsSummary((prevLocal) => {
+        const mergedRoles: Record<string, number> = { ...(prevLocal.roleClicks || {}) };
+        Object.entries(cloudStats.roleClicks || {}).forEach(([k, v]) => {
+          mergedRoles[k] = Math.max(mergedRoles[k] || 0, v);
+        });
+        return {
+          totalViews: Math.max(prevLocal.totalViews || 0, cloudStats.totalViews || 0),
+          pdfDownloads: Math.max(prevLocal.pdfDownloads || 0, cloudStats.pdfDownloads || 0),
+          roleClicks: mergedRoles,
+          lastVisitedAt: cloudStats.lastVisitedAt || prevLocal.lastVisitedAt,
+        };
+      });
+    });
+
     return () => {
       active = false;
       unsubTpls();
       unsubInquiries();
+      unsubAnalytics();
     };
   }, [ownerUid, showToast]);
 
@@ -1283,6 +1309,7 @@ export default function App() {
         [roleKey]: ((prev.roleClicks || {})[roleKey] || 0) + 1,
       },
     }));
+    void recordPortfolioAnalyticsEvent({ type: 'role', roleKey });
     showToast(`পোর্টফোলিও লেন্স পরিবর্তন হয়েছে: ${target.name}`, 'info');
   }
 
@@ -2171,6 +2198,7 @@ export default function App() {
         ...prev,
         pdfDownloads: (prev.pdfDownloads || 0) + 1,
       }));
+      void recordPortfolioAnalyticsEvent({ type: 'pdf' });
       confetti({ particleCount: 50, spread: 60 });
       showToast('PDF ডাউনলোড সম্পন্ন হয়েছে!', 'success');
     } else {
@@ -2466,34 +2494,36 @@ export default function App() {
               className="print-shell-reset flex-1 py-3 sm:py-6 px-2 sm:px-6 pb-24 lg:pb-6 overflow-y-auto overflow-x-auto bg-[#060911]"
             >
               {mobileStudioView === 'app' && (
-                <MobileCVEditor
-                  cvData={cvData}
-                  settings={settings}
-                  score={score}
-                  estimatedPages={estimatedPages}
-                  overflowPx={overflowPx}
-                  activeProfileName={profiles.find((p) => p.id === activeProfileId)?.name || 'Master CV'}
-                  canUndoCV={historyPast.length > 0}
-                  canRedoCV={historyFuture.length > 0}
-                  onUndoCV={handleUndoCV}
-                  onRedoCV={handleRedoCV}
-                  onUpdateCVData={applyCVUpdate}
-                  onUpdateSettings={(newVals) => setSettings((prev) => ({ ...prev, ...newVals }))}
-                  onOpenATSModal={() => setAtsModalOpen(true)}
-                  onOpenProfileManager={() => setProfileManagerOpen(true)}
-                  onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}
-                  onOpenSignatureModal={() => setSignatureModalOpen(true)}
-                  onOpenAddSectionModal={() => setAddSectionModalOpen(true)}
-                  onTogglePortfolioMode={() =>
-                    setSettings((prev) => ({ ...prev, portfolioMode: true }))
-                  }
-                  onToggleUnifiedTools={() => {
-                    setIsStudioOpen(false);
-                    setIsRightRailOpen(false);
-                    setIsUnifiedToolsOpen(true);
-                  }}
-                  onShowToast={showToast}
-                />
+                <Suspense fallback={null}>
+                  <MobileCVEditor
+                    cvData={cvData}
+                    settings={settings}
+                    score={score}
+                    estimatedPages={estimatedPages}
+                    overflowPx={overflowPx}
+                    activeProfileName={profiles.find((p) => p.id === activeProfileId)?.name || 'Master CV'}
+                    canUndoCV={historyPast.length > 0}
+                    canRedoCV={historyFuture.length > 0}
+                    onUndoCV={handleUndoCV}
+                    onRedoCV={handleRedoCV}
+                    onUpdateCVData={applyCVUpdate}
+                    onUpdateSettings={(newVals) => setSettings((prev) => ({ ...prev, ...newVals }))}
+                    onOpenATSModal={() => setAtsModalOpen(true)}
+                    onOpenProfileManager={() => setProfileManagerOpen(true)}
+                    onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}
+                    onOpenSignatureModal={() => setSignatureModalOpen(true)}
+                    onOpenAddSectionModal={() => setAddSectionModalOpen(true)}
+                    onTogglePortfolioMode={() =>
+                      setSettings((prev) => ({ ...prev, portfolioMode: true }))
+                    }
+                    onToggleUnifiedTools={() => {
+                      setIsStudioOpen(false);
+                      setIsRightRailOpen(false);
+                      setIsUnifiedToolsOpen(true);
+                    }}
+                    onShowToast={showToast}
+                  />
+                </Suspense>
               )}
 
               {/* Clean Floating Canvas Bar (Shown on Desktop lg+ or on Mobile when switched to 'paper' view) */}
@@ -2799,24 +2829,26 @@ export default function App() {
             </main>
 
             {/* Right Desktop 3-Pane Studio Workbench Rail */}
-            {!zenMode && (
-              <StudioRightRail
-                isOpen={isRightRailOpen}
-                onClose={() => setIsRightRailOpen(false)}
-                cvData={cvData}
-                settings={settings}
-                atsScoreData={atsScoreData}
-                wordCount={wordCount}
-                readTimeSeconds={readTimeSeconds}
-                estimatedPages={estimatedPages}
-                docHeightPx={docHeight}
-                overflowPx={overflowPx}
-                onOpenATSModal={() => setAtsModalOpen(true)}
-                onAutoFit1Page={handleAutoFit1Page}
-                onAutoFit2Pages={handleAutoFit2Pages}
-                onJumpToSection={handleJumpToSection}
-                onOpenShortcuts={() => setShortcutsModalOpen(true)}
-              />
+            {!zenMode && isRightRailOpen && (
+              <Suspense fallback={null}>
+                <StudioRightRail
+                  isOpen={isRightRailOpen}
+                  onClose={() => setIsRightRailOpen(false)}
+                  cvData={cvData}
+                  settings={settings}
+                  atsScoreData={atsScoreData}
+                  wordCount={wordCount}
+                  readTimeSeconds={readTimeSeconds}
+                  estimatedPages={estimatedPages}
+                  docHeightPx={docHeight}
+                  overflowPx={overflowPx}
+                  onOpenATSModal={() => setAtsModalOpen(true)}
+                  onAutoFit1Page={handleAutoFit1Page}
+                  onAutoFit2Pages={handleAutoFit2Pages}
+                  onJumpToSection={handleJumpToSection}
+                  onOpenShortcuts={() => setShortcutsModalOpen(true)}
+                />
+              </Suspense>
             )}
           </div>
 
@@ -3124,10 +3156,14 @@ export default function App() {
         </Suspense>
       )}
 
-      <ShortcutsModal
-        isOpen={shortcutsModalOpen}
-        onClose={() => setShortcutsModalOpen(false)}
-      />
+      {shortcutsModalOpen && (
+        <Suspense fallback={null}>
+          <ShortcutsModal
+            isOpen={shortcutsModalOpen}
+            onClose={() => setShortcutsModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* Floating Toast Container */}
       <div

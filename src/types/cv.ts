@@ -150,6 +150,17 @@ export interface WebsiteProjectEnhancement {
   impact?: string;
   architectureSteps?: string[];
   deliverables?: string;
+  beforeAfterImpact?: {
+    beforeLabel: string;
+    beforeValue: string;
+    afterLabel: string;
+    afterValue: string;
+  };
+  technicalSnippet?: {
+    label: string;
+    language: string;
+    code: string;
+  };
 }
 
 export interface PublicInquiry {
@@ -176,6 +187,36 @@ export interface WebsiteSpecializationCard {
   proof: string;
   metric: string;
 }
+
+export type WebsiteEditorTab =
+  | 'hero'
+  | 'metrics'
+  | 'skills'
+  | 'experience'
+  | 'projects'
+  | 'credentials'
+  | 'visibility';
+
+export const DEFAULT_SPECIALIZATION_CARDS: WebsiteSpecializationCard[] = [
+  {
+    id: 'spec_data',
+    label: 'Data & Power BI',
+    proof: 'PostgreSQL · Star Schema · Automated ETL · 50,000+ Records',
+    metric: '50,000+ Rows',
+  },
+  {
+    id: 'spec_sqa',
+    label: 'Software QA & API',
+    proof: 'Postman CRUD · BVA/ECP · 80+ Test Cases · Jira Triage',
+    metric: '80+ Cases',
+  },
+  {
+    id: 'spec_netops',
+    label: 'Enterprise IT',
+    proof: 'Windows Server · Linux · ERP RBAC · 100+ Users Supported',
+    metric: '100+ Users',
+  },
+];
 
 export interface WebsiteContentOverrides {
   name?: string;

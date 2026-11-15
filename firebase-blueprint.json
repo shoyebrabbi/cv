@@ -243,6 +243,31 @@
         }
       },
       "required": ["id", "senderName", "senderEmail", "subject", "message", "isRead", "createdAt"]
+    },
+    "PublicAnalyticsSummary": {
+      "title": "PublicAnalyticsSummary",
+      "description": "Global cross-device aggregate portfolio counters (views, PDF downloads, role lens clicks).",
+      "type": "object",
+      "properties": {
+        "totalViews": {
+          "type": "number",
+          "description": "Cumulative public website views"
+        },
+        "pdfDownloads": {
+          "type": "number",
+          "description": "Cumulative PDF CV downloads"
+        },
+        "roleClicks": {
+          "type": "object",
+          "description": "Map of role lens names to click counts"
+        },
+        "lastVisitedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest recorded visit"
+        }
+      },
+      "required": ["totalViews", "pdfDownloads", "roleClicks", "lastVisitedAt"]
     }
   },
   "firestore": {
@@ -269,6 +294,10 @@
     "/public_inquiries/{inquiryId}": {
       "schema": { "$ref": "#/entities/PublicInquiry" },
       "description": "Public recruiter contact messages (write-once by visitors, read/manage exclusively by owner)."
+    },
+    "/public_analytics/{docId}": {
+      "schema": { "$ref": "#/entities/PublicAnalyticsSummary" },
+      "description": "Aggregate portfolio analytics counters (document ID: main)."
     }
   }
 }

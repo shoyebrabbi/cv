@@ -30,6 +30,7 @@ import {
   where,
   onSnapshot,
   serverTimestamp,
+  increment,
   writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
@@ -39,6 +40,7 @@ import {
   CVProfile,
   CustomTemplatePreset,
   JobApplication,
+  PortfolioAnalyticsSummary,
   PublicInquiry,
   StudioSettings,
 } from './types/cv';
@@ -729,4 +731,70 @@ export async function deletePublicInquiryCloud(inquiryId: string): Promise<void>
   } catch {
     // Silent resilience fallback
   }
+}
+
+function sanitizeRoleKey(raw?: string): string {
+  const clean = (raw || 'Master CV')
+    .replace(/[~*/[\].]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60);
+  return clean || 'Master CV';
+}
+
+export async function recordPortfolioAnalyticsEvent(event: {
+  type: 'view' | 'role' | 'pdf';
+  roleKey?: string;
+}): Promise<void> {
+  const ref = doc(db, 'public_analytics', 'main');
+  const safeRole = sanitizeRoleKey(event.roleKey);
+  try {
+    await setDoc(
+      ref,
+      {
+        totalViews: event.type === 'view' ? increment(1) : increment(0),
+        pdfDownloads: event.type === 'pdf' ? increment(1) : increment(0),
+        roleClicks:
+          event.type === 'view' || event.type === 'role'
+            ? { [safeRole]: increment(1) }
+            : {},
+        lastVisitedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch {
+    // Silently tolerate if external Firestore rules have not enabled public_analytics yet
+  }
+}
+
+export function subscribePublicAnalytics(
+  onData: (summary: PortfolioAnalyticsSummary) => void
+): Unsubscribe {
+  const ref = doc(db, 'public_analytics', 'main');
+  return onSnapshot(
+    ref,
+    (snap) => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      const rawRoles = d.roleClicks && typeof d.roleClicks === 'object' ? d.roleClicks : {};
+      const roleClicks: Record<string, number> = {};
+      Object.entries(rawRoles).forEach(([k, v]) => {
+        if (typeof v === 'number' && Number.isFinite(v)) {
+          roleClicks[k] = v;
+        }
+      });
+      onData({
+        totalViews: typeof d.totalViews === 'number' ? d.totalViews : 0,
+        pdfDownloads: typeof d.pdfDownloads === 'number' ? d.pdfDownloads : 0,
+        roleClicks,
+        lastVisitedAt:
+          typeof d.lastVisitedAt?.toDate === 'function'
+            ? d.lastVisitedAt.toDate().toISOString()
+            : undefined,
+      });
+    },
+    () => {
+      // Silently tolerate permission-denied if rules are not yet published externally
+    }
+  );
 }

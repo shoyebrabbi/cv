@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import QRCode from 'qrcode';
 import {
   FileText,
@@ -47,22 +47,30 @@ import {
   EyeOff,
   Clock,
   Link2,
+  Zap,
+  ImageDown,
+  Building2,
+  Terminal,
 } from 'lucide-react';
 import {
   CVData,
+  DEFAULT_SPECIALIZATION_CARDS,
+  ExperienceItem,
   PortfolioAccentTheme,
   PortfolioDesignStyle,
   PortfolioSettings,
   ProjectItem,
   StudioSettings,
+  WebsiteEditorTab,
+  WebsiteProjectEnhancement,
   WebsiteSectionKey,
 } from '../types/cv';
 import { exportVCard } from '../utils/exporters';
-import {
-  WebsiteEditorDrawer,
-  WebsiteEditorTab,
-  DEFAULT_SPECIALIZATION_CARDS,
-} from './WebsiteEditorDrawer';
+import { PWAInstallButton, OfflineIndicator } from './PWAControls';
+
+const WebsiteEditorDrawer = lazy(() =>
+  import('./WebsiteEditorDrawer').then((m) => ({ default: m.WebsiteEditorDrawer }))
+);
 
 interface PublicProfileSummary {
   id: string;
@@ -589,6 +597,202 @@ function buildProjectArchitectureSteps(
   };
 }
 
+function getProjectBeforeAfter(
+  proj: ProjectItem,
+  enh?: WebsiteProjectEnhancement
+): { beforeLabel: string; beforeValue: string; afterLabel: string; afterValue: string } {
+  if (
+    enh?.beforeAfterImpact &&
+    (enh.beforeAfterImpact.beforeValue.trim() || enh.beforeAfterImpact.afterValue.trim())
+  ) {
+    return {
+      beforeLabel: enh.beforeAfterImpact.beforeLabel.trim() || 'Before Implementation',
+      beforeValue: enh.beforeAfterImpact.beforeValue.trim() || 'Manual Workflow',
+      afterLabel: enh.beforeAfterImpact.afterLabel.trim() || 'After Delivery',
+      afterValue: enh.beforeAfterImpact.afterValue.trim() || 'Automated & Verified',
+    };
+  }
+  const hay = `${proj.title} ${proj.technologies} ${proj.description}`.toLowerCase();
+  if (hay.includes('power bi') || hay.includes('sql') || hay.includes('etl')) {
+    return {
+      beforeLabel: 'Before · Manual Spreadsheets',
+      beforeValue: 'Multi-sheet reconciliation & slow KPI lookup',
+      afterLabel: 'After · Star Schema & ETL',
+      afterValue: 'Automated 50,000+ rows · Real-time Power BI audit',
+    };
+  }
+  if (hay.includes('postman') || hay.includes('api') || hay.includes('json')) {
+    return {
+      beforeLabel: 'Before · Ad-Hoc Endpoint Checks',
+      beforeValue: 'Unverified schemas & manual token copy',
+      afterLabel: 'After · Chained Test Suite',
+      afterValue: 'Automated Bearer auth + 2xx/4xx JSON assertions',
+    };
+  }
+  if (hay.includes('qa') || hay.includes('test') || hay.includes('jira') || hay.includes('bva')) {
+    return {
+      beforeLabel: 'Before · Unstructured Testing',
+      beforeValue: 'Edge-case gaps & scattered bug notes',
+      afterLabel: 'After · RTM + BVA/ECP Suite',
+      afterValue: '80+ traceable cases · Clean Jira defect triage',
+    };
+  }
+  return {
+    beforeLabel: 'Before · Fragmented Operations',
+    beforeValue: 'Disjointed manual record keeping',
+    afterLabel: 'After · Production System',
+    afterValue: 'Role-gated workflow · Live database persistence',
+  };
+}
+
+function matchesSkillTag(haystack: string, tag: string): boolean {
+  const cleanTag = tag
+    .replace(/\([^)]*\)/g, '')
+    .trim()
+    .toLowerCase();
+  if (!cleanTag || cleanTag.length < 2) return false;
+  const hay = haystack.toLowerCase();
+  if (hay.includes(cleanTag)) return true;
+  const tokens = cleanTag.split(/[\s/+&]+/).filter((t) => t.length >= 3);
+  return tokens.length > 0 && tokens.some((tok) => hay.includes(tok));
+}
+
+const EXPERIENCE_TOOL_DICTIONARY = [
+  'PostgreSQL',
+  'Power BI',
+  'Power Query',
+  'SQL',
+  'DAX',
+  'Postman',
+  'REST API',
+  'Jira',
+  'Python',
+  'Excel',
+  'Windows Server',
+  'Linux',
+  'MikroTik',
+  'ERP',
+  'RBAC',
+  'Git',
+];
+
+function extractExperienceTools(exp: ExperienceItem): string[] {
+  const plainText = `${exp.role} ${exp.bullets.map((b) => b.text).join(' ')}`
+    .replace(/<[^>]+>/g, ' ')
+    .toLowerCase();
+  const matched: string[] = [];
+  for (const tool of EXPERIENCE_TOOL_DICTIONARY) {
+    const lower = tool.toLowerCase();
+    if (lower === 'sql' && plainText.includes('postgresql') && !/\bsql\b/.test(plainText)) {
+      continue;
+    }
+    if (plainText.includes(lower)) {
+      matched.push(tool);
+    }
+  }
+  return matched.slice(0, 6);
+}
+
+function buildProjectTechnicalSnippet(
+  proj: ProjectItem,
+  custom?: WebsiteProjectEnhancement['technicalSnippet']
+): { label: string; language: string; code: string; isCustom: boolean } {
+  if (custom && custom.code.trim().length > 0) {
+    return {
+      label: custom.label.trim() || 'Technical Implementation Sample',
+      language: custom.language.trim() || 'Code',
+      code: custom.code.trim(),
+      isCustom: true,
+    };
+  }
+  const hay = `${proj.title} ${proj.technologies} ${proj.description}`.toLowerCase();
+
+  if (hay.includes('power bi') || hay.includes('etl') || hay.includes('star schema') || hay.includes('sql')) {
+    return {
+      label: 'PostgreSQL Reconciliation & Star-Schema DAX Measure',
+      language: 'SQL / DAX',
+      isCustom: false,
+      code: `-- 1. Relational Reconciliation Audit (PostgreSQL)
+WITH verified_ledger AS (
+  SELECT region_id, DATE_TRUNC('month', tx_date) AS period,
+         COUNT(*) AS row_count, SUM(net_amount) AS ledger_total
+  FROM fact_transactions
+  WHERE status = 'SETTLED'
+  GROUP BY 1, 2
+)
+SELECT period, SUM(row_count) AS audited_rows,
+       ROUND(SUM(ledger_total), 2) AS reconciled_revenue
+FROM verified_ledger
+GROUP BY period ORDER BY period DESC;
+
+-- 2. Power BI Executive Variance Measure (DAX)
+MoM Variance % =
+DIVIDE([Reconciled Revenue] - [Prev Month Revenue], [Prev Month Revenue], 0)`,
+    };
+  }
+
+  if (hay.includes('postman') || hay.includes('api') || hay.includes('json')) {
+    return {
+      label: 'Automated Postman CRUD & Schema Assertion Suite',
+      language: 'JavaScript (Postman)',
+      isCustom: false,
+      code: `// Automated Contract & Auth Assertion Script
+pm.test("HTTP 200 & Latency < 400ms", () => {
+  pm.response.to.have.status(200);
+  pm.expect(pm.response.responseTime).to.be.below(400);
+});
+
+const payload = pm.response.json();
+pm.test("Valid JSON Contract & Non-Empty Token", () => {
+  pm.expect(payload).to.have.property("status", "verified");
+  pm.expect(payload.data).to.be.an("object");
+  if (payload.accessToken) {
+    pm.environment.set("bearer_token", payload.accessToken);
+  }
+});`,
+    };
+  }
+
+  if (hay.includes('qa') || hay.includes('test') || hay.includes('jira') || hay.includes('bva')) {
+    return {
+      label: 'RTM & Boundary Value Test Assertion Matrix',
+      language: 'QA Spec (YAML)',
+      isCustom: false,
+      code: `suite: "End-to-End Regression & Boundary Suite"
+traceability: "RTM-AUTH-014 -> Checkout & Role Access"
+boundary_cases:
+  - id: TC-BVA-001
+    input: "amount = 0.00 (Lower Boundary - 1)"
+    expected: "HTTP 422 Validation Error · Clean UI feedback"
+  - id: TC-BVA-002
+    input: "amount = 0.01 (Valid Min Boundary)"
+    expected: "HTTP 201 Created · Ledger atomic increment"
+  - id: TC-ECP-009
+    input: "Concurrent duplicate submit"
+    expected: "Idempotency guard blocks double-entry"`,
+    };
+  }
+
+  return {
+    label: 'Strict Role Guard & Sanitized Persistence Pattern',
+    language: 'TypeScript',
+    isCustom: false,
+    code: `// Verified Role Guard & Payload Validation
+export function validateAccessAndSanitize<T extends Record<string, unknown>>(
+  actorEmail: string | null | undefined,
+  verified: boolean,
+  payload: T
+): T {
+  if (!verified || !actorEmail) {
+    throw new Error("Unauthorized session");
+  }
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, val]) => val !== undefined)
+  ) as T;
+}`,
+  };
+}
+
 export function WebPortfolioView({
   cvData,
   settings,
@@ -662,22 +866,43 @@ export function WebPortfolioView({
   const [collapsedExpIds, setCollapsedExpIds] = useState<Record<string, boolean>>({});
 
   const [skillFilter, setSkillFilter] = useState<string>('all');
+  const [selectedSkillTag, setSelectedSkillTag] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
-  const [caseTab, setCaseTab] = useState<'overview' | 'architecture' | 'stack'>('overview');
+  const [caseTab, setCaseTab] = useState<'overview' | 'architecture' | 'snippet' | 'stack'>('overview');
   const [selectedCaseImageIdx, setSelectedCaseImageIdx] = useState<number>(0);
+  const [snippetCopied, setSnippetCopied] = useState(false);
+
+  const [targetCompany, setTargetCompany] = useState<string>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('company') || params.get('for') || '';
+      return raw.trim().slice(0, 60);
+    } catch {
+      return '';
+    }
+  });
+  const [companyBannerDismissed, setCompanyBannerDismissed] = useState(false);
 
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState('');
   const commandInputRef = useRef<HTMLInputElement>(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrCardDataUrl, setQrCardDataUrl] = useState('');
+  const [customShareCompany, setCustomShareCompany] = useState<string>('');
+  const [customShareRoleId, setCustomShareRoleId] = useState<string>(activeProfileId || 'prof_master');
   const [shareCopied, setShareCopied] = useState(false);
   const [roleLinkCopied, setRoleLinkCopied] = useState(false);
+  const [briefModalOpen, setBriefModalOpen] = useState(false);
+  const [briefPitchCopied, setBriefPitchCopied] = useState(false);
 
   const [senderName, setSenderName] = useState('');
   const [senderEmail, setSenderEmail] = useState('');
-  const [inquirySubject, setInquirySubject] = useState('Job / Interview Opportunity');
+  const [inquirySubject, setInquirySubject] = useState(() =>
+    targetCompany
+      ? `Hiring / Interview Inquiry — ${targetCompany}`
+      : 'Job / Interview Opportunity'
+  );
   const [senderMessage, setSenderMessage] = useState('');
   const [contactCopied, setContactCopied] = useState(false);
   const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
@@ -839,8 +1064,21 @@ export function WebPortfolioView({
     const roleSuffix = activeRoleLabel
       ? ` — ${activeRoleLabel} Portfolio`
       : ' — Data Analyst, Software QA & Enterprise IT';
-    document.title = `${cleanName}${roleSuffix}`;
-  }, [siteData.name, activeRoleLabel]);
+    document.title = targetCompany
+      ? `${cleanName} × ${targetCompany}${roleSuffix}`
+      : `${cleanName}${roleSuffix}`;
+
+    try {
+      const canonicalUrl = `${window.location.origin}${window.location.pathname}`;
+      const ogImageUrl = new URL('./og-card.png', canonicalUrl).href;
+      document.querySelector('link[rel="canonical"]')?.setAttribute('href', canonicalUrl);
+      document.querySelector('meta[property="og:url"]')?.setAttribute('content', window.location.href);
+      document.querySelector('meta[property="og:image"]')?.setAttribute('content', ogImageUrl);
+      document.querySelector('meta[name="twitter:image"]')?.setAttribute('content', ogImageUrl);
+    } catch {
+      // ignore meta sync errors
+    }
+  }, [siteData.name, activeRoleLabel, targetCompany]);
 
   useEffect(() => {
     try {
@@ -928,9 +1166,35 @@ export function WebPortfolioView({
   }, [commandOpen]);
 
   useEffect(() => {
+    if (qrModalOpen) {
+      setCustomShareRoleId(activeProfileId || 'prof_master');
+      if (!customShareCompany && targetCompany) {
+        setCustomShareCompany(targetCompany);
+      }
+    }
+  }, [qrModalOpen, activeProfileId, targetCompany]);
+
+  const activeCustomShareUrl = useMemo(() => {
+    try {
+      const base = `${window.location.origin}${window.location.pathname}`;
+      const params = new URLSearchParams();
+      if (customShareRoleId && customShareRoleId !== 'prof_master') {
+        params.set('role', customShareRoleId);
+      }
+      const trimmedCompany = customShareCompany.trim().slice(0, 60);
+      if (trimmedCompany) {
+        params.set('company', trimmedCompany);
+      }
+      const qs = params.toString();
+      return qs ? `${base}?${qs}` : base;
+    } catch {
+      return window.location.href;
+    }
+  }, [customShareRoleId, customShareCompany]);
+
+  useEffect(() => {
     if (!qrModalOpen) return;
-    const shareTarget = window.location.href;
-    QRCode.toDataURL(shareTarget, {
+    QRCode.toDataURL(activeCustomShareUrl, {
       width: 240,
       margin: 1,
       color: {
@@ -940,7 +1204,7 @@ export function WebPortfolioView({
     })
       .then(setQrCardDataUrl)
       .catch(console.error);
-  }, [qrModalOpen]);
+  }, [qrModalOpen, activeCustomShareUrl]);
 
   const showSectionNumbers = Boolean(portfolioConfig.showSectionNumbers);
   const hasCustomSections = Boolean(siteData.customSections && siteData.customSections.length > 0);
@@ -954,6 +1218,25 @@ export function WebPortfolioView({
 
   function toggleExperienceCard(id: string) {
     setCollapsedExpIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  const allExpCollapsed = useMemo(
+    () =>
+      siteData.experiences.length > 0 &&
+      siteData.experiences.every((e) => Boolean(collapsedExpIds[e.id])),
+    [siteData.experiences, collapsedExpIds]
+  );
+
+  function handleToggleAllExperienceCards() {
+    if (allExpCollapsed) {
+      setCollapsedExpIds({});
+    } else {
+      const next: Record<string, boolean> = {};
+      siteData.experiences.forEach((e) => {
+        next[e.id] = true;
+      });
+      setCollapsedExpIds(next);
+    }
   }
 
   const activeProfileObj = useMemo(
@@ -984,17 +1267,135 @@ export function WebPortfolioView({
             return true;
           });
 
-    if (!activeRoleKey || projectFilter !== 'all') return base;
-    return [...base].sort((a, b) => {
+    const bySkill = selectedSkillTag
+      ? base.filter((p) =>
+          matchesSkillTag(`${p.title} ${p.technologies} ${p.description}`, selectedSkillTag)
+        )
+      : base;
+
+    const list = bySkill.length > 0 ? bySkill : base;
+
+    if (!activeRoleKey || projectFilter !== 'all') return list;
+    return [...list].sort((a, b) => {
       const aMatch = matchesRoleDomain(`${a.title} ${a.technologies} ${a.description}`, activeRoleKey) ? 1 : 0;
       const bMatch = matchesRoleDomain(`${b.title} ${b.technologies} ${b.description}`, activeRoleKey) ? 1 : 0;
       return bMatch - aMatch;
     });
-  }, [siteData.projects, projectFilter, activeRoleKey]);
+  }, [siteData.projects, projectFilter, activeRoleKey, selectedSkillTag]);
+
+  function handleSelectSkillProofTag(tag: string) {
+    setSelectedSkillTag((prev) => {
+      const next = prev === tag ? null : tag;
+      if (next) {
+        setProjectFilter('all');
+        setTimeout(() => {
+          document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 60);
+      }
+      return next;
+    });
+  }
+
+  async function handleDownloadQRBusinessCardPNG() {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 630;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Dark executive gradient background
+      const grad = ctx.createLinearGradient(0, 0, 1200, 630);
+      grad.addColorStop(0, '#070B14');
+      grad.addColorStop(1, '#0F172A');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1200, 630);
+
+      // Subtle border frame & top accent bar
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(28, 28, 1144, 574);
+      ctx.fillStyle = '#38BDF8';
+      ctx.fillRect(28, 28, 1144, 6);
+
+      // Availability pill
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.16)';
+      ctx.fillRect(72, 82, 370, 38);
+      ctx.fillStyle = '#34D399';
+      ctx.font = 'bold 16px "JetBrains Mono", monospace';
+      ctx.fillText('● OPEN TO WORK · GMT+6 · IMMEDIATE', 90, 107);
+
+      // Name & Title
+      ctx.fillStyle = '#F8FAFC';
+      ctx.font = 'bold 52px "Outfit", "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(siteData.name.slice(0, 32), 72, 195);
+
+      ctx.fillStyle = '#38BDF8';
+      ctx.font = 'bold 24px "Plus Jakarta Sans", sans-serif';
+      const titleLine = siteData.title.length > 56 ? siteData.title.slice(0, 56) + '...' : siteData.title;
+      ctx.fillText(titleLine, 72, 244);
+
+      // Divider
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.25)';
+      ctx.fillRect(72, 282, 680, 2);
+
+      // Coordinates
+      ctx.fillStyle = '#CBD5E1';
+      ctx.font = '600 22px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(`Email:  ${email}`, 72, 340);
+      ctx.fillText(`Phone:  ${phone}`, 72, 384);
+      ctx.fillText(`Based:  ${location}`, 72, 428);
+
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = '500 18px "JetBrains Mono", monospace';
+      const qrTargetUrl = qrModalOpen ? activeCustomShareUrl : window.location.href;
+      const customBadgeText = customShareCompany.trim() || targetCompany;
+      if (customBadgeText) {
+        ctx.fillStyle = '#38BDF8';
+        ctx.font = 'bold 17px "JetBrains Mono", monospace';
+        ctx.fillText(`PREPARED FOR: ${customBadgeText.toUpperCase().slice(0, 34)}`, 72, 488);
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '500 17px "JetBrains Mono", monospace';
+      }
+      ctx.fillText(qrTargetUrl.slice(0, 58), 72, 535);
+
+      // QR Code Card on the right
+      const qrCanvas = document.createElement('canvas');
+      await QRCode.toCanvas(qrCanvas, qrTargetUrl, {
+        width: 290,
+        margin: 2,
+        color: { dark: '#0F172A', light: '#FFFFFF' },
+      });
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(820, 140, 320, 320);
+      ctx.drawImage(qrCanvas, 835, 155, 290, 290);
+
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = 'bold 16px "JetBrains Mono", monospace';
+      ctx.fillText('SCAN FOR LIVE CV & PROJECTS', 836, 495);
+
+      const link = document.createElement('a');
+      link.download = `${siteData.name.replace(/\s+/g, '_')}_Business_Card.png`;
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      onShowToast?.('ডিজিটাল বিজনেস কার্ড (PNG) ডাউনলোড হয়েছে!', 'success');
+    } catch {
+      onShowToast?.('বিজনেস কার্ড তৈরি করা যায়নি।', 'error');
+    }
+  }
 
   const commandItems = useMemo(() => {
     const q = commandQuery.trim().toLowerCase();
     const baseActions = [
+      {
+        id: 'act-brief',
+        group: 'Actions',
+        title: 'Open 30-Second Recruiter Executive Brief',
+        subtitle: 'Instant summary pitch, key metrics & role fit',
+        run: () => setBriefModalOpen(true),
+      },
       {
         id: 'act-pdf',
         group: 'Actions',
@@ -1325,6 +1726,20 @@ export function WebPortfolioView({
 
             {/* Zone 3: Quick Utility Triggers + Primary Action */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="hidden md:block">
+                <PWAInstallButton compact />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setBriefModalOpen(true)}
+                className="hidden sm:flex px-2.5 py-2 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 transition-colors items-center gap-1.5 text-xs font-semibold whitespace-nowrap"
+                title="Recruiter 30-Second Executive Brief"
+              >
+                <Zap className={`w-3.5 h-3.5 ${accent.eyebrow}`} />
+                <span className="hidden xl:inline">30s Brief</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setCommandOpen(true)}
@@ -1663,6 +2078,19 @@ export function WebPortfolioView({
                   >
                     <QrCode className={`w-4 h-4 ${accent.eyebrow}`} /> QR Card
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setBriefModalOpen(true);
+                    }}
+                    className="min-h-[48px] px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center justify-center gap-2 col-span-2"
+                  >
+                    <Zap className={`w-4 h-4 ${accent.eyebrow}`} /> 30-Second Recruiter Brief
+                  </button>
+                </div>
+                <div className="pt-1 flex justify-center">
+                  <PWAInstallButton />
                 </div>
 
                 {isStudioUnlocked && (
@@ -1823,6 +2251,52 @@ export function WebPortfolioView({
                         <Link2 className={`w-3 h-3 ${accent.eyebrow}`} /> Copy Role URL
                       </>
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQrModalOpen(true)}
+                    title="Generate custom company link (?company=...) & QR Business Card"
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 inline-flex items-center gap-1 transition-colors whitespace-nowrap shrink-0"
+                  >
+                    <Building2 className={`w-3 h-3 ${accent.eyebrow}`} /> Company Link
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Personalized Company Welcome Banner (when opened via ?company=...) */}
+            {targetCompany && !companyBannerDismissed && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/35 bg-emerald-50/85 dark:bg-emerald-950/30 px-4 py-2.5 text-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      Prepared for {targetCompany} Hiring Team
+                    </span>
+                    <span className="text-slate-600 dark:text-slate-300 hidden sm:inline">
+                      {' '}
+                      · Tailored view: {activeProfileObj?.name || activeRoleLabel || 'Master Portfolio'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setBriefModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] inline-flex items-center gap-1 transition-colors"
+                  >
+                    <Zap className="w-3 h-3" /> 30s Brief
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompanyBannerDismissed(true);
+                      setTargetCompany('');
+                    }}
+                    className="p-1 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    aria-label="Dismiss tailored company banner"
+                  >
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -2456,17 +2930,25 @@ export function WebPortfolioView({
                           </div>
                         )}
                       </div>
-                      <div className="sm:col-span-8 flex flex-wrap items-center gap-y-1.5 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                        {tags.map((tag, tIdx) => (
-                          <React.Fragment key={tIdx}>
-                            <span>{tag}</span>
-                            {tIdx < tags.length - 1 && (
-                              <span aria-hidden="true" className="mx-2 text-stone-300 dark:text-stone-700">
-                                ·
-                              </span>
-                            )}
-                          </React.Fragment>
-                        ))}
+                      <div className="sm:col-span-8 flex flex-wrap items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                        {tags.map((tag, tIdx) => {
+                          const isSelected = selectedSkillTag === tag;
+                          return (
+                            <button
+                              key={tIdx}
+                              type="button"
+                              onClick={() => handleSelectSkillProofTag(tag)}
+                              title={`Filter projects & proof using "${tag}"`}
+                              className={`px-2 py-0.5 rounded-md border text-xs font-medium transition-colors ${
+                                isSelected
+                                  ? accent.activePill
+                                  : 'bg-stone-100/80 dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-blue-400 dark:hover:border-cyan-500'
+                              }`}
+                            >
+                              {tag}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -2573,17 +3055,25 @@ export function WebPortfolioView({
                           {String(idx + 1).padStart(2, '0')}
                         </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-y-2 text-[13.5px] font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
-                        {tags.map((tag, tIdx) => (
-                          <React.Fragment key={tIdx}>
-                            <span>{tag}</span>
-                            {tIdx < tags.length - 1 && (
-                              <span aria-hidden="true" className="mx-2 text-slate-300 dark:text-slate-600 select-none">
-                                ·
-                              </span>
-                            )}
-                          </React.Fragment>
-                        ))}
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+                        {tags.map((tag, tIdx) => {
+                          const isSelected = selectedSkillTag === tag;
+                          return (
+                            <button
+                              key={tIdx}
+                              type="button"
+                              onClick={() => handleSelectSkillProofTag(tag)}
+                              title={`Click to filter matching projects for "${tag}"`}
+                              className={`px-2.5 py-1 rounded-lg border text-xs transition-colors ${
+                                isSelected
+                                  ? accent.activePill
+                                  : 'bg-slate-50 dark:bg-slate-950/70 border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-cyan-500 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              {tag}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -2615,11 +3105,22 @@ export function WebPortfolioView({
                   <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                     {experienceIntro}
                   </p>
+                  {siteData.experiences.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleToggleAllExperienceCards}
+                      className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white underline underline-offset-4"
+                    >
+                      {allExpCollapsed ? 'Expand All Role Details' : 'Compact Timeline View'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="lg:col-span-8 divide-y divide-stone-200 dark:divide-stone-800 border-t border-b border-stone-200 dark:border-stone-800">
                   {siteData.experiences.map((exp) => {
                     const duration = calculateDuration(exp.date);
+                    const isCollapsed = Boolean(collapsedExpIds[exp.id]);
+                    const tools = extractExperienceTools(exp);
                     return (
                       <article key={exp.id} className="py-6 space-y-3">
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -2631,16 +3132,46 @@ export function WebPortfolioView({
                               {exp.company}
                             </div>
                           </div>
-                          <div className="text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-500 dark:text-slate-400">
-                            {exp.date}
-                            {duration ? ` (${duration})` : ''} · {exp.location}
+                          <div className="flex items-center gap-2 text-xs font-['JetBrains_Mono',monospace] tabular-nums text-slate-500 dark:text-slate-400">
+                            <span>
+                              {exp.date}
+                              {duration ? ` (${duration})` : ''} · {exp.location}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleExperienceCard(exp.id)}
+                              className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                              aria-label={isCollapsed ? 'Expand role details' : 'Compact role details'}
+                            >
+                              {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                            </button>
                           </div>
                         </div>
-                        <ul className="space-y-2.5 text-sm text-slate-700 dark:text-slate-300 leading-relaxed list-outside ml-4 list-disc">
-                          {exp.bullets.map((b) => (
-                            <li key={b.id} dangerouslySetInnerHTML={{ __html: b.text }} />
-                          ))}
-                        </ul>
+                        {!isCollapsed && (
+                          <ul className="space-y-2.5 text-sm text-slate-700 dark:text-slate-300 leading-relaxed list-outside ml-4 list-disc">
+                            {exp.bullets.map((b) => (
+                              <li key={b.id} dangerouslySetInnerHTML={{ __html: b.text }} />
+                            ))}
+                          </ul>
+                        )}
+                        {tools.length > 0 && (
+                          <div className="pt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-slate-500 dark:text-slate-400">
+                            <span className="font-semibold">Proof Tools:</span>
+                            {tools.map((tool, tIdx) => (
+                              <React.Fragment key={tool}>
+                                {tIdx > 0 && <span aria-hidden="true">·</span>}
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectSkillProofTag(tool)}
+                                  className={`font-['JetBrains_Mono',monospace] hover:underline underline-offset-4 ${accent.eyebrow}`}
+                                  title={`Filter projects using ${tool}`}
+                                >
+                                  {tool}
+                                </button>
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        )}
                       </article>
                     );
                   })}
@@ -2648,25 +3179,37 @@ export function WebPortfolioView({
               </div>
             ) : (
               <>
-                <div className="mb-8 sm:mb-10">
-                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                    <div className={`text-xs font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold`}>
-                      {sectionLabel('02', 'Career Timeline')}
+                <div className="mb-8 sm:mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                      <div className={`text-xs font-['JetBrains_Mono',monospace] uppercase tracking-[0.14em] ${accent.eyebrow} font-semibold`}>
+                        {sectionLabel('02', 'Career Timeline')}
+                      </div>
+                      {renderSectionEditButton('experience', isExpCustomized, 'Edit Experience')}
                     </div>
-                    {renderSectionEditButton('experience', isExpCustomized, 'Edit Experience')}
+                    <h2 className={`text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
+                      Professional Work Experience
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5">
+                      {experienceIntro}
+                    </p>
                   </div>
-                  <h2 className={`text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight text-balance ${displayHeadingFont}`}>
-                    Professional Work Experience
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5">
-                    {experienceIntro}
-                  </p>
+                  {siteData.experiences.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleToggleAllExperienceCards}
+                      className="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors whitespace-nowrap"
+                    >
+                      {allExpCollapsed ? 'Expand All Roles' : 'Compact All'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-5 relative before:hidden md:before:block before:absolute before:left-5 before:top-4 before:bottom-4 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
                   {siteData.experiences.map((exp) => {
                     const duration = calculateDuration(exp.date);
                     const isCollapsed = Boolean(collapsedExpIds[exp.id]);
+                    const tools = extractExperienceTools(exp);
                     return (
                       <div
                         key={exp.id}
@@ -2738,6 +3281,25 @@ export function WebPortfolioView({
                             ))}
                           </ul>
                         )}
+
+                        {tools.length > 0 && (
+                          <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-slate-500 dark:text-slate-400">
+                            <span className="font-semibold">Proof Tools:</span>
+                            {tools.map((tool, tIdx) => (
+                              <React.Fragment key={tool}>
+                                {tIdx > 0 && <span aria-hidden="true">·</span>}
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectSkillProofTag(tool)}
+                                  className={`font-['JetBrains_Mono',monospace] font-semibold hover:underline underline-offset-4 ${accent.eyebrow}`}
+                                  title={`Filter matching projects built with ${tool}`}
+                                >
+                                  {tool}
+                                </button>
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -2767,6 +3329,20 @@ export function WebPortfolioView({
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5">
                 {projectsIntro}
               </p>
+              {selectedSkillTag && (
+                <div className="mt-2.5 inline-flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-xs">
+                  <span className="font-semibold text-cyan-700 dark:text-cyan-300">
+                    Skill Proof Filter: &ldquo;{selectedSkillTag}&rdquo; ({filteredProjects.length} matching)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSkillTag(null)}
+                    className="px-2 py-0.5 rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-950 text-[11px] font-bold hover:opacity-90"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="inline-flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 self-start max-w-full overflow-x-auto no-scrollbar sm:flex-wrap">
@@ -3414,14 +3990,17 @@ export function WebPortfolioView({
                 {/* Case Study Tabs */}
                 <div className="flex flex-wrap sm:inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs w-full sm:w-auto">
                   {[
-                    { key: 'overview', label: 'Overview & Impact' },
+                    { key: 'overview', label: 'Overview' },
                     { key: 'architecture', label: 'Architecture' },
-                    { key: 'stack', label: 'Stack & Tools' },
+                    { key: 'snippet', label: 'Tech Blueprint' },
+                    { key: 'stack', label: 'Stack' },
                   ].map((tab) => (
                     <button
                       key={tab.key}
                       type="button"
-                      onClick={() => setCaseTab(tab.key as 'overview' | 'architecture' | 'stack')}
+                      onClick={() =>
+                        setCaseTab(tab.key as 'overview' | 'architecture' | 'snippet' | 'stack')
+                      }
                       className={`min-h-[38px] flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap text-center ${
                         caseTab === tab.key
                           ? accent.tabActive
@@ -3481,6 +4060,29 @@ export function WebPortfolioView({
                     <p className="text-slate-600 dark:text-slate-300 text-left sm:text-justify">
                       {selectedProject.description}
                     </p>
+                    {(() => {
+                      const beforeAfter = getProjectBeforeAfter(selectedProject, enh);
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                          <div className="rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/20 p-3 space-y-1">
+                            <div className="text-[10.5px] font-['JetBrains_Mono',monospace] uppercase tracking-wider text-rose-700 dark:text-rose-400 font-bold">
+                              {beforeAfter.beforeLabel}
+                            </div>
+                            <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                              {beforeAfter.beforeValue}
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/20 p-3 space-y-1">
+                            <div className="text-[10.5px] font-['JetBrains_Mono',monospace] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-bold">
+                              {beforeAfter.afterLabel}
+                            </div>
+                            <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                              {beforeAfter.afterValue}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {(projectEnhancements[selectedProject.id]?.problem ||
                       projectEnhancements[selectedProject.id]?.solution ||
                       projectEnhancements[selectedProject.id]?.impact) && (
@@ -3570,6 +4172,63 @@ export function WebPortfolioView({
                           {deliverables}
                         </p>
                       </div>
+                    </div>
+                  );
+                })()}
+
+                {caseTab === 'snippet' && (() => {
+                  const enh = projectEnhancements[selectedProject.id];
+                  const snippet = buildProjectTechnicalSnippet(selectedProject, enh?.technicalSnippet);
+                  return (
+                    <div className="space-y-3 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <Terminal className={`w-3.5 h-3.5 ${accent.eyebrow}`} />
+                            <span>{snippet.label}</span>
+                          </div>
+                          <div className="text-[11px] font-['JetBrains_Mono',monospace] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {snippet.language} · {snippet.isCustom ? 'Custom Artifact' : 'Reference Blueprint'}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {isStudioUnlocked && onUpdatePortfolioSettings && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedProject(null);
+                                openSectionEditor('projects');
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:opacity-90"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(snippet.code);
+                              setSnippetCopied(true);
+                              setTimeout(() => setSnippetCopied(false), 1800);
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-800 text-white text-xs font-semibold inline-flex items-center gap-1 hover:opacity-90"
+                          >
+                            {snippetCopied ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" /> Copy Code
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <pre className="rounded-xl bg-[#070B14] border border-slate-800 p-4 text-[11.5px] leading-relaxed font-['JetBrains_Mono',monospace] text-slate-100 overflow-x-auto">
+                        <code>{snippet.code}</code>
+                      </pre>
                     </div>
                   );
                 })()}
@@ -3672,19 +4331,19 @@ export function WebPortfolioView({
           </div>
         )}
 
-        {/* Digital QR Business Card Modal */}
+        {/* Digital QR Business Card & Custom Recruiter Link Builder Modal */}
         {qrModalOpen && (
           <div
             className="no-print fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setQrModalOpen(false)}
           >
             <div
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 text-center space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Digital Business Card
+                  Digital Business Card &amp; Share Link
                 </h3>
                 <button
                   type="button"
@@ -3698,7 +4357,7 @@ export function WebPortfolioView({
 
               {qrCardDataUrl && (
                 <div className="inline-block p-3 bg-white rounded-xl border border-slate-200">
-                  <img src={qrCardDataUrl} alt="Portfolio QR Code" className="w-44 h-44" />
+                  <img src={qrCardDataUrl} alt="Portfolio QR Code" className="w-40 h-40" />
                 </div>
               )}
 
@@ -3709,47 +4368,202 @@ export function WebPortfolioView({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs pt-2">
+              {/* Tailored Company Link Builder */}
+              <div className="text-left rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 space-y-2">
+                <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Building2 className={`w-3.5 h-3.5 ${accent.eyebrow}`} />
+                  <span>Personalized Company Share Link Builder</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={customShareCompany}
+                    onChange={(e) => setCustomShareCompany(e.target.value)}
+                    placeholder="Target company (e.g. bKash)"
+                    className="min-h-[38px] rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                  {profiles.length > 0 && (
+                    <select
+                      value={customShareRoleId}
+                      onChange={(e) => setCustomShareRoleId(e.target.value)}
+                      aria-label="Select Role Preset for Link"
+                      className="min-h-[38px] rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                    >
+                      {profiles.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div className="text-[10.5px] font-['JetBrains_Mono',monospace] text-slate-500 dark:text-slate-400 truncate px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+                  {activeCustomShareUrl}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(window.location.href);
+                    navigator.clipboard.writeText(activeCustomShareUrl);
                     setShareCopied(true);
+                    onShowToast?.('শেয়ার লিংক কপি হয়েছে!', 'success');
                     setTimeout(() => setShareCopied(false), 2000);
                   }}
                   className="min-h-[44px] py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold flex items-center justify-center gap-1.5"
                 >
                   {shareCopied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                  <span>{shareCopied ? 'Copied' : 'Copy URL'}</span>
+                  <span>{shareCopied ? 'Copied!' : 'Copy Tailored Link'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => exportVCard(siteData)}
-                  className={`min-h-[44px] py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 ${accent.btnPrimary}`}
+                  className="min-h-[44px] py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold flex items-center justify-center gap-1.5"
                 >
-                  <UserPlus className="w-4 h-4" /> Save .vcf
+                  <UserPlus className="w-4 h-4 text-emerald-500" /> Save .vcf
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadQRBusinessCardPNG()}
+                  className={`col-span-2 min-h-[44px] py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 ${accent.btnPrimary}`}
+                >
+                  <ImageDown className="w-4 h-4" /> Save Business Card (PNG)
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* NON-DESTRUCTIVE LIVE WEBSITE CONTENT EDITOR DRAWER */}
-        {isStudioUnlocked && onUpdatePortfolioSettings && (
-          <WebsiteEditorDrawer
-            isOpen={editorOpen}
-            initialTab={editorTab}
-            onClose={() => setEditorOpen(false)}
-            cvData={cvData}
-            cvPhotoSrc={settings.photoSrc}
-            portfolio={portfolioConfig}
-            onUpdatePortfolio={onUpdatePortfolioSettings}
-            hasUnpublishedDraft={hasUnpublishedDraft}
-            onPublishDraft={onPublishDraft}
-            onDiscardDraft={onDiscardDraft}
-            onShowToast={onShowToast}
-          />
+        {/* Recruiter 30-Second Executive Brief Modal */}
+        {briefModalOpen && (
+          <div
+            className="no-print fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setBriefModalOpen(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Recruiter 30-Second Executive Brief"
+              className="bg-white dark:bg-[#0B1222] border border-slate-200 dark:border-slate-700 rounded-2xl max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900 dark:text-slate-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div>
+                  <div className={`text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-wider font-bold ${accent.eyebrow}`}>
+                    30-Second Executive Brief · {activeProfileObj?.name || 'Master Profile'}
+                  </div>
+                  <h3 className={`text-lg sm:text-xl font-extrabold mt-0.5 ${displayHeadingFont}`}>
+                    {siteData.name}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{siteData.title}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBriefModalOpen(false)}
+                  className="min-h-[38px] min-w-[38px] rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0"
+                  aria-label="Close Executive Brief"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {safeMetrics.slice(0, 4).map((m) => (
+                  <div
+                    key={m.id}
+                    className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 text-center"
+                  >
+                    <div className={`text-base font-extrabold ${accent.eyebrow}`}>{m.value}</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+                      {m.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-2 text-xs leading-relaxed">
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-3">
+                  <div className="font-bold text-slate-900 dark:text-white mb-1">Core Value Proposition</div>
+                  <p className="text-slate-600 dark:text-slate-300">{siteData.summary}</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-3">
+                    <div className="font-bold text-slate-900 dark:text-white mb-1">Availability &amp; Timezone</div>
+                    <div className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                      {portfolioConfig.availabilityText}
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">GMT+6 · Ready for Immediate Joining</div>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 p-3">
+                    <div className="font-bold text-slate-900 dark:text-white mb-1">Direct Contact</div>
+                    <div className="text-slate-700 dark:text-slate-200 font-medium truncate">{email}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">{phone} · {location}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pitch = `${siteData.name} — ${siteData.title}\n${siteData.summary}\nContact: ${email} | ${phone} | ${window.location.href}`;
+                    navigator.clipboard.writeText(pitch);
+                    setBriefPitchCopied(true);
+                    setTimeout(() => setBriefPitchCopied(false), 2000);
+                  }}
+                  className="min-h-[42px] px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold inline-flex items-center gap-1.5"
+                >
+                  {briefPitchCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{briefPitchCopied ? 'Copied Brief!' : 'Copy Quick Pitch'}</span>
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBriefModalOpen(false);
+                      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="min-h-[42px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    Contact Form
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBriefModalOpen(false);
+                      onExportPDF();
+                    }}
+                    className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 ${accent.btnPrimary}`}
+                  >
+                    <Download className="w-3.5 h-3.5" /> Download CV
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
+
+        {/* NON-DESTRUCTIVE LIVE WEBSITE CONTENT EDITOR DRAWER (Lazy-Loaded for Owners) */}
+        {isStudioUnlocked && editorOpen && onUpdatePortfolioSettings && (
+          <Suspense fallback={null}>
+            <WebsiteEditorDrawer
+              isOpen={editorOpen}
+              initialTab={editorTab}
+              onClose={() => setEditorOpen(false)}
+              cvData={cvData}
+              cvPhotoSrc={settings.photoSrc}
+              portfolio={portfolioConfig}
+              onUpdatePortfolio={onUpdatePortfolioSettings}
+              hasUnpublishedDraft={hasUnpublishedDraft}
+              onPublishDraft={onPublishDraft}
+              onDiscardDraft={onDiscardDraft}
+              onShowToast={onShowToast}
+            />
+          </Suspense>
+        )}
+
+        <OfflineIndicator />
       </div>
     </div>
   );

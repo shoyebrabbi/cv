@@ -27,46 +27,18 @@ import {
 import {
   CVData,
   CustomSection,
+  DEFAULT_SPECIALIZATION_CARDS,
   ExperienceItem,
   PortfolioSettings,
   ProjectItem,
   SkillRow,
   WebsiteContentOverrides,
+  WebsiteEditorTab,
   WebsiteProjectEnhancement,
   WebsiteSectionKey,
   WebsiteSpecializationCard,
 } from '../types/cv';
 import { compressImageFileToDataUrl } from '../utils/imageCompress';
-
-export type WebsiteEditorTab =
-  | 'hero'
-  | 'metrics'
-  | 'skills'
-  | 'experience'
-  | 'projects'
-  | 'credentials'
-  | 'visibility';
-
-export const DEFAULT_SPECIALIZATION_CARDS: WebsiteSpecializationCard[] = [
-  {
-    id: 'spec_data',
-    label: 'Data & Power BI',
-    proof: 'PostgreSQL · Star Schema · Automated ETL · 50,000+ Records',
-    metric: '50,000+ Rows',
-  },
-  {
-    id: 'spec_sqa',
-    label: 'Software QA & API',
-    proof: 'Postman CRUD · BVA/ECP · 80+ Test Cases · Jira Triage',
-    metric: '80+ Cases',
-  },
-  {
-    id: 'spec_netops',
-    label: 'Enterprise IT',
-    proof: 'Windows Server · Linux · ERP RBAC · 100+ Users Supported',
-    metric: '100+ Users',
-  },
-];
 
 interface WebsiteEditorDrawerProps {
   isOpen: boolean;
@@ -408,6 +380,19 @@ export function WebsiteEditorDrawer({
       Array.isArray(nextEntry.architectureSteps) && nextEntry.architectureSteps.some((s) => s.trim());
     const hasGallery =
       Array.isArray(nextEntry.galleryUrls) && nextEntry.galleryUrls.length > 0;
+    const hasBeforeAfter = Boolean(
+      nextEntry.beforeAfterImpact &&
+        (nextEntry.beforeAfterImpact.beforeLabel.trim() ||
+          nextEntry.beforeAfterImpact.beforeValue.trim() ||
+          nextEntry.beforeAfterImpact.afterLabel.trim() ||
+          nextEntry.beforeAfterImpact.afterValue.trim())
+    );
+    const hasSnippet = Boolean(
+      nextEntry.technicalSnippet &&
+        (nextEntry.technicalSnippet.label.trim() ||
+          nextEntry.technicalSnippet.language.trim() ||
+          nextEntry.technicalSnippet.code.trim())
+    );
     if (
       !nextEntry.imageUrl &&
       !hasGallery &&
@@ -415,7 +400,9 @@ export function WebsiteEditorDrawer({
       !nextEntry.solution &&
       !nextEntry.impact &&
       !hasSteps &&
-      !nextEntry.deliverables
+      !nextEntry.deliverables &&
+      !hasBeforeAfter &&
+      !hasSnippet
     ) {
       const nextMap = { ...projectEnhancements };
       delete nextMap[projectId];
@@ -1582,6 +1569,129 @@ export function WebsiteEditorDrawer({
                           placeholder="Key Deliverables (optional): e.g. Executive PBIX · SQL Views · Test Suite"
                           className="w-full min-h-[36px] rounded-lg bg-[#080D1A] border border-slate-700/80 px-2.5 text-xs text-slate-200 placeholder-slate-500"
                         />
+                        <div className="pt-1.5 border-t border-slate-800/70 space-y-1.5">
+                          <div className="text-[10.5px] font-semibold text-slate-400">
+                            Before vs After Impact Card (Optional)
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <input
+                              type="text"
+                              value={enh.beforeAfterImpact?.beforeLabel || ''}
+                              onChange={(e) =>
+                                updateProjectEnhancement(proj.id, {
+                                  beforeAfterImpact: {
+                                    beforeLabel: e.target.value,
+                                    beforeValue: enh.beforeAfterImpact?.beforeValue || '',
+                                    afterLabel: enh.beforeAfterImpact?.afterLabel || '',
+                                    afterValue: enh.beforeAfterImpact?.afterValue || '',
+                                  },
+                                })
+                              }
+                              placeholder="Before label (e.g. Manual Recon)"
+                              className="w-full min-h-[34px] rounded-lg bg-[#080D1A] border border-slate-700/80 px-2 text-[11px] text-slate-300 placeholder-slate-500"
+                            />
+                            <input
+                              type="text"
+                              value={enh.beforeAfterImpact?.beforeValue || ''}
+                              onChange={(e) =>
+                                updateProjectEnhancement(proj.id, {
+                                  beforeAfterImpact: {
+                                    beforeLabel: enh.beforeAfterImpact?.beforeLabel || '',
+                                    beforeValue: e.target.value,
+                                    afterLabel: enh.beforeAfterImpact?.afterLabel || '',
+                                    afterValue: enh.beforeAfterImpact?.afterValue || '',
+                                  },
+                                })
+                              }
+                              placeholder="Before metric (e.g. 4 hrs / cycle)"
+                              className="w-full min-h-[34px] rounded-lg bg-[#080D1A] border border-slate-700/80 px-2 text-[11px] text-rose-300 placeholder-slate-500"
+                            />
+                            <input
+                              type="text"
+                              value={enh.beforeAfterImpact?.afterLabel || ''}
+                              onChange={(e) =>
+                                updateProjectEnhancement(proj.id, {
+                                  beforeAfterImpact: {
+                                    beforeLabel: enh.beforeAfterImpact?.beforeLabel || '',
+                                    beforeValue: enh.beforeAfterImpact?.beforeValue || '',
+                                    afterLabel: e.target.value,
+                                    afterValue: enh.beforeAfterImpact?.afterValue || '',
+                                  },
+                                })
+                              }
+                              placeholder="After label (e.g. Automated ETL)"
+                              className="w-full min-h-[34px] rounded-lg bg-[#080D1A] border border-slate-700/80 px-2 text-[11px] text-slate-300 placeholder-slate-500"
+                            />
+                            <input
+                              type="text"
+                              value={enh.beforeAfterImpact?.afterValue || ''}
+                              onChange={(e) =>
+                                updateProjectEnhancement(proj.id, {
+                                  beforeAfterImpact: {
+                                    beforeLabel: enh.beforeAfterImpact?.beforeLabel || '',
+                                    beforeValue: enh.beforeAfterImpact?.beforeValue || '',
+                                    afterLabel: enh.beforeAfterImpact?.afterLabel || '',
+                                    afterValue: e.target.value,
+                                  },
+                                })
+                              }
+                              placeholder="After metric (e.g. 8 mins · 99.9%)"
+                              className="w-full min-h-[34px] rounded-lg bg-[#080D1A] border border-slate-700/80 px-2 text-[11px] text-emerald-300 placeholder-slate-500"
+                            />
+                          </div>
+                        </div>
+                        <div className="pt-1.5 border-t border-slate-800/70 space-y-1.5">
+                          <div className="text-[10.5px] font-semibold text-slate-400">
+                            Technical Blueprint Snippet (Optional — SQL, Postman, or Code Sample)
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <input
+                              type="text"
+                              value={enh.technicalSnippet?.label || ''}
+                              onChange={(e) =>
+                                updateProjectEnhancement(proj.id, {
+                                  technicalSnippet: {
+                                    label: e.target.value,
+                                    language: enh.technicalSnippet?.language || 'SQL',
+                                    code: enh.technicalSnippet?.code || '',
+                                  },
+                                })
+                              }
+                              placeholder="Title (e.g. Reconciliation Query)"
+                              className="col-span-2 min-h-[34px] rounded-lg bg-[#080D1A] border border-slate-700/80 px-2 text-[11px] text-slate-200 placeholder-slate-500"
+                            />
+                            <input
+                              type="text"
+                              value={enh.technicalSnippet?.language || ''}
+                              onChange={(e) =>
+                                updateProjectEnhancement(proj.id, {
+                                  technicalSnippet: {
+                                    label: enh.technicalSnippet?.label || '',
+                                    language: e.target.value,
+                                    code: enh.technicalSnippet?.code || '',
+                                  },
+                                })
+                              }
+                              placeholder="Lang (SQL/JS)"
+                              className="col-span-1 min-h-[34px] rounded-lg bg-[#080D1A] border border-slate-700/80 px-2 text-[11px] font-mono text-cyan-300 placeholder-slate-500"
+                            />
+                          </div>
+                          <textarea
+                            rows={3}
+                            value={enh.technicalSnippet?.code || ''}
+                            onChange={(e) =>
+                              updateProjectEnhancement(proj.id, {
+                                technicalSnippet: {
+                                  label: enh.technicalSnippet?.label || '',
+                                  language: enh.technicalSnippet?.language || 'SQL',
+                                  code: e.target.value,
+                                },
+                              })
+                            }
+                            placeholder="Paste SQL / Postman / Test Assertion snippet (auto-generated if blank)"
+                            className="w-full rounded-lg bg-[#080D1A] border border-slate-700/80 p-2 text-[11px] font-mono text-emerald-200 placeholder-slate-500 leading-relaxed"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
