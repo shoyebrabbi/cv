@@ -53,6 +53,7 @@ import { ProfileManagerModal } from './components/ProfileManagerModal';
 import { TemplateGalleryModal } from './components/TemplateGalleryModal';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
 import { StudioRightRail, ShortcutsModal } from './components/StudioRightRail';
+import { MobileCVEditor } from './components/MobileCVEditor';
 import {
   HyperlinkModal,
   ATSAuditModal,
@@ -74,7 +75,6 @@ import {
   Edit3,
   Eye,
   Briefcase,
-  FileDown,
 } from 'lucide-react';
 
 interface Toast {
@@ -207,6 +207,9 @@ export default function App() {
       setCvData(next);
     }
   }, []);
+
+  // Mobile native Studio view ('app' card editor vs 'paper' zoomed A4 sheet)
+  const [mobileStudioView, setMobileStudioView] = useState<'app' | 'paper'>('app');
 
   // Toasts
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -2063,6 +2066,8 @@ export default function App() {
               zenMode={zenMode}
               onToggleZenMode={() => setZenMode((z) => !z)}
               onOpenShortcuts={() => setShortcutsModalOpen(true)}
+              mobileStudioView={mobileStudioView}
+              onSetMobileStudioView={setMobileStudioView}
             />
           )}
 
@@ -2102,13 +2107,44 @@ export default function App() {
               />
             )}
 
-            {/* Center Live A4 Canvas */}
+            {/* Center Live A4 Canvas (+ Mobile App Editor on < 1024px when mobileStudioView === 'app') */}
             <main
               ref={canvasHostRef}
               className="print-shell-reset flex-1 py-3 sm:py-6 px-2 sm:px-6 pb-24 lg:pb-6 overflow-y-auto overflow-x-auto bg-[#060911]"
             >
-              {/* Clean Floating Canvas Bar */}
-              <div className="no-print max-w-[210mm] mx-auto mb-2.5 sm:mb-4 bg-[#090E1A] border border-slate-800/90 rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs shadow-lg">
+              {mobileStudioView === 'app' && (
+                <MobileCVEditor
+                  cvData={cvData}
+                  settings={settings}
+                  score={score}
+                  estimatedPages={estimatedPages}
+                  overflowPx={overflowPx}
+                  activeProfileName={profiles.find((p) => p.id === activeProfileId)?.name || 'Master CV'}
+                  canUndoCV={historyPast.length > 0}
+                  canRedoCV={historyFuture.length > 0}
+                  onUndoCV={handleUndoCV}
+                  onRedoCV={handleRedoCV}
+                  onUpdateCVData={applyCVUpdate}
+                  onUpdateSettings={(newVals) => setSettings((prev) => ({ ...prev, ...newVals }))}
+                  onSwitchToPaperView={() => setMobileStudioView('paper')}
+                  onOpenATSModal={() => setAtsModalOpen(true)}
+                  onOpenProfileManager={() => setProfileManagerOpen(true)}
+                  onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}
+                  onOpenSignatureModal={() => setSignatureModalOpen(true)}
+                  onOpenAddSectionModal={() => setAddSectionModalOpen(true)}
+                  onTogglePortfolioMode={() =>
+                    setSettings((prev) => ({ ...prev, portfolioMode: true }))
+                  }
+                  onShowToast={showToast}
+                />
+              )}
+
+              {/* Clean Floating Canvas Bar (Shown on Desktop lg+ or on Mobile when switched to 'paper' view) */}
+              <div
+                className={`${
+                  mobileStudioView === 'app' ? 'hidden lg:flex' : 'flex'
+                } no-print max-w-[210mm] mx-auto mb-2.5 sm:mb-4 bg-[#090E1A] border border-slate-800/90 rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs shadow-lg`}
+              >
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <span className="font-semibold text-slate-200 tabular-nums whitespace-nowrap text-[11px] sm:text-xs">
                     {estimatedPages} {estimatedPages > 1 ? 'Pages' : 'Page'} · {Math.round(docHeight * 0.264583)}mm
@@ -2313,11 +2349,13 @@ export default function App() {
                 </div>
               )}
 
-              {/* Document wrapper with Responsive Auto-Fit + Zoom scaling (never clips left edge on mobile/tablet) */}
+              {/* Document wrapper with Responsive Auto-Fit + Zoom scaling (kept offscreen when Mobile App Editor is active so page count & PDF capture remain accurate) */}
               <div
                 className={`cv-zoom-frame mx-auto relative ${
                   sideBySideSpread && estimatedPages >= 2
                     ? 'fixed left-[-12000px] top-0 opacity-0 pointer-events-none'
+                    : mobileStudioView === 'app'
+                    ? 'fixed left-[-12000px] top-0 opacity-0 pointer-events-none lg:static lg:opacity-100 lg:pointer-events-auto'
                     : ''
                 }`}
                 style={{
@@ -2411,7 +2449,7 @@ export default function App() {
             )}
           </div>
 
-          {/* Mobile & Tablet Thumb-Zone Studio Action Bar (<1024px) */}
+          {/* Mobile & Tablet Thumb-Zone Native App Bottom Bar (<1024px) */}
           {!zenMode && (
             <nav
               aria-label="Mobile Studio Actions"
@@ -2419,56 +2457,68 @@ export default function App() {
             >
               <button
                 type="button"
-                onClick={() => setIsStudioOpen((v) => !v)}
-                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition ${
+                onClick={() => {
+                  setIsStudioOpen(false);
+                  setIsUnifiedToolsOpen(false);
+                  setMobileStudioView('app');
+                }}
+                className={`min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+                  mobileStudioView === 'app' && !isStudioOpen && !isUnifiedToolsOpen
+                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
+                    : 'text-slate-300 hover:bg-slate-900 border border-transparent'
+                }`}
+              >
+                <Edit3 className="w-4 h-4 text-blue-400" />
+                <span>App Edit</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsStudioOpen(false);
+                  setIsUnifiedToolsOpen(false);
+                  setMobileStudioView('paper');
+                }}
+                className={`min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+                  mobileStudioView === 'paper' && !isStudioOpen && !isUnifiedToolsOpen
+                    ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
+                    : 'text-slate-300 hover:bg-slate-900 border border-transparent'
+                }`}
+              >
+                <Eye className="w-4 h-4 text-emerald-400" />
+                <span>A4 Sheet</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsUnifiedToolsOpen(false);
+                  setIsStudioOpen((v) => !v);
+                }}
+                className={`min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
                   isStudioOpen
                     ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
                     : 'text-slate-300 hover:bg-slate-900 border border-transparent'
                 }`}
               >
-                <Sliders className="w-4 h-4 text-blue-400" />
+                <Sliders className="w-4 h-4 text-cyan-400" />
                 <span>Design</span>
               </button>
 
               <button
                 type="button"
-                onClick={() =>
-                  setSettings((prev) => ({ ...prev, isEditMode: !prev.isEditMode }))
-                }
-                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition ${
-                  settings.isEditMode
-                    ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-slate-900/70 text-slate-300 border border-slate-800'
-                }`}
-              >
-                {settings.isEditMode ? (
-                  <Edit3 className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <Eye className="w-4 h-4 text-slate-300" />
-                )}
-                <span>{settings.isEditMode ? 'Editing' : 'Preview'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsUnifiedToolsOpen(true)}
-                className={`min-h-[44px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition ${
+                onClick={() => {
+                  setIsStudioOpen(false);
+                  setIsUnifiedToolsOpen((v) => !v);
+                }}
+                className={`min-h-[46px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
                   isUnifiedToolsOpen
-                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                     : 'text-slate-300 hover:bg-slate-900 border border-transparent'
                 }`}
               >
                 <Briefcase className="w-4 h-4 text-amber-400" />
-                <span>Toolkit</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDownloadPDF}
-                className="min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex flex-col items-center justify-center gap-0.5 text-[10.5px] font-bold transition shadow-sm"
-              >
-                <FileDown className="w-4 h-4" />
-                <span>Save PDF</span>
+                <span>Tools</span>
               </button>
             </nav>
           )}

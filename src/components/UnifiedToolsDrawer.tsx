@@ -285,9 +285,9 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
         className="no-print fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm"
         onClick={onClose}
       />
-      <aside className="no-print fixed inset-y-0 right-0 z-50 w-[92vw] sm:w-full max-w-2xl rounded-l-2xl sm:rounded-none overflow-y-auto border-l border-slate-800 bg-[#090E1A] text-white shadow-2xl">
+      <aside className="no-print fixed inset-y-0 right-0 z-50 w-[96vw] sm:w-full max-w-2xl rounded-l-3xl sm:rounded-none overflow-y-auto border-l border-slate-800 bg-[#090E1A] text-white shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800/90 bg-[#080D1A]/95 px-5 py-3.5 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800/90 bg-[#080D1A]/95 px-4 sm:px-5 py-3 backdrop-blur">
           <div>
             <h2 className="text-base font-bold flex items-center gap-2 text-white">
               <Sparkles className="w-4 h-4 text-blue-400" /> Career &amp; ATS Toolkit
@@ -297,9 +297,10 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-slate-900 border border-slate-800 p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition"
+            className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-xl bg-slate-900 border border-slate-800 p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-center"
+            aria-label="Close Career Toolkit"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5 sm:w-4 sm:h-4" />
           </button>
         </div>
 

@@ -98,11 +98,9 @@ function prepareCaptureHost(element: HTMLElement) {
     zoomFrame.style.width = '794px';
     zoomFrame.style.height = 'auto';
     zoomFrame.style.overflow = 'visible';
-    if (getComputedStyle(zoomFrame).position === 'fixed') {
-      zoomFrame.style.position = 'static';
-      zoomFrame.style.left = 'auto';
-      zoomFrame.style.opacity = '1';
-    }
+    zoomFrame.style.position = 'static';
+    zoomFrame.style.left = 'auto';
+    zoomFrame.style.opacity = '1';
 
     restoreZoomFrame = () => {
       zoomFrame.style.width = prevWidth;
@@ -152,6 +150,177 @@ function prepareCaptureHost(element: HTMLElement) {
   };
 }
 
+const UNSUPPORTED_COLOR_FN_RE = /(?:oklch|oklab|lch|lab|color-mix|color)\s*\(/i;
+
+const COLOR_PROPERTIES_TO_NORMALIZE = [
+  'color',
+  'background-color',
+  'border-top-color',
+  'border-right-color',
+  'border-bottom-color',
+  'border-left-color',
+  'outline-color',
+  'text-decoration-color',
+  'column-rule-color',
+  'caret-color',
+  'accent-color',
+  'fill',
+  'stroke',
+  'box-shadow',
+  'text-shadow',
+  'background-image',
+  '-webkit-text-fill-color',
+  '-webkit-text-stroke-color',
+  'stop-color',
+] as const;
+
+function resolveCssColorToRgba(
+  token: string,
+  cache: Map<string, string>,
+  ctx: CanvasRenderingContext2D | null
+): string {
+  const cached = cache.get(token);
+  if (cached !== undefined) return cached;
+  if (!ctx) return 'rgb(30, 41, 59)';
+
+  let resolved = '';
+  try {
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillStyle = '#010203';
+    ctx.fillStyle = token;
+    if (ctx.fillStyle === '#010203') {
+      ctx.fillStyle = '#fefdfc';
+      ctx.fillStyle = token;
+      if (ctx.fillStyle === '#fefdfc') {
+        resolved = 'rgb(30, 41, 59)';
+        cache.set(token, resolved);
+        return resolved;
+      }
+    }
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    if (a === 0) {
+      resolved = 'transparent';
+    } else if (a === 255) {
+      resolved = `rgb(${r}, ${g}, ${b})`;
+    } else {
+      resolved = `rgba(${r}, ${g}, ${b}, ${Number((a / 255).toFixed(3))})`;
+    }
+  } catch {
+    resolved = 'rgb(30, 41, 59)';
+  }
+
+  cache.set(token, resolved);
+  return resolved;
+}
+
+function convertUnsupportedColorsInValue(
+  rawValue: string,
+  cache: Map<string, string>,
+  ctx: CanvasRenderingContext2D | null
+): string {
+  if (!rawValue || !UNSUPPORTED_COLOR_FN_RE.test(rawValue)) return rawValue;
+
+  let result = '';
+  let i = 0;
+  const lower = rawValue.toLowerCase();
+
+  while (i < rawValue.length) {
+    const restLower = lower.slice(i);
+    const match = /^(oklch|oklab|lch|lab|color-mix|color)\s*\(/.exec(restLower);
+    if (match) {
+      const prevChar = i > 0 ? lower[i - 1] : '';
+      if (!/[a-z0-9_-]/.test(prevChar)) {
+        let depth = 0;
+        let end = i + match[0].length - 1;
+        for (let j = end; j < rawValue.length; j++) {
+          if (rawValue[j] === '(') depth++;
+          else if (rawValue[j] === ')') {
+            depth--;
+            if (depth === 0) {
+              end = j;
+              break;
+            }
+          }
+        }
+        const token = rawValue.slice(i, end + 1);
+        result += resolveCssColorToRgba(token, cache, ctx);
+        i = end + 1;
+        continue;
+      }
+    }
+    result += rawValue[i];
+    i++;
+  }
+
+  return result;
+}
+
+function sanitizeClonedDocumentForHtml2Canvas(clonedDoc: Document, rootElementId?: string) {
+  const view = clonedDoc.defaultView || window;
+  const canvas = clonedDoc.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const cache = new Map<string, string>();
+
+  const targetRoot = rootElementId ? clonedDoc.getElementById(rootElementId) : clonedDoc.body;
+  const elementsToSanitize: HTMLElement[] = [];
+
+  if (clonedDoc.documentElement) elementsToSanitize.push(clonedDoc.documentElement);
+  if (clonedDoc.body && clonedDoc.body !== clonedDoc.documentElement) {
+    elementsToSanitize.push(clonedDoc.body);
+  }
+
+  if (targetRoot) {
+    let parent = targetRoot.parentElement;
+    const ancestors: HTMLElement[] = [];
+    while (parent && parent !== clonedDoc.body && parent !== clonedDoc.documentElement) {
+      ancestors.push(parent);
+      parent = parent.parentElement;
+    }
+    elementsToSanitize.push(...ancestors.reverse(), targetRoot);
+    targetRoot.querySelectorAll('*').forEach((node) => {
+      if (node instanceof HTMLElement || node instanceof SVGElement) {
+        elementsToSanitize.push(node as unknown as HTMLElement);
+      }
+    });
+  }
+
+  for (const el of elementsToSanitize) {
+    let computed: CSSStyleDeclaration;
+    try {
+      computed = view.getComputedStyle(el);
+    } catch {
+      continue;
+    }
+    for (const prop of COLOR_PROPERTIES_TO_NORMALIZE) {
+      const val = computed.getPropertyValue(prop);
+      if (val && UNSUPPORTED_COLOR_FN_RE.test(val)) {
+        const safeVal = convertUnsupportedColorsInValue(val, cache, ctx);
+        el.style.setProperty(prop, safeVal, 'important');
+      }
+    }
+  }
+
+  // Ensure clean white canvas backdrop in cloned DOM
+  if (clonedDoc.documentElement) {
+    clonedDoc.documentElement.style.setProperty('background-color', '#ffffff', 'important');
+  }
+  if (clonedDoc.body) {
+    clonedDoc.body.style.setProperty('background-color', '#ffffff', 'important');
+  }
+
+  // Sanitize any inline <style> blocks containing oklch/oklab/color-mix tokens
+  clonedDoc.querySelectorAll('style').forEach((styleTag) => {
+    const cssText = styleTag.textContent;
+    if (cssText && UNSUPPORTED_COLOR_FN_RE.test(cssText)) {
+      styleTag.textContent = convertUnsupportedColorsInValue(cssText, cache, ctx);
+    }
+  });
+}
+
 // 1. Direct PDF Download
 export async function exportDirectPDF(
   elementId = 'cvDocument',
@@ -190,6 +359,8 @@ export async function exportDirectPDF(
       scrollY: 0,
       x: 0,
       y: 0,
+      backgroundColor: '#ffffff',
+      onclone: (clonedDoc: Document) => sanitizeClonedDocumentForHtml2Canvas(clonedDoc, elementId),
       ignoreElements: (el: Element) =>
         el.classList?.contains('builder-control') ||
         el.classList?.contains('no-print') ||
@@ -248,6 +419,7 @@ export async function exportHighResPNG(
           x: 0,
           y: 0,
           backgroundColor: '#ffffff',
+          onclone: (clonedDoc: Document) => sanitizeClonedDocumentForHtml2Canvas(clonedDoc, elementId),
           ignoreElements: (el: Element) =>
             el.classList?.contains('builder-control') ||
             el.classList?.contains('no-print') ||
@@ -1054,7 +1226,17 @@ export async function exportCoverLetterPDF(
           margin: [8, 8, 8, 8],
           filename: `Cover_Letter_${safeCompany}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollX: 0, scrollY: 0, x: 0, y: 0 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            letterRendering: true,
+            scrollX: 0,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            backgroundColor: '#ffffff',
+            onclone: (clonedDoc: Document) => sanitizeClonedDocumentForHtml2Canvas(clonedDoc),
+          },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         })
         .from(wrapper)

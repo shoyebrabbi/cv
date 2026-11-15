@@ -31,6 +31,9 @@ import {
   Maximize2,
   Keyboard,
   KeyRound,
+  Menu,
+  X,
+  Palette,
 } from 'lucide-react';
 import { CVTemplateKey, PhotoPosition } from '../types/cv';
 
@@ -77,6 +80,8 @@ interface NavbarProps {
   onToggleZenMode?: () => void;
   onOpenShortcuts?: () => void;
   onOpenSecuritySettings?: () => void;
+  mobileStudioView?: 'app' | 'paper';
+  onSetMobileStudioView?: (view: 'app' | 'paper') => void;
 }
 
 export function Navbar({
@@ -122,9 +127,11 @@ export function Navbar({
   onToggleZenMode,
   onOpenShortcuts,
   onOpenSecuritySettings,
+  mobileStudioView = 'app',
+  onSetMobileStudioView,
 }: NavbarProps) {
   const [insertMenuOpen, setInsertMenuOpen] = useState(false);
-  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [mobileStudioMenuOpen, setMobileStudioMenuOpen] = useState(false);
   const insertRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -141,8 +148,273 @@ export function Navbar({
 
   return (
     <header className="no-print sticky top-0 z-40 bg-[#080D1A] border-b border-slate-800/90 text-slate-100 select-none shrink-0">
-      {/* TIER 1: Primary Studio Command Bar */}
-      <div className="max-w-[1800px] mx-auto px-2.5 sm:px-4 xl:px-5 py-1.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1.5 lg:gap-2 xl:gap-4">
+      {/* MOBILE NATIVE APP HEADER (< 1024px) */}
+      <div className="lg:hidden px-3 h-14 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={() => setMobileStudioMenuOpen(true)}
+            className="min-h-[40px] px-3 rounded-xl bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-slate-100 text-xs font-bold flex items-center gap-1.5 shrink-0"
+            aria-label="Open Studio Menu"
+          >
+            <Menu className="w-4 h-4 text-blue-400" />
+            <span>Menu</span>
+          </button>
+
+          <div className="min-w-0">
+            <div className="text-xs font-extrabold text-white truncate leading-tight">
+              Shoyeb Studio
+            </div>
+            <div className="text-[11px] text-slate-400 truncate leading-tight">
+              {profiles.find((p) => p.id === activeProfileId)?.name || 'Master CV'}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onSetMobileStudioView && (
+            <div className="flex items-center bg-[#0F172A] border border-slate-800 rounded-xl p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => onSetMobileStudioView('app')}
+                className={`px-2.5 py-1.5 rounded-lg font-bold transition ${
+                  mobileStudioView === 'app' ? 'bg-blue-600 text-white' : 'text-slate-400'
+                }`}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetMobileStudioView('paper')}
+                className={`px-2.5 py-1.5 rounded-lg font-bold transition ${
+                  mobileStudioView === 'paper' ? 'bg-blue-600 text-white' : 'text-slate-400'
+                }`}
+              >
+                A4
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={onExportPDF}
+            className="min-h-[40px] px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-sm"
+          >
+            <FileDown className="w-4 h-4" />
+            <span>PDF</span>
+          </button>
+        </div>
+      </div>
+
+      {/* MOBILE STUDIO FULL-EXPLANATION APP MENU SHEET */}
+      {mobileStudioMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col"
+          onClick={() => setMobileStudioMenuOpen(false)}
+        >
+          <div
+            className="flex-1 overflow-y-auto bg-[#080D1A] p-4 space-y-4 pb-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h2 className="text-base font-extrabold text-white">CV Studio Menu</h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  সিভি এডিট, ডিজাইন, ব্যাকআপ এবং লাইভ ওয়েবসাইটের সব অপশন
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileStudioMenuOpen(false)}
+                className="min-h-[44px] min-w-[44px] rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-200"
+                aria-label="Close Menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Active Role Profile Switcher */}
+            <div className="rounded-2xl bg-[#0F172A] border border-slate-800 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200">Active Role Profile</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileStudioMenuOpen(false);
+                    onOpenProfileManager();
+                  }}
+                  className="text-xs font-bold text-blue-400 hover:underline"
+                >
+                  Manage Profiles →
+                </button>
+              </div>
+              <select
+                value={activeProfileId}
+                onChange={(e) => onSelectProfile(e.target.value)}
+                className="w-full min-h-[44px] rounded-xl bg-[#080D1A] border border-slate-700 px-3 text-sm font-semibold text-white"
+              >
+                {profiles.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-slate-900 text-white">
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Clear Self-Explanatory Tool Tiles */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+                সব টুলস ও অপশন
+              </div>
+
+              {(
+                [
+                  {
+                    title: portfolioMode ? 'CV Editor-এ ফিরে যান' : 'Live Website দেখুন',
+                    desc: 'পাবলিক পোর্টফোলিও ওয়েবসাইট ও ডিজাইন প্রিভিউ',
+                    icon: Globe,
+                    tint: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30',
+                    action: onTogglePortfolioMode,
+                  },
+                  {
+                    title: 'Design Inspector (কালার, ফন্ট ও ওয়েব লেআউট)',
+                    desc: 'সিভির কালার, মার্জিন, ছবি ও লাইভ সাইট ডিজাইন বদলান',
+                    icon: Palette,
+                    tint: 'text-blue-400 bg-blue-500/15 border-blue-500/30',
+                    action: onToggleStudioSidebar,
+                  },
+                  {
+                    title: 'Template Gallery (12+ টেমপ্লেট)',
+                    desc: 'কর্পোরেট, ATS ও আপনার সেভ করা কাস্টম টেমপ্লেট দেখুন',
+                    icon: LayoutGrid,
+                    tint: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30',
+                    action: onOpenTemplateGallery,
+                  },
+                  {
+                    title: `ATS Readiness Report (স্কোর ${score}%)`,
+                    desc: 'সিভির ৬টি ATS পয়েন্ট চেক করুন ও ১০০% বুস্ট করুন',
+                    icon: Bot,
+                    tint: 'text-amber-400 bg-amber-500/15 border-amber-500/30',
+                    action: onOpenATSModal,
+                  },
+                  {
+                    title: 'Career Toolkit (JD Matcher & Job Tracker)',
+                    desc: 'চাকরির বর্ণনা ম্যাচ, কভার লেটার ও জব অ্যাপ্লিকেশন ট্র্যাকার',
+                    icon: Briefcase,
+                    tint: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30',
+                    action: onToggleUnifiedTools,
+                  },
+                  ...(onOpenPrintPreview
+                    ? [
+                        {
+                          title: 'A4 Print Preview ও ডাউনলোড',
+                          desc: 'প্রিন্ট বা PDF করার আগে পুরো A4 পাতা পরিষ্কারভাবে দেখুন',
+                          icon: Printer,
+                          tint: 'text-sky-400 bg-sky-500/15 border-sky-500/30',
+                          action: onOpenPrintPreview,
+                        },
+                      ]
+                    : []),
+                  {
+                    title: 'Export Hub ও ফুল A-to-Z ব্যাকআপ',
+                    desc: 'Word, Excel, PNG এবং সম্পূর্ণ প্রজেক্ট (.json) ব্যাকআপ/রিস্টোর',
+                    icon: Sparkles,
+                    tint: 'text-purple-400 bg-purple-500/15 border-purple-500/30',
+                    action: onOpenExportHub,
+                  },
+                  ...(onOpenSecuritySettings
+                    ? [
+                        {
+                          title: 'Password ও Account Security',
+                          desc: 'আপনার লগইন পাসওয়ার্ড পরিবর্তন ও ক্লাউড সিঙ্ক দেখুন',
+                          icon: KeyRound,
+                          tint: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30',
+                          action: onOpenSecuritySettings,
+                        },
+                      ]
+                    : []),
+                  {
+                    title: 'GitHub Pages Deploy গাইড',
+                    desc: 'নিজের GitHub ওয়েবসাইটে কীভাবে পাবলিশ করবেন দেখুন',
+                    icon: Github,
+                    tint: 'text-slate-300 bg-slate-800 border-slate-700',
+                    action: onOpenGitHubModal,
+                  },
+                ] as Array<{
+                  title: string;
+                  desc: string;
+                  icon: typeof Globe;
+                  tint: string;
+                  action: () => void;
+                }>
+              ).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.title}
+                    type="button"
+                    onClick={() => {
+                      setMobileStudioMenuOpen(false);
+                      item.action();
+                    }}
+                    className="w-full min-h-[64px] p-3.5 rounded-2xl bg-[#0F172A] hover:bg-slate-800/80 border border-slate-800 flex items-center gap-3.5 text-left transition"
+                  >
+                    <div
+                      className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${item.tint}`}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-white leading-snug">{item.title}</div>
+                      <div className="text-xs text-slate-400 mt-0.5 leading-snug">{item.desc}</div>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* Auto Fit Quick Row */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileStudioMenuOpen(false);
+                    onAutoFit1Page();
+                  }}
+                  className="min-h-[46px] rounded-xl bg-[#0F172A] border border-slate-800 text-xs font-bold text-slate-200"
+                >
+                  Auto-Fit 1 Page
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileStudioMenuOpen(false);
+                    onAutoFit2Pages();
+                  }}
+                  className="min-h-[46px] rounded-xl bg-[#0F172A] border border-slate-800 text-xs font-bold text-slate-200"
+                >
+                  Auto-Fit 2 Pages
+                </button>
+              </div>
+
+              {/* Lock / Sign Out */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileStudioMenuOpen(false);
+                  onLockStudio();
+                }}
+                className="w-full min-h-[52px] mt-2 rounded-2xl bg-rose-950/40 hover:bg-rose-950/60 border border-rose-500/35 text-rose-200 text-sm font-bold flex items-center justify-center gap-2"
+              >
+                <Lock className="w-4 h-4" />
+                <span>Studio লক করে পাবলিক মোডে যান</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TIER 1: Primary Desktop Studio Command Bar */}
+      <div className="hidden lg:flex max-w-[1800px] mx-auto px-4 xl:px-5 py-1.5 flex-row items-center justify-between gap-2 xl:gap-4">
         {/* Left Zone: Brand Identity + Unclipped Profile Version + Clear ATS Scorecard Trigger */}
         <div className="flex items-center justify-between sm:justify-start gap-1.5 xl:gap-2 min-w-0">
           <div className="flex items-center gap-2 shrink-0">
@@ -280,23 +552,6 @@ export function Navbar({
             <span>PDF</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setMobileToolsOpen((prev) => !prev)}
-            className={`md:hidden px-2 py-1.5 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition whitespace-nowrap shrink-0 ${
-              mobileToolsOpen
-                ? 'bg-blue-600/25 border-blue-500/50 text-blue-200'
-                : 'bg-[#0F172A] border-slate-700/90 text-slate-200'
-            }`}
-            title="টেমপ্লেট, ফরম্যাটিং ও ফটো টুলবার দেখুন/লুকান"
-          >
-            <Sliders className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span>Format</span>
-            <ChevronDown
-              className={`w-3 h-3 transition-transform ${mobileToolsOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-
           {/* Compact Utility Icons */}
           <div className="flex items-center gap-1 border-l border-slate-800 pl-1.5 xl:pl-2 shrink-0">
             <button
@@ -357,9 +612,9 @@ export function Navbar({
         </div>
       </div>
 
-      {/* TIER 2: Contextual Design, Template, Photo & Formatting Workbench (Collapsible on mobile < md) */}
-      <div className={`${mobileToolsOpen ? 'block' : 'hidden md:block'} bg-[#0D1424] border-t border-slate-800/80`}>
-        <div className="max-w-[1800px] mx-auto px-2.5 sm:px-5 py-1.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-1.5 text-xs">
+      {/* TIER 2: Contextual Design, Template, Photo & Formatting Workbench (Desktop lg+) */}
+      <div className="hidden lg:block bg-[#0D1424] border-t border-slate-800/80">
+        <div className="max-w-[1800px] mx-auto px-5 py-1.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-1.5 text-xs">
           {/* Row A: Design Panel, Unclipped Template Picker, Insert & Print Preview (Outside overflow-x-auto so dropdown never clips!) */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <button

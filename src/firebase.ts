@@ -17,6 +17,8 @@ import {
 } from 'firebase/auth';
 import {
   getFirestore,
+  initializeFirestore,
+  Firestore,
   doc,
   getDocFromServer,
   getDoc,
@@ -44,10 +46,24 @@ export const OWNER_ADMIN_EMAIL = 'md.shoyeb.rabbi@gmail.com';
 export const FIREBASE_PROJECT_ID = firebaseConfig.projectId;
 
 const app = initializeApp(firebaseConfig);
-export const db =
-  firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-    : getFirestore(app);
+
+function createFirestoreDb(): Firestore {
+  const databaseId = firebaseConfig.firestoreDatabaseId || '(default)';
+  try {
+    return initializeFirestore(
+      app,
+      {
+        experimentalForceLongPolling: true,
+        ignoreUndefinedProperties: true,
+      },
+      databaseId
+    );
+  } catch {
+    return getFirestore(app, databaseId);
+  }
+}
+
+export const db: Firestore = createFirestoreDb();
 export const auth = getAuth(app);
 
 const googleProvider = new GoogleAuthProvider();
