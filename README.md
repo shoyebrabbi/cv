@@ -391,7 +391,7 @@ Chattogram, Bangladesh
 - 💼 **LinkedIn:** [linkedin.com/in/shoyebrabbi](https://linkedin.com/in/shoyebrabbi)
 - 🐙 **GitHub:** [github.com/shoyebrabbi](https://github.com/shoyebrabbi)
 - ✉️ **Email:** [shoyebrabbi@gmail.com](mailto:shoyebrabbi@gmail.com)
-- 📱 **Phone / WhatsApp:** [+880 1622 517200](tel:+8801622517200)
+- 📱 **Phone / WhatsApp:** [shoyebrabbi](https://wa.me/shoyebrabbi)
 
 ---
 
