@@ -1,4 +1,4 @@
-# 🌟 Unified CV Master Studio & Executive Portfolio
+# 🌟 CV Master Studio & Executive Portfolio
 
 <div align="center">
 
