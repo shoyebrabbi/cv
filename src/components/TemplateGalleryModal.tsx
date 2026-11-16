@@ -177,6 +177,54 @@ const TEMPLATES: TemplateMeta[] = [
     columns: '1col',
     atsNote: 'Dev & Data',
   },
+  {
+    key: 'nordic-emerald',
+    number: 13,
+    name: 'Nordic Emerald FinTech',
+    subtitle: 'Pine Emerald · 2-Column Split · 5-Dot Skills',
+    category: 'split',
+    accent: '#065f46',
+    bgTint: '#ecfdf5',
+    photo: 'right',
+    columns: '2col-left',
+    atsNote: 'FinTech Emerald',
+  },
+  {
+    key: 'royal-indigo',
+    number: 14,
+    name: 'Royal Indigo Tech Visionary',
+    subtitle: 'Deep Indigo · Modern Pill Headers · Jakarta Sans',
+    category: 'executive',
+    accent: '#4338ca',
+    bgTint: '#eef2ff',
+    photo: 'right',
+    columns: '1col',
+    atsNote: 'Tech Visionary',
+  },
+  {
+    key: 'elite-crimson',
+    number: 15,
+    name: 'Elite Crimson Leadership',
+    subtitle: 'Double Rule · Merriweather Serif · Executive Authority',
+    category: 'executive',
+    accent: '#991b1b',
+    bgTint: '#fef2f2',
+    photo: 'none',
+    columns: '1col',
+    atsNote: 'C-Level Leader',
+  },
+  {
+    key: 'wallstreet-ats',
+    number: 16,
+    name: 'Pure Minimalist Wall-Street ATS',
+    subtitle: 'Zero-Emoji · Centered Header · Crisp Dash Bullets',
+    category: 'ats',
+    accent: '#1e293b',
+    bgTint: '#ffffff',
+    photo: 'none',
+    columns: '1col',
+    atsNote: '100% Wall Street',
+  },
 ];
 
 export function TemplateGalleryModal({
@@ -198,6 +246,11 @@ export function TemplateGalleryModal({
   const importInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  const atsCount = TEMPLATES.filter((t) => t.category === 'ats').length;
+  const splitCount = TEMPLATES.filter((t) => t.category === 'split').length;
+  const execCount = TEMPLATES.filter((t) => t.category === 'executive').length;
+  const totalCount = TEMPLATES.length + customTemplates.length;
 
   const visible =
     filter === 'all'
@@ -264,7 +317,7 @@ export function TemplateGalleryModal({
             </div>
             <div className="min-w-0">
               <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
-                Visual CV Template Gallery (১২টি ডিজাইন + আপনার কাস্টম টেমপ্লেট)
+                Visual CV Template Gallery ({TEMPLATES.length}টি প্রিমিয়াম ডিজাইন{customTemplates.length > 0 ? ` + ${customTemplates.length}টি কাস্টম` : ''})
               </h3>
               <p className="text-[11px] text-slate-400 truncate sm:whitespace-normal">
                 বিল্ট-ইন টেমপ্লেট বা আপনার নিজের কাস্টম ডিজাইন সেভ করে এক ক্লিকে অ্যাপ্লাই করুন
@@ -285,10 +338,10 @@ export function TemplateGalleryModal({
 
             <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs max-w-full overflow-x-auto no-scrollbar order-3 sm:order-2">
               {[
-                { key: 'all', label: 'All (12)' },
-                { key: 'ats', label: '1-Col & ATS' },
-                { key: 'split', label: '2-Column' },
-                { key: 'executive', label: 'Executive' },
+                { key: 'all', label: `All (${totalCount})` },
+                { key: 'ats', label: `1-Col & ATS (${atsCount})` },
+                { key: 'split', label: `2-Column (${splitCount})` },
+                { key: 'executive', label: `Executive (${execCount})` },
                 { key: 'custom', label: `My Custom (${customTemplates.length})` },
               ].map((tab) => (
                 <button

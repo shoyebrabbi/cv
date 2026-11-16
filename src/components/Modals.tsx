@@ -10,8 +10,17 @@ import {
   Copy,
   ExternalLink,
   Zap,
+  Award,
+  BookOpen,
+  HeartHandshake,
+  Users,
+  Globe,
+  Sparkles,
+  Layers,
+  Check,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { PREBUILT_SECTION_TEMPLATES, SectionTemplate } from '../data/sectionTemplates';
 
 interface HyperlinkModalProps {
   isOpen: boolean;
@@ -603,62 +612,206 @@ export function ATSAuditModal({
 interface AddSectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (title: string, type: 'bullets' | 'paragraph' | 'references') => void;
+  onAdd: (title: string, type: 'bullets' | 'paragraph' | 'references', customContent?: string[]) => void;
 }
 
 export function AddSectionModal({ isOpen, onClose, onAdd }: AddSectionModalProps) {
+  const [activeTab, setActiveTab] = useState<'templates' | 'custom'>('templates');
   const [title, setTitle] = useState('');
   const [type, setType] = useState<'bullets' | 'paragraph' | 'references'>('bullets');
 
   if (!isOpen) return null;
 
+  function renderTemplateIcon(name: string) {
+    switch (name) {
+      case 'Award':
+        return <Award className="w-5 h-5 text-amber-400" />;
+      case 'BookOpen':
+        return <BookOpen className="w-5 h-5 text-cyan-400" />;
+      case 'HeartHandshake':
+        return <HeartHandshake className="w-5 h-5 text-rose-400" />;
+      case 'Users':
+        return <Users className="w-5 h-5 text-blue-400" />;
+      case 'Globe':
+        return <Globe className="w-5 h-5 text-emerald-400" />;
+      case 'Sparkles':
+      default:
+        return <Sparkles className="w-5 h-5 text-purple-400" />;
+    }
+  }
+
+  function handleSelectPrebuilt(tpl: SectionTemplate) {
+    onAdd(tpl.title, tpl.type, tpl.content);
+    onClose();
+  }
+
   return (
-    <div className="no-print fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-md w-full p-6 text-slate-100 shadow-2xl">
-        <h3 className="text-base font-bold flex items-center gap-2 text-blue-400 mb-3">
-          <PlusCircle className="w-5 h-5" /> নতুন কাস্টম সেকশন যোগ করুন
-        </h3>
-        <div className="space-y-3 text-xs">
-          <div>
-            <label className="text-slate-300 block mb-1">সেকশনের নাম (Section Heading):</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="যেমন: ACHIEVEMENTS / REFERENCES / PUBLICATIONS"
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-            />
+    <div
+      className="no-print fixed inset-0 bg-[#060911]/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#0B1120] border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col p-4 sm:p-6 text-slate-100 shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                সেকশন লাইব্রেরি ও বিল্ডার (Section Library &amp; Builder)
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                ১-ক্লিকে রেডিমেড প্রো সেকশন যুক্ত করুন অথবা সম্পূর্ণ কাস্টম সেকশন তৈরি করুন।
+              </p>
+            </div>
           </div>
-          <div>
-            <label className="text-slate-300 block mb-1">সেকশনের ধরন (Layout Type):</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as any)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white"
-            >
-              <option value="bullets">Bullet List (অ্যাচিভমেন্ট, অ্যাওয়ার্ড বা কো-কারিকুলার)</option>
-              <option value="paragraph">Paragraph Text (পেশাদার বিবরণ বা নোট)</option>
-              <option value="references">Two-Column References (রেফারেন্স ব্লক)</option>
-            </select>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-5">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200"
+            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
           >
-            বাতিল
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-2 mt-4 p-1 bg-slate-900 rounded-xl border border-slate-800 shrink-0 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setActiveTab('templates')}
+            className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 transition ${
+              activeTab === 'templates'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            Pre-Built Section Templates (রেডিমেড সেকশন)
           </button>
           <button
-            onClick={() => {
-              if (!title.trim()) return;
-              onAdd(title.toUpperCase(), type);
-              setTitle('');
-              onClose();
-            }}
-            className="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white"
+            type="button"
+            onClick={() => setActiveTab('custom')}
+            className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 transition ${
+              activeTab === 'custom'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
           >
-            যোগ করুন (Add Section)
+            <PlusCircle className="w-3.5 h-3.5" />
+            Custom Section (কাস্টম নতুন সেকশন)
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto mt-4 pr-1">
+          {activeTab === 'templates' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
+              {PREBUILT_SECTION_TEMPLATES.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {renderTemplateIcon(tpl.iconName)}
+                        <span className="font-bold text-xs text-white group-hover:text-blue-300 transition">
+                          {tpl.title}
+                        </span>
+                      </div>
+                      <span className="text-[9.5px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-mono">
+                        {tpl.badge}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-snug">
+                      {tpl.description}
+                    </p>
+                    <div className="pt-1 text-[10px] text-slate-500 line-clamp-2 italic">
+                      Sample: {tpl.content[0].replace(/<[^>]+>/g, '')}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPrebuilt(tpl)}
+                    className="mt-3 w-full py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>যুক্ত করুন (Add Section)</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4 py-2 text-xs">
+              <div>
+                <label className="text-slate-300 block mb-1.5 font-medium">
+                  সেকশনের নাম (Section Heading):
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="যেমন: ACHIEVEMENTS / WORKSHOPS / PATENT APPLICATIONS"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-slate-300 block mb-1.5 font-medium">
+                  সেকশনের ধরন (Layout Type):
+                </label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value as any)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500"
+                >
+                  <option value="bullets">Bullet List (অ্যাচিভমেন্ট, অ্যাওয়ার্ড বা বুলেট পয়েন্ট)</option>
+                  <option value="paragraph">Paragraph Text (পেশাদার বিবরণ বা ডেসক্রিপশন)</option>
+                  <option value="references">Two-Column References (২-কলাম রেফারেন্স ব্লক)</option>
+                </select>
+              </div>
+
+              <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-800 text-[11px] text-slate-400">
+                💡 সেকশনটি যোগ করার সাথে সাথে CV-এর ভেতরে সম্পূর্ণ লাইভ ক্লিক করে টেক্সট ও পয়েন্ট এডিট করা যাবে।
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!title.trim()) return;
+                    onAdd(title.toUpperCase(), type);
+                    setTitle('');
+                    onClose();
+                  }}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 shadow"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>তৈরি করুন (Create Section)</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="pt-3 border-t border-slate-800 flex justify-end shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition"
+          >
+            বন্ধ করুন (Close)
           </button>
         </div>
       </div>

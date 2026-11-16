@@ -39,6 +39,7 @@ interface StudioRightRailProps {
   onAutoFit2Pages: () => void;
   onJumpToSection: (sectionId: string) => void;
   onOpenShortcuts: () => void;
+  onOpenHealthCheckModal?: () => void;
 }
 
 const SECTION_LABELS: Record<CVSectionId, string> = {
@@ -65,6 +66,7 @@ export function StudioRightRail({
   onAutoFit2Pages,
   onJumpToSection,
   onOpenShortcuts,
+  onOpenHealthCheckModal,
 }: StudioRightRailProps) {
   if (!isOpen) return null;
 
@@ -181,9 +183,9 @@ export function StudioRightRail({
               </div>
               <div className="rounded-lg bg-[#080D1A] border border-slate-800 p-2">
                 <div className="text-sm font-bold text-white studio-mono tabular-nums">
-                  {readTimeSeconds}s
+                  {readTimeSeconds >= 60 ? `${(readTimeSeconds / 60).toFixed(1)}m` : `${readTimeSeconds}s`}
                 </div>
-                <div className="text-[10px] text-slate-400">Scan</div>
+                <div className="text-[10px] text-slate-400">Read Time</div>
               </div>
             </div>
 
@@ -225,6 +227,31 @@ export function StudioRightRail({
               </button>
             </div>
           </section>
+
+          {/* Pre-Flight CV Health Inspector Card */}
+          {onOpenHealthCheckModal && (
+            <section className="rounded-xl bg-gradient-to-br from-emerald-950/30 to-[#0D1424] border border-emerald-500/30 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-white flex items-center gap-1.5 text-xs">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  Pre-Flight Health Check
+                </span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-1.5 py-0.5 rounded">
+                  Inspector
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                পাঙ্কচুয়েশন, ডামি টেক্সট, ব্রোকেন লিংক ও পেজ স্পিল অডিট ও অটো-ফিক্স করুন।
+              </p>
+              <button
+                type="button"
+                onClick={onOpenHealthCheckModal}
+                className="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition shadow"
+              >
+                <span>🩺 Run Health Check</span>
+              </button>
+            </section>
+          )}
 
         {/* 3. Section Outline Navigator */}
         <section className="rounded-xl bg-[#0D1424] border border-slate-800/90 p-3.5 space-y-2">

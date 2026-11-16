@@ -294,6 +294,7 @@ export function StyleCombinerDrawer({
                   <option value="pills">Stacked Cards</option>
                   <option value="grid">2-Column Grid Cards</option>
                   <option value="bars">Skill Progress Bars</option>
+                  <option value="dots">Executive 5-Dot Ratings</option>
                 </select>
               </div>
 
@@ -310,6 +311,44 @@ export function StyleCombinerDrawer({
                   <option value="bullet-check">✓ Checkmark</option>
                   <option value="bullet-dash">— Clean Dash</option>
                 </select>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] text-slate-300 font-medium block">Career Timeline Rail</span>
+                    <span className="text-[10px] text-slate-500">Vertical line &amp; bullet nodes on Experience</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.showTimelineRail || false}
+                    onChange={(e) => onUpdateSettings({ showTimelineRail: e.target.checked })}
+                    className="accent-blue-500 w-4 h-4 cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div>
+                    <span className="text-[11px] text-slate-300 font-medium block">Projects Layout</span>
+                    <span className="text-[10px] text-slate-500">2-Column grid or full cards</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onUpdateSettings({
+                        projectLayout:
+                          settings.projectLayout === 'compact-grid' ? 'cards' : 'compact-grid',
+                      })
+                    }
+                    className={`px-2 py-1 rounded text-[10.5px] font-semibold transition ${
+                      settings.projectLayout === 'compact-grid'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-800 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {settings.projectLayout === 'compact-grid' ? '2-Col Grid' : 'Full Cards'}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -521,8 +560,110 @@ export function StyleCombinerDrawer({
           <>
             {/* Preset Swatches & Custom Colors */}
             <div className="p-4 space-y-3.5">
-              <div className="text-[11px] font-bold tracking-wide text-slate-300">
-                Color Palette
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] font-bold tracking-wide text-slate-300">
+                  Executive Color Palettes
+                </div>
+                <span className="text-[10px] text-blue-400 font-semibold">1-Click Curated</span>
+              </div>
+
+              {/* Curated Corporate Palettes Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {
+                    name: 'Corporate Navy',
+                    subtitle: 'Banking & Enterprise',
+                    primary: '#0f4c81',
+                    light: '#f0f7ff',
+                    border: '#1e6091',
+                  },
+                  {
+                    name: 'Executive Slate',
+                    subtitle: 'Modern Minimal Tech',
+                    primary: '#1e293b',
+                    light: '#f8fafc',
+                    border: '#334155',
+                  },
+                  {
+                    name: 'Nordic Emerald',
+                    subtitle: 'Fintech & Cloud Ops',
+                    primary: '#065f46',
+                    light: '#ecfdf5',
+                    border: '#047857',
+                  },
+                  {
+                    name: 'Modern Teal',
+                    subtitle: 'Data & Systems Eng',
+                    primary: '#0f766e',
+                    light: '#f0fdfa',
+                    border: '#0d9488',
+                  },
+                  {
+                    name: 'Royal Indigo',
+                    subtitle: 'AI & Global Tech',
+                    primary: '#4338ca',
+                    light: '#eef2ff',
+                    border: '#4f46e5',
+                  },
+                  {
+                    name: 'Elite Burgundy',
+                    subtitle: 'Executive Leadership',
+                    primary: '#7f1d1d',
+                    light: '#fef2f2',
+                    border: '#991b1b',
+                  },
+                  {
+                    name: 'Warm Bronze',
+                    subtitle: 'Advisory & Analytics',
+                    primary: '#78350f',
+                    light: '#fffbeb',
+                    border: '#92400e',
+                  },
+                  {
+                    name: 'Strict Monochrome',
+                    subtitle: '100% ATS Black',
+                    primary: '#09090b',
+                    light: '#f4f4f5',
+                    border: '#18181b',
+                  },
+                ].map((palette) => {
+                  const isActive = settings.themePrimary === palette.primary;
+                  return (
+                    <button
+                      key={palette.name}
+                      type="button"
+                      onClick={() =>
+                        onUpdateSettings({
+                          themePrimary: palette.primary,
+                          themeLight: palette.light,
+                          themeBorder: palette.border,
+                        })
+                      }
+                      className={`text-left p-2 rounded-lg border transition flex items-start gap-2 ${
+                        isActive
+                          ? 'bg-blue-950/40 border-blue-500 shadow-sm ring-1 ring-blue-500'
+                          : 'bg-[#111827] border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <span
+                        className="w-3.5 h-3.5 rounded-full shrink-0 mt-0.5 shadow-sm"
+                        style={{ backgroundColor: palette.primary }}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-bold text-slate-100 truncate">
+                          {palette.name}
+                        </div>
+                        <div className="text-[9.5px] text-slate-400 truncate">
+                          {palette.subtitle}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="text-[11px] font-bold tracking-wide text-slate-300 pt-1">
+                Custom Accent & Swatches
               </div>
               <div className="flex flex-wrap items-center gap-2.5">
                 {[
@@ -1018,7 +1159,7 @@ export function StyleCombinerDrawer({
 
                 {settings.showHeader !== false && (
                   <div className="space-y-2.5 pt-2 border-t border-slate-800">
-                    <div className="grid grid-cols-3 gap-2 text-[11px]">
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer">
                         <input
                           type="checkbox"
@@ -1031,39 +1172,147 @@ export function StyleCombinerDrawer({
                       <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={settings.showContacts !== false}
-                          onChange={(e) => onUpdateSettings({ showContacts: e.target.checked })}
-                          className="accent-blue-500 w-3.5 h-3.5"
-                        />
-                        Contacts
-                      </label>
-                      <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer">
-                        <input
-                          type="checkbox"
                           checked={settings.showHeaderDivider !== false}
                           onChange={(e) => onUpdateSettings({ showHeaderDivider: e.target.checked })}
                           className="accent-blue-500 w-3.5 h-3.5"
                         />
-                        Border
+                        Divider Border
+                      </label>
+                      <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.showContacts !== false}
+                          onChange={(e) => onUpdateSettings({ showContacts: e.target.checked })}
+                          className="accent-blue-500 w-3.5 h-3.5"
+                        />
+                        Contacts Bar
+                      </label>
+                      <label className="flex items-center gap-1.5 text-slate-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.showContactIcons !== false}
+                          onChange={(e) => onUpdateSettings({ showContactIcons: e.target.checked })}
+                          className="accent-blue-500 w-3.5 h-3.5"
+                        />
+                        Contact Icons
                       </label>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-slate-400">Header Alignment:</span>
-                      <div className="flex gap-1">
-                        {(['auto', 'left', 'center'] as const).map((al) => (
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-slate-400">Contact Separator:</span>
+                      <select
+                        value={settings.contactSeparator || 'none'}
+                        onChange={(e) =>
+                          onUpdateSettings({
+                            contactSeparator: e.target.value as 'none' | 'dot' | 'pipe' | 'slash',
+                          })
+                        }
+                        className="bg-[#0b0f19] border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-blue-500"
+                      >
+                        <option value="none">None (Flex Gap)</option>
+                        <option value="dot">Middle Dot ( · )</option>
+                        <option value="pipe">Vertical Pipe ( | )</option>
+                        <option value="slash">Slash ( / )</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-slate-800/80">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">Header Layout:</span>
+                        <div className="flex gap-1">
                           <button
-                            key={al}
                             type="button"
-                            onClick={() => onUpdateSettings({ headerAlign: al })}
-                            className={`px-2.5 py-1 rounded text-[10.5px] capitalize whitespace-nowrap ${
-                              (settings.headerAlign || 'auto') === al
-                                ? 'bg-blue-600 text-white font-semibold'
+                            onClick={() =>
+                              onUpdateSettings({
+                                headerLayout: 'stacked',
+                                headerAlign:
+                                  settings.headerAlign === 'split' ? 'left' : settings.headerAlign,
+                              })
+                            }
+                            className={`px-2.5 py-1 rounded text-[10.5px] font-semibold whitespace-nowrap transition ${
+                              (settings.headerLayout || 'stacked') === 'stacked' &&
+                              settings.headerAlign !== 'split'
+                                ? 'bg-blue-600 text-white'
                                 : 'bg-slate-800 text-slate-300 hover:text-white'
                             }`}
                           >
-                            {al}
+                            Stacked
                           </button>
-                        ))}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onUpdateSettings({
+                                headerLayout: 'split',
+                                headerAlign: 'split',
+                                nameAlign: 'left',
+                                contactAlign: 'right',
+                              })
+                            }
+                            className={`px-2.5 py-1 rounded text-[10.5px] font-semibold whitespace-nowrap transition ${
+                              settings.headerLayout === 'split' || settings.headerAlign === 'split'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-800 text-slate-300 hover:text-white'
+                            }`}
+                          >
+                            Split (L+R)
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">Name &amp; Title:</span>
+                        <div className="flex gap-1">
+                          {(['left', 'center', 'right'] as const).map((al) => {
+                            const isSplit =
+                              settings.headerLayout === 'split' || settings.headerAlign === 'split';
+                            const active =
+                              (settings.nameAlign ||
+                                (isSplit ? 'left' : settings.headerAlign) ||
+                                (settings.photoPosition === 'center' ? 'center' : 'left')) === al;
+                            return (
+                              <button
+                                key={al}
+                                type="button"
+                                onClick={() => onUpdateSettings({ nameAlign: al })}
+                                className={`px-2 py-0.5 rounded text-[10px] capitalize whitespace-nowrap transition ${
+                                  active
+                                    ? 'bg-blue-600 text-white font-bold'
+                                    : 'bg-slate-800 text-slate-300 hover:text-white'
+                                }`}
+                              >
+                                {al}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">Contact Bar:</span>
+                        <div className="flex gap-1">
+                          {(['left', 'center', 'right'] as const).map((al) => {
+                            const isSplit =
+                              settings.headerLayout === 'split' || settings.headerAlign === 'split';
+                            const active =
+                              (settings.contactAlign ||
+                                (isSplit ? 'right' : settings.headerAlign) ||
+                                (settings.photoPosition === 'center' ? 'center' : 'left')) === al;
+                            return (
+                              <button
+                                key={al}
+                                type="button"
+                                onClick={() => onUpdateSettings({ contactAlign: al })}
+                                className={`px-2 py-0.5 rounded text-[10px] capitalize whitespace-nowrap transition ${
+                                  active
+                                    ? 'bg-blue-600 text-white font-bold'
+                                    : 'bg-slate-800 text-slate-300 hover:text-white'
+                                }`}
+                              >
+                                {al}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -460,16 +460,18 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
   const contactsHTML =
     settings.showContacts !== false
       ? data.contacts
-          .map((c) =>
-            c.url
+          .map((c) => {
+            const icon = settings.showContactIcons !== false ? getContactIcon(c) : '';
+            const iconPrefix = icon ? `${icon} ` : '';
+            return c.url
               ? (() => {
                   const href = sanitizeHref(c.url);
                   return href
-                    ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer" style="color:${primaryColor}; text-decoration:none; font-weight:bold;">${escapeHtml(getContactIcon(c))} ${escapeHtml(c.label)}</a>`
-                    : `<span>${escapeHtml(getContactIcon(c))} ${escapeHtml(c.label)}</span>`;
+                    ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer" style="color:${primaryColor}; text-decoration:none; font-weight:bold;">${escapeHtml(iconPrefix)}${escapeHtml(c.label)}</a>`
+                    : `<span>${escapeHtml(iconPrefix)}${escapeHtml(c.label)}</span>`;
                 })()
-              : `<span>${escapeHtml(getContactIcon(c))} ${escapeHtml(c.label)}</span>`
-          )
+              : `<span>${escapeHtml(iconPrefix)}${escapeHtml(c.label)}</span>`;
+          })
           .join(' &nbsp;|&nbsp; ')
       : '';
 
@@ -484,7 +486,11 @@ export function exportWordDoc(ext: 'doc' | 'docx', data: CVData, settings: Studi
 
   const textCellHTML = `
     <td style="vertical-align:top; text-align:${
-      settings.headerAlign === 'center' || settings.photoPosition === 'center' ? 'center' : 'left'
+      settings.nameAlign === 'center' || settings.headerAlign === 'center' || settings.photoPosition === 'center'
+        ? 'center'
+        : settings.nameAlign === 'right' || settings.headerAlign === 'right'
+        ? 'right'
+        : 'left'
     };">
       <h1 style="margin:0; font-size:20pt; color:#0f172a; text-transform:uppercase;">${escapeHtml(data.name)}</h1>
       ${
@@ -682,7 +688,10 @@ export async function exportExcel(data: CVData) {
   const overviewRows = [
     [`${data.name} - EXECUTIVE MASTER TECHNICAL CV`],
     ['Role / Title', data.title],
-    ...data.contacts.map((c) => ['Contact / Link', `${getContactIcon(c)} ${c.label}`, c.url]),
+    ...data.contacts.map((c) => {
+      const icon = getContactIcon(c);
+      return ['Contact / Link', icon ? `${icon} ${c.label}` : c.label, c.url];
+    }),
     [],
     ['PROFESSIONAL SUMMARY'],
     [data.summary],
@@ -772,7 +781,7 @@ export async function exportExcel(data: CVData) {
 }
 
 // 4. CSV Exporter
-export function exportCSV(data: CVData) {
+export function exportCSV(data: CVData, settings?: StudioSettings) {
   const rows = [
     ['Section', 'Title / Category', 'Organization / Tech Stack', 'Timeline / URL', 'Details / Description'],
     [
@@ -780,7 +789,12 @@ export function exportCSV(data: CVData) {
       data.name,
       data.title,
       '',
-      data.contacts.map((c) => `${getContactIcon(c)} ${c.label} (${c.url})`).join(' | '),
+      data.contacts
+        .map((c) => {
+          const icon = settings?.showContactIcons !== false ? getContactIcon(c) : '';
+          return `${icon ? `${icon} ` : ''}${c.label} (${c.url})`;
+        })
+        .join(' | '),
     ],
     ['Summary', 'Professional Summary', '', '', data.summary],
     ...data.skills.map((s) => ['Skill', s.category, '', '', s.competencies]),
@@ -812,7 +826,8 @@ export function exportMarkdown(data: CVData, settings?: StudioSettings): void {
     md +=
       data.contacts
         .map((c) => {
-          const label = `${getContactIcon(c)} ${c.label}`;
+          const icon = settings?.showContactIcons !== false ? getContactIcon(c) : '';
+          const label = `${icon ? `${icon} ` : ''}${c.label}`;
           return c.url ? `[${label}](${c.url})` : label;
         })
         .join(' | ') + `\n\n---\n\n`;
@@ -870,9 +885,13 @@ export function exportMarkdown(data: CVData, settings?: StudioSettings): void {
 // 6. Plain Text Exporter — Synced with Studio Section Order & Custom Sections
 export function exportPlainText(data: CVData, settings?: StudioSettings): void {
   const activeSections = getActiveSectionOrder(settings);
-  let txt = `${data.name}\n${data.title}\n${data.contacts
-    .map((c) => `${getContactIcon(c)} ${c.label}`)
-    .join(' | ')}\n================================================================================\n\n`;
+  const contactsTxt = data.contacts
+    .map((c) => {
+      const icon = settings?.showContactIcons !== false ? getContactIcon(c) : '';
+      return `${icon ? `${icon} ` : ''}${c.label}`;
+    })
+    .join(' | ');
+  let txt = `${data.name}\n${data.title}\n${contactsTxt}\n================================================================================\n\n`;
 
   activeSections.forEach((secId) => {
     if (secId === 'summary') {
@@ -1061,7 +1080,11 @@ body { font-family: ${fontFamily}; background: #f1f5f9; padding: 24px; color: ${
       ? `<div style="${
           settings.showHeaderDivider !== false ? `border-bottom: 2px solid ${primaryColor};` : ''
         } padding-bottom: 12px; margin-bottom: 16px; text-align: ${
-          settings.headerAlign === 'center' ? 'center' : 'left'
+          settings.nameAlign === 'center' || settings.headerAlign === 'center'
+            ? 'center'
+            : settings.nameAlign === 'right' || settings.headerAlign === 'right'
+            ? 'right'
+            : 'left'
         };">
           <h1 style="font-size: 26px; font-weight: 800; text-transform: uppercase; margin: 0;">${escapeHtml(data.name)}</h1>
           ${
@@ -1073,13 +1096,15 @@ body { font-family: ${fontFamily}; background: #f1f5f9; padding: 24px; color: ${
             settings.showContacts !== false
               ? `<div style="font-size: 12px; color: #475569; margin-top: 8px;">
                   ${data.contacts
-                    .map((c) =>
-                      safeLink(
+                    .map((c) => {
+                      const icon = settings.showContactIcons !== false ? getContactIcon(c) : '';
+                      const iconPrefix = icon ? `${icon} ` : '';
+                      return safeLink(
                         c.url,
-                        `${escapeHtml(getContactIcon(c))} ${escapeHtml(c.label)}`,
+                        `${escapeHtml(iconPrefix)}${escapeHtml(c.label)}`,
                         `color:${primaryColor}; text-decoration:none;`
-                      )
-                    )
+                      );
+                    })
                     .join(' &bull; ')}
                 </div>`
               : ''
@@ -1137,7 +1162,12 @@ export async function copyAllCVText(data: CVData, settings?: StudioSettings): Pr
   const activeSections = getActiveSectionOrder(settings);
   let txt = `${data.name}\n${settings?.showTitle !== false ? `${data.title}\n` : ''}${
     settings?.showContacts !== false
-      ? `${data.contacts.map((c) => `${getContactIcon(c)} ${c.label}`).join(' | ')}\n`
+      ? `${data.contacts
+          .map((c) => {
+            const icon = settings?.showContactIcons !== false ? getContactIcon(c) : '';
+            return `${icon ? `${icon} ` : ''}${c.label}`;
+          })
+          .join(' | ')}\n`
       : ''
   }\n`;
 

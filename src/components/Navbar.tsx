@@ -78,6 +78,7 @@ interface NavbarProps {
   onToggleZenMode?: () => void;
   onOpenShortcuts?: () => void;
   onOpenSecuritySettings?: () => void;
+  onOpenHealthCheckModal?: () => void;
   hasUnpublishedWebsiteDraft?: boolean;
   cloudSyncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
 }
@@ -124,6 +125,7 @@ export function Navbar({
   onToggleZenMode,
   onOpenShortcuts,
   onOpenSecuritySettings,
+  onOpenHealthCheckModal,
   hasUnpublishedWebsiteDraft = false,
   cloudSyncStatus = 'idle',
 }: NavbarProps) {
@@ -262,7 +264,7 @@ export function Navbar({
                     action: onToggleStudioSidebar,
                   },
                   {
-                    title: 'Template Gallery (12+ টেমপ্লেট)',
+                    title: 'Template Gallery (16+ টেমপ্লেট)',
                     desc: 'কর্পোরেট, ATS ও আপনার সেভ করা কাস্টম টেমপ্লেট দেখুন',
                     icon: LayoutGrid,
                     tint: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30',
@@ -275,6 +277,17 @@ export function Navbar({
                     tint: 'text-amber-400 bg-amber-500/15 border-amber-500/30',
                     action: onOpenATSModal,
                   },
+                  ...(onOpenHealthCheckModal
+                    ? [
+                        {
+                          title: 'CV Health & Pre-Flight Inspector',
+                          desc: 'পাঙ্কচুয়েশন, ডামি টেক্সট, লিংক প্রটোকল ও পেজ স্পিল অডিট',
+                          icon: Sparkles,
+                          tint: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30',
+                          action: onOpenHealthCheckModal,
+                        },
+                      ]
+                    : []),
                   {
                     title: 'Career Toolkit (JD Matcher & Job Tracker)',
                     desc: 'চাকরির বর্ণনা ম্যাচ, কভার লেটার ও জব অ্যাপ্লিকেশন ট্র্যাকার',
@@ -392,10 +405,10 @@ export function Navbar({
       )}
 
       {/* TIER 1: Primary Desktop Studio Command Bar (3 clean zones, zero overflow on 1024px–1440px+) */}
-      <div className="hidden lg:flex max-w-[1800px] mx-auto px-4 xl:px-5 h-12 items-center justify-between gap-3">
+      <div className="hidden lg:flex max-w-[1800px] mx-auto px-3 xl:px-5 h-12 items-center justify-between gap-2 xl:gap-3 overflow-hidden">
         {/* Left Zone: Brand + Profile Version Switcher + ATS Trigger */}
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 xl:gap-2 min-w-0 shrink">
+          <div className="flex items-center gap-1.5 xl:gap-2 shrink-0">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-extrabold text-xs flex items-center justify-center tracking-tight shadow-sm">
               S
             </div>
@@ -412,7 +425,7 @@ export function Navbar({
             <select
               value={activeProfileId}
               onChange={(e) => onSelectProfile(e.target.value)}
-              className="bg-transparent text-xs font-medium text-slate-100 focus:outline-none min-w-[100px] xl:min-w-[140px] max-w-[135px] xl:max-w-[200px] 2xl:max-w-[240px] truncate cursor-pointer pr-1"
+              className="bg-transparent text-xs font-medium text-slate-100 focus:outline-none min-w-[85px] xl:min-w-[130px] max-w-[125px] xl:max-w-[180px] 2xl:max-w-[240px] truncate cursor-pointer pr-1"
               title="Switch Active Role CV Profile"
             >
               {profiles.map((p) => (
@@ -424,7 +437,7 @@ export function Navbar({
             <button
               type="button"
               onClick={onOpenProfileManager}
-              className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition flex items-center gap-1 text-[11px] font-medium whitespace-nowrap shrink-0 border-l border-slate-800 pl-2"
+              className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition flex items-center gap-1 text-[11px] font-medium whitespace-nowrap shrink-0 border-l border-slate-800 pl-1.5"
               title="প্রোফাইল তৈরি / ডুপ্লিকেট / শেয়ার লিংক"
             >
               <FolderKanban className="w-3.5 h-3.5 text-blue-400" />
@@ -436,7 +449,7 @@ export function Navbar({
           <button
             type="button"
             onClick={onOpenATSModal}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition whitespace-nowrap shrink-0 ${
+            className={`px-2 xl:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition whitespace-nowrap shrink-0 ${
               score === 100
                 ? 'bg-emerald-950/70 border-emerald-500/45 text-emerald-200 hover:bg-emerald-900/60'
                 : score >= 85
@@ -459,6 +472,19 @@ export function Navbar({
               {isStrictATS ? 'Global Ready' : 'BD · Photo'}
             </span>
           </button>
+
+          {/* CV Health & Pre-Flight Inspector Trigger */}
+          {onOpenHealthCheckModal && (
+            <button
+              type="button"
+              onClick={onOpenHealthCheckModal}
+              className="px-2 xl:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-emerald-500/35 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/60 transition whitespace-nowrap shrink-0 shadow-sm"
+              title="CV Health & Pre-Flight Inspector: Punctuation, dummy text, link protocols & spill check"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span><span className="hidden xl:inline">CV </span>Health</span>
+            </button>
+          )}
 
           {cloudSyncStatus !== 'idle' && (
             <span
@@ -498,7 +524,7 @@ export function Navbar({
             <button
               type="button"
               onClick={() => !isEditMode && onToggleEditMode()}
-              className={`px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
+              className={`px-2 xl:px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
                 isEditMode ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-100'
               }`}
               title="ক্যানভাসে সরাসরি লেখা এডিট করুন (Ctrl+E)"
@@ -509,7 +535,7 @@ export function Navbar({
             <button
               type="button"
               onClick={() => isEditMode && onToggleEditMode()}
-              className={`px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
+              className={`px-2 xl:px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
                 !isEditMode ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-slate-100'
               }`}
               title="পরিষ্কার প্রিভিউ মোড (Ctrl+E)"
@@ -522,17 +548,17 @@ export function Navbar({
           <button
             type="button"
             onClick={onToggleUnifiedTools}
-            className="px-2.5 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
+            className="px-2 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
             title="ATS Matcher, XYZ Bullets, LinkedIn, Cover Letter & Job Tracker"
           >
             <Briefcase className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span>Career Tools</span>
+            <span className="hidden xl:inline">Career Tools</span>
           </button>
 
           <button
             type="button"
             onClick={onTogglePortfolioMode}
-            className="px-2.5 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
+            className="px-2 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
             title={
               hasUnpublishedWebsiteDraft
                 ? 'লাইভ ওয়েবসাইট ওপেন করুন (একটি অপ্রকাশিত Draft পেন্ডিং আছে)'
@@ -540,7 +566,7 @@ export function Navbar({
             }
           >
             <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>{portfolioMode ? 'CV Editor' : 'Website'}</span>
+            <span className="hidden xl:inline">{portfolioMode ? 'CV Editor' : 'Website'}</span>
             {hasUnpublishedWebsiteDraft && !portfolioMode && (
               <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold">
                 Draft
@@ -551,11 +577,11 @@ export function Navbar({
           <button
             type="button"
             onClick={onOpenExportHub}
-            className="px-2.5 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
+            className="px-2 xl:px-3 py-1.5 rounded-lg bg-[#0F172A] hover:bg-slate-800 border border-slate-700/90 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition whitespace-nowrap shrink-0"
             title="Print, Word, Excel, Backup ও সিকিউরিটি সেটিংস"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>Export Hub</span>
+            <span className="hidden xl:inline">Export Hub</span>
           </button>
 
           <button
@@ -673,9 +699,9 @@ export function Navbar({
 
       {/* TIER 2: Contextual Design, Template, Insert & Formatting Workbench (Desktop lg+) */}
       <div className="hidden lg:block bg-[#0D1424] border-t border-slate-800/80">
-        <div className="max-w-[1800px] mx-auto px-4 xl:px-5 py-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-xs">
+        <div className="max-w-[1800px] mx-auto px-3 xl:px-5 py-1.5 flex items-center justify-between gap-x-2 xl:gap-x-3 text-xs overflow-x-auto no-scrollbar">
           {/* Left Group: Design Inspector Toggle, Template Picker, + Insert & Single Unambiguous CV Undo/Redo */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 xl:gap-2 shrink-0">
             <button
               type="button"
               onClick={onToggleStudioSidebar}
@@ -698,7 +724,7 @@ export function Navbar({
               <select
                 value={selectedTemplate}
                 onChange={(e) => onSelectTemplate(e.target.value as CVTemplateKey)}
-                className="bg-transparent text-slate-100 px-2.5 py-1 text-xs font-medium focus:outline-none min-w-[175px] max-w-[235px] cursor-pointer truncate"
+                className="bg-transparent text-slate-100 px-2 py-1 text-xs font-medium focus:outline-none min-w-[155px] xl:min-w-[175px] max-w-[200px] xl:max-w-[235px] cursor-pointer truncate"
               >
                 <option value="bd-corporate" className="bg-slate-900">1. BD Corporate Executive</option>
                 <option value="strict-ats" className="bg-slate-900">2. Strict ATS Harvard</option>
@@ -712,6 +738,10 @@ export function Navbar({
                 <option value="exec-sidebar" className="bg-slate-900">10. Dark Sidebar Pro</option>
                 <option value="swiss-grid" className="bg-slate-900">11. Minimalist Swiss Grid</option>
                 <option value="tech-mono" className="bg-slate-900">12. Tech Mono Developer</option>
+                <option value="nordic-emerald" className="bg-slate-900">13. Nordic Emerald Clean</option>
+                <option value="royal-indigo" className="bg-slate-900">14. Royal Indigo Executive</option>
+                <option value="elite-crimson" className="bg-slate-900">15. Elite Crimson Modern</option>
+                <option value="wallstreet-ats" className="bg-slate-900">16. Wall Street Finance ATS</option>
               </select>
               <button
                 type="button"
@@ -821,7 +851,7 @@ export function Navbar({
           </div>
 
           {/* Right Group: Contextual Inline Rich-Text Bar (only in Edit Mode) + Photo Quick Control */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 xl:gap-2 shrink-0">
             {isEditMode ? (
               <div className="flex items-center bg-[#080D1A] border border-slate-800 rounded-lg p-0.5 gap-0.5 shrink-0">
                 <button

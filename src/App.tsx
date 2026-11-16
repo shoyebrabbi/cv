@@ -102,6 +102,8 @@ import {
   ResetModal,
   GitHubDeployModal,
 } from './components/Modals';
+import { BulletLibraryModal } from './components/BulletLibraryModal';
+import { CVHealthCheckModal } from './components/CVHealthCheckModal';
 import {
   ZoomIn,
   ZoomOut,
@@ -126,9 +128,11 @@ interface Toast {
 
 function mergeCVData(raw?: Partial<CVData> | null): CVData {
   if (!raw || typeof raw !== 'object') return INITIAL_CV_DATA;
+  const isOldMasterTitle = Boolean(raw.title && raw.title.includes('DATA ANALYST | SOFTWARE QA & IT SUPPORT SPECIALIST'));
   return {
     ...INITIAL_CV_DATA,
     ...raw,
+    title: isOldMasterTitle ? INITIAL_CV_DATA.title : (raw.title || INITIAL_CV_DATA.title),
     contacts: Array.isArray(raw.contacts) ? raw.contacts : INITIAL_CV_DATA.contacts,
     skills: Array.isArray(raw.skills) ? raw.skills : INITIAL_CV_DATA.skills,
     experiences: Array.isArray(raw.experiences) ? raw.experiences : INITIAL_CV_DATA.experiences,
@@ -177,11 +181,18 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((p: CVProfile) => ({
-            ...p,
-            data: mergeCVData(p.data),
-            settings: mergeStudioSettings(p.settings),
-          }));
+          return parsed.map((p: CVProfile) => {
+            const isMaster = p.id === 'prof_master';
+            const isOldMasterTitle = isMaster && Boolean(p.data?.title && p.data.title.includes('DATA ANALYST | SOFTWARE QA'));
+            return {
+              ...p,
+              data: {
+                ...mergeCVData(p.data),
+                title: isOldMasterTitle ? INITIAL_CV_DATA.title : (p.data?.title || INITIAL_CV_DATA.title),
+              },
+              settings: mergeStudioSettings(p.settings),
+            };
+          });
         }
       }
     } catch (e) {
@@ -397,6 +408,10 @@ export default function App() {
   const [addSectionModalOpen, setAddSectionModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [githubModalOpen, setGithubModalOpen] = useState(false);
+  const [healthCheckModalOpen, setHealthCheckModalOpen] = useState(false);
+  const [bulletLibraryOpen, setBulletLibraryOpen] = useState(false);
+  const [bulletTargetExpIdx, setBulletTargetExpIdx] = useState<number | null>(null);
+  const [bulletTargetRoleTitle, setBulletTargetRoleTitle] = useState<string>('');
 
   const [activeProfileId, setActiveProfileId] = useState<string>(
     initialRoleMatch ? initialRoleMatch.id : 'prof_master'
@@ -1135,89 +1150,7 @@ export default function App() {
     document.body.classList.add(settings.bulletStyle);
   }, [settings]);
 
-  // Live ATS score calculation with individual category breakdown
-  const calculateScore = useCallback(() => {
-    let contacts = 0;
-    let headings = 0;
-    let metrics = 0;
-    let keywords = 0;
-    let verbs = 0;
-    let photo = 0;
-
-    const text = [
-      cvData.name,
-      cvData.title,
-      cvData.summary,
-      ...cvData.contacts.map((c) => c.label + ' ' + c.url),
-      ...cvData.skills.map((s) => s.category + ' ' + s.competencies),
-      ...cvData.experiences.flatMap((e) => [e.role, e.company, ...e.bullets.map((b) => b.text)]),
-      ...cvData.projects.map((p) => p.title + ' ' + p.technologies + ' ' + p.description),
-      cvData.education.degree,
-      cvData.education.school,
-      ...cvData.certifications,
-    ]
-      .join(' ')
-      .toLowerCase();
-
-    // 1. Contacts & Clickable Links (15 pts)
-    const hasEmail = cvData.contacts.some((c) => c.label.includes('@') || c.url.includes('@'));
-    const hasPhone = cvData.contacts.some((c) => /\d{5,}/.test(c.label));
-    const hasLinks = cvData.contacts.some((c) => c.url.includes('http') || c.label.includes('github') || c.label.includes('linkedin'));
-    const hasLoc = cvData.contacts.some((c) => c.type === 'location' || c.label.toLowerCase().includes('bangladesh') || c.label.toLowerCase().includes('chattogram'));
-
-    if (hasEmail) contacts += 5;
-    if (hasPhone) contacts += 4;
-    if (hasLinks) contacts += 4;
-    if (hasLoc) contacts += 2;
-
-    // 2. Headings & Core Structure (20 pts)
-    if (cvData.summary && cvData.summary.trim().length > 40) headings += 5;
-    if (cvData.skills && cvData.skills.length >= 3) headings += 5;
-    if (cvData.experiences && cvData.experiences.length >= 2) headings += 5;
-    if (cvData.education && cvData.education.degree && cvData.education.school) headings += 5;
-
-    // 3. Measurable Quantifiable Numbers (20 pts)
-    const metricMatches = (text.match(/(\d+[\d,]*\s*(\+|%|users|cases|records|k|x)?)/g) || []).filter(
-      (m) => /\d/.test(m) && m.trim().length > 1
-    );
-    metrics = Math.min(20, Math.max(5, metricMatches.length * 4));
-
-    // 4. Core Keywords (25 pts)
-    const kw = ['sql', 'postgresql', 'power bi', 'power query', 'etl', 'postman', 'rest api', 'jira', 'regression', 'bva', 'ecp', 'erp', 'windows server', 'linux'];
-    const matched = kw.filter((k) => text.includes(k));
-    keywords = Math.round((matched.length / kw.length) * 25);
-
-    // 5. Strong Action Verbs (10 pts)
-    const actionVerbsList = ['managed', 'designed', 'diagnosed', 'executed', 'extracted', 'engineered', 'authored', 'developed', 'automated', 'led', 'analyzed', 'resolved'];
-    const foundVerbs = actionVerbsList.filter((v) => text.includes(v));
-    verbs = Math.min(10, Math.round((foundVerbs.length / 6) * 10));
-
-    // 6. ATS Layout & Photo Compliance (10 pts)
-    const isPhotoHidden = settings.photoPosition === 'hide';
-    if (isPhotoHidden) {
-      photo = 10; // 100% Strict ATS Compliance (No photo, zero EEOC bias flag)
-    } else {
-      photo = 0; // Photo included: Standard in BD/Asia (+0%), but docks 10% on strict US/UK/EU ATS
-    }
-
-    const total = Math.min(100, Math.max(20, contacts + headings + metrics + keywords + verbs + photo));
-
-    return {
-      total,
-      contacts,
-      headings,
-      metrics,
-      keywords,
-      verbs,
-      photo,
-      isPhotoHidden,
-    };
-  }, [cvData, settings.photoPosition]);
-
-  const atsScoreData = calculateScore();
-  const score = atsScoreData.total;
-
-  // Word Count, Searchable Text & Scan Time Tracker
+  // Word Count, Searchable Text & Scan Time Tracker (Computed first for complete keyword & metric analysis)
   const cvSearchText = useMemo(() => {
     return [
       cvData.name,
@@ -1251,12 +1184,124 @@ export default function App() {
 
   const readTimeSeconds = Math.ceil((wordCount / 130) * 60);
 
+  // Live ATS score calculation with individual category breakdown
+  const calculateScore = useCallback(() => {
+    let contacts = 0;
+    let headings = 0;
+    let metrics = 0;
+    let keywords = 0;
+    let verbs = 0;
+    let photo = 0;
+
+    const text = cvSearchText.toLowerCase();
+
+    // 1. Contacts & Clickable Links (15 pts) - Verified against visibility setting
+    if (settings.showContacts !== false) {
+      const hasEmail = cvData.contacts.some((c) => c.label.includes('@') || c.url.includes('@'));
+      const hasPhone = cvData.contacts.some((c) => /\d{5,}/.test(c.label));
+      const hasLinks = cvData.contacts.some(
+        (c) => c.url.includes('http') || c.label.includes('github') || c.label.includes('linkedin')
+      );
+      const hasLoc = cvData.contacts.some(
+        (c) =>
+          c.type === 'location' ||
+          c.label.toLowerCase().includes('bangladesh') ||
+          c.label.toLowerCase().includes('chattogram')
+      );
+
+      if (hasEmail) contacts += 5;
+      if (hasPhone) contacts += 4;
+      if (hasLinks) contacts += 4;
+      if (hasLoc) contacts += 2;
+    }
+
+    // 2. Headings & Core Structure (20 pts) - Verified against hidden sections
+    const hidden = new Set(settings.hiddenSections || []);
+    if (!hidden.has('summary') && cvData.summary && cvData.summary.trim().length > 40) headings += 5;
+    if (!hidden.has('skills') && cvData.skills && cvData.skills.length >= 3) headings += 5;
+    if (!hidden.has('experience') && cvData.experiences && cvData.experiences.length >= 2) headings += 5;
+    if (!hidden.has('credentials') && cvData.education && cvData.education.degree && cvData.education.school) headings += 5;
+
+    // 3. Measurable Quantifiable Numbers (20 pts)
+    const metricMatches = (text.match(/(\d+[\d,]*\s*(\+|%|users|cases|records|k|x)?)/g) || []).filter(
+      (m) => /\d/.test(m) && m.trim().length > 1
+    );
+    metrics = Math.min(20, Math.max(5, metricMatches.length * 4));
+
+    // 4. Core Keywords (25 pts)
+    const kw = [
+      'sql',
+      'postgresql',
+      'power bi',
+      'power query',
+      'etl',
+      'postman',
+      'rest api',
+      'jira',
+      'regression',
+      'bva',
+      'ecp',
+      'erp',
+      'windows server',
+      'linux',
+    ];
+    const matched = kw.filter((k) => text.includes(k));
+    keywords = Math.round((matched.length / kw.length) * 25);
+
+    // 5. Strong Action Verbs (10 pts)
+    const actionVerbsList = [
+      'managed',
+      'designed',
+      'diagnosed',
+      'executed',
+      'extracted',
+      'engineered',
+      'authored',
+      'developed',
+      'automated',
+      'led',
+      'analyzed',
+      'resolved',
+    ];
+    const foundVerbs = actionVerbsList.filter((v) => text.includes(v));
+    verbs = Math.min(10, Math.round((foundVerbs.length / 6) * 10));
+
+    // 6. ATS Layout & Photo Compliance (10 pts)
+    const isPhotoHidden =
+      settings.photoPosition === 'hide' ||
+      (settings.photoPosition as string) === 'none' ||
+      settings.template === 'strict-ats' ||
+      settings.template === 'wallstreet-ats' ||
+      settings.template === 'elite-crimson';
+    if (isPhotoHidden) {
+      photo = 10; // 100% Strict ATS Compliance (No photo, zero EEOC bias flag)
+    } else {
+      photo = 0; // Photo included: Standard in BD/Asia (+0%), but docks 10% on strict US/UK/EU ATS
+    }
+
+    const total = Math.min(100, Math.max(20, contacts + headings + metrics + keywords + verbs + photo));
+
+    return {
+      total,
+      contacts,
+      headings,
+      metrics,
+      keywords,
+      verbs,
+      photo,
+      isPhotoHidden,
+    };
+  }, [cvData, settings, cvSearchText]);
+
+  const atsScoreData = calculateScore();
+  const score = atsScoreData.total;
+
   // Real-time Page Overflow & Height Metrics (A4 standard: ~1123px per page at 96dpi)
   const PAGE_PX = 1123;
   const estimatedPages = Math.max(1, Math.ceil(docHeight / PAGE_PX));
-  const page1Overflow = docHeight > PAGE_PX && docHeight < PAGE_PX + 180 ? docHeight - PAGE_PX : 0;
-  const page2Overflow = docHeight > PAGE_PX * 2 && docHeight < PAGE_PX * 2 + 190 ? docHeight - PAGE_PX * 2 : 0;
-  const overflowPx = page1Overflow || page2Overflow;
+  const pageRemainder = docHeight % PAGE_PX;
+  // Spill detection: warns with exact pixels when content slightly bleeds onto a trailing page (< 340px)
+  const overflowPx = docHeight > PAGE_PX && pageRemainder > 0 && pageRemainder < 340 ? pageRemainder : 0;
 
   // Populate 2-Page Side-by-Side Spread Clones when active
   useEffect(() => {
@@ -1299,7 +1344,7 @@ export default function App() {
       portfolioMode: prev.portfolioMode,
     }));
     setActiveProfileId(target.id);
-    setActiveRoleLabel(target.id === 'prof_master' ? undefined : target.name);
+    setActiveRoleLabel(target.name);
     setHistoryPast([]);
     setHistoryFuture([]);
     const roleKey = target.name || newProfileId;
@@ -1367,7 +1412,7 @@ export default function App() {
       setCvData(target.data);
       setSettings(target.settings);
       setActiveProfileId(newProfileId);
-      setActiveRoleLabel(target.id === 'prof_master' ? undefined : target.name);
+      setActiveRoleLabel(target.name);
       setHistoryPast([]);
       setHistoryFuture([]);
       showToast(`প্রোফাইল ভার্সন "${target.name}" লোড হয়েছে!`, 'success');
@@ -1615,7 +1660,7 @@ export default function App() {
     showToast(`${imported.length}টি নতুন টেমপ্লেট ইমপোর্ট হয়েছে!`, 'success');
   }
 
-  // Template switch handler (12 built-in templates cleanly clear custom overrides first)
+  // Template switch handler (16 built-in templates cleanly clear custom overrides first)
   function handleSelectTemplate(tpl: CVTemplateKey) {
     setSettings((prev) => ({
       ...prev,
@@ -1865,6 +1910,90 @@ export default function App() {
         pagePadding: 11,
       }));
       showToast('Template 12: Tech Monospace Developer চালু হয়েছে', 'success');
+    } else if (tpl === 'nordic-emerald') {
+      setSettings((prev) => ({
+        ...prev,
+        template: tpl,
+        photoPosition: 'right',
+        headerStyle: 'right',
+        bodyColumns: '2col-left',
+        sectionHeading: 'accent-bar',
+        skillsMode: 'dots',
+        bulletStyle: 'bullet-check',
+        themePrimary: '#065f46',
+        themeLight: '#ecfdf5',
+        themeBorder: '#059669',
+        cvFont: "'Plus Jakarta Sans', sans-serif",
+        fontSize: 12,
+        lineHeight: 1.44,
+        sectionGap: 13,
+        pagePadding: 11,
+        showTimelineRail: true,
+      }));
+      showToast('Template 13: Nordic Emerald FinTech (2-Col & 5-Dot Skills) চালু হয়েছে', 'success');
+    } else if (tpl === 'royal-indigo') {
+      setSettings((prev) => ({
+        ...prev,
+        template: tpl,
+        photoPosition: 'right',
+        headerStyle: 'right',
+        bodyColumns: '1col',
+        sectionHeading: 'pill',
+        skillsMode: 'pills',
+        bulletStyle: 'bullet-arrow',
+        themePrimary: '#4338ca',
+        themeLight: '#eef2ff',
+        themeBorder: '#6366f1',
+        cvFont: "'Plus Jakarta Sans', sans-serif",
+        fontSize: 12.2,
+        lineHeight: 1.44,
+        sectionGap: 13,
+        pagePadding: 11,
+      }));
+      showToast('Template 14: Royal Indigo Tech Visionary চালু হয়েছে', 'success');
+    } else if (tpl === 'elite-crimson') {
+      setSettings((prev) => ({
+        ...prev,
+        template: tpl,
+        photoPosition: 'hide',
+        headerStyle: 'right',
+        bodyColumns: '1col',
+        sectionHeading: 'double',
+        skillsMode: 'table',
+        bulletStyle: 'bullet-disc',
+        themePrimary: '#991b1b',
+        themeLight: '#fef2f2',
+        themeBorder: '#dc2626',
+        cvFont: "'Merriweather', serif",
+        fontSize: 12.3,
+        lineHeight: 1.45,
+        sectionGap: 14,
+        pagePadding: 12,
+      }));
+      showToast('Template 15: Elite Crimson Leadership (Merriweather Serif) চালু হয়েছে', 'success');
+    } else if (tpl === 'wallstreet-ats') {
+      setSettings((prev) => ({
+        ...prev,
+        template: tpl,
+        photoPosition: 'hide',
+        headerStyle: 'hide',
+        headerAlign: 'center',
+        bodyColumns: '1col',
+        sectionHeading: 'line',
+        skillsMode: 'table',
+        bulletStyle: 'bullet-dash',
+        themePrimary: '#1e293b',
+        themeLight: '#ffffff',
+        themeBorder: '#334155',
+        cvFont: 'Georgia, serif',
+        fontSize: 12.2,
+        lineHeight: 1.42,
+        sectionGap: 12,
+        pagePadding: 12,
+        showContactIcons: false,
+        contactSeparator: 'pipe',
+      }));
+      showToast('Template 16: Pure Minimalist Wall-Street ATS (Zero-Emoji) চালু হয়েছে', 'success');
     }
   }
 
@@ -2052,20 +2181,26 @@ export default function App() {
   }
 
   // Add custom section
-  function handleAddSection(title: string, type: 'bullets' | 'paragraph' | 'references') {
-    let initialContent: string[] = [];
-    if (type === 'bullets') {
-      initialContent = [
-        '<strong>Key Achievement 1:</strong> Describe accomplishment, award, or extracurricular...',
-        '<strong>Key Achievement 2:</strong> Detail measurable results and impact...',
-      ];
-    } else if (type === 'paragraph') {
-      initialContent = ['Write your custom section overview or notes here. Fully live editable.'];
-    } else if (type === 'references') {
-      initialContent = [
-        '<strong>Reference 1:</strong> Designation, Organization | Email: ref1@example.com | Phone: +880 1XXX-XXXXXX',
-        '<strong>Reference 2:</strong> Designation, Organization | Email: ref2@example.com | Phone: +880 1XXX-XXXXXX',
-      ];
+  function handleAddSection(
+    title: string,
+    type: 'bullets' | 'paragraph' | 'references',
+    customContent?: string[]
+  ) {
+    let initialContent: string[] = customContent && customContent.length > 0 ? customContent : [];
+    if (!initialContent.length) {
+      if (type === 'bullets') {
+        initialContent = [
+          '<strong>Key Achievement 1:</strong> Describe accomplishment, award, or extracurricular...',
+          '<strong>Key Achievement 2:</strong> Detail measurable results and impact...',
+        ];
+      } else if (type === 'paragraph') {
+        initialContent = ['Write your custom section overview or notes here. Fully live editable.'];
+      } else if (type === 'references') {
+        initialContent = [
+          '<strong>Reference 1:</strong> Designation, Organization | Email: ref1@example.com | Phone: +880 1XXX-XXXXXX',
+          '<strong>Reference 2:</strong> Designation, Organization | Email: ref2@example.com | Phone: +880 1XXX-XXXXXX',
+        ];
+      }
     }
 
     applyCVUpdate((prev) => ({
@@ -2082,6 +2217,29 @@ export default function App() {
       ],
     }));
     showToast(`"${title}" সেকশন যোগ করা হয়েছে!`, 'success');
+  }
+
+  // Insert pre-written bullet point from library
+  function handleInsertBulletFromLibrary(htmlText: string) {
+    if (bulletTargetExpIdx === null) return;
+    applyCVUpdate((prev) => {
+      const nextExp = [...prev.experiences];
+      if (bulletTargetExpIdx >= 0 && bulletTargetExpIdx < nextExp.length) {
+        const targetExp = nextExp[bulletTargetExpIdx];
+        nextExp[bulletTargetExpIdx] = {
+          ...targetExp,
+          bullets: [
+            ...targetExp.bullets,
+            {
+              id: 'b_' + Date.now(),
+              text: htmlText,
+            },
+          ],
+        };
+      }
+      return { ...prev, experiences: nextExp };
+    });
+    showToast('বুলেট পয়েন্ট অভিজ্ঞতায় যুক্ত হয়েছে!', 'success');
   }
 
   // Reset CV
@@ -2452,6 +2610,7 @@ export default function App() {
             zenMode={zenMode}
             onToggleZenMode={() => setZenMode((z) => !z)}
             onOpenShortcuts={() => setShortcutsModalOpen(true)}
+            onOpenHealthCheckModal={() => setHealthCheckModalOpen(true)}
             hasUnpublishedWebsiteDraft={Boolean(websiteDraft)}
             cloudSyncStatus={cloudSyncStatus}
           />
@@ -2834,6 +2993,12 @@ export default function App() {
                     onOpenLinkModalForContact={handleOpenLinkModalForContact}
                     onOpenLinkModalForProject={handleOpenLinkModalForProject}
                     onOpenSignatureModal={() => setSignatureModalOpen(true)}
+                    onOpenAddSectionModal={() => setAddSectionModalOpen(true)}
+                    onOpenBulletLibraryModal={(expIdx, roleTitle) => {
+                      setBulletTargetExpIdx(expIdx);
+                      setBulletTargetRoleTitle(roleTitle);
+                      setBulletLibraryOpen(true);
+                    }}
                   />
                 </div>
               </div>
@@ -2854,6 +3019,7 @@ export default function App() {
                   docHeightPx={docHeight}
                   overflowPx={overflowPx}
                   onOpenATSModal={() => setAtsModalOpen(true)}
+                  onOpenHealthCheckModal={() => setHealthCheckModalOpen(true)}
                   onAutoFit1Page={handleAutoFit1Page}
                   onAutoFit2Pages={handleAutoFit2Pages}
                   onJumpToSection={handleJumpToSection}
@@ -3136,6 +3302,26 @@ export default function App() {
         isOpen={addSectionModalOpen}
         onClose={() => setAddSectionModalOpen(false)}
         onAdd={handleAddSection}
+      />
+
+      <BulletLibraryModal
+        isOpen={bulletLibraryOpen}
+        onClose={() => setBulletLibraryOpen(false)}
+        targetRoleTitle={bulletTargetRoleTitle}
+        onInsertBullet={handleInsertBulletFromLibrary}
+      />
+
+      <CVHealthCheckModal
+        isOpen={healthCheckModalOpen}
+        onClose={() => setHealthCheckModalOpen(false)}
+        cvData={cvData}
+        settings={settings}
+        overflowPx={overflowPx}
+        estimatedPages={estimatedPages}
+        onUpdateCVData={applyCVUpdate}
+        onAutoFit1Page={handleAutoFit1Page}
+        onAutoFit2Pages={handleAutoFit2Pages}
+        onShowToast={showToast}
       />
 
       <ResetModal

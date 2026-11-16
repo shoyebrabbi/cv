@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Award,
   Layers,
+  BarChart3,
   ArrowRight,
   Code2,
   Database,
@@ -945,21 +946,26 @@ export function WebPortfolioView({
   const linkedin = ov.linkedin !== undefined ? ov.linkedin : cvLinkedin;
   const github = ov.github !== undefined ? ov.github : cvGithub;
   const website = ov.website !== undefined ? ov.website : cvWebsite;
+  const kaggle = ov.kaggle;
+  const leetcode = ov.leetcode;
+
+  const isRoleLensActive = Boolean(activeProfileId && activeProfileId !== 'prof_master');
+  const hasStaleMasterOverride = Boolean(ov.title && ov.title.includes('DATA ANALYST | SOFTWARE QA'));
 
   const siteData: CVData = useMemo(
     () => ({
       ...cvData,
       name: ov.name ?? cvData.name,
-      title: ov.title ?? cvData.title,
-      summary: ov.summary ?? cvData.summary,
-      skills: ov.skills ?? cvData.skills,
-      experiences: ov.experiences ?? cvData.experiences,
-      projects: ov.projects ?? cvData.projects,
-      education: ov.education ?? cvData.education,
-      certifications: ov.certifications ?? cvData.certifications,
-      languages: ov.languages ?? cvData.languages,
-      strengths: ov.strengths ?? cvData.strengths,
-      customSections: ov.customSections ?? cvData.customSections,
+      title: isRoleLensActive ? cvData.title : (hasStaleMasterOverride ? cvData.title : (ov.title ?? cvData.title)),
+      summary: isRoleLensActive ? cvData.summary : (ov.summary ?? cvData.summary),
+      skills: isRoleLensActive ? cvData.skills : (ov.skills ?? cvData.skills),
+      experiences: isRoleLensActive ? cvData.experiences : (ov.experiences ?? cvData.experiences),
+      projects: isRoleLensActive ? cvData.projects : (ov.projects ?? cvData.projects),
+      education: isRoleLensActive ? cvData.education : (ov.education ?? cvData.education),
+      certifications: isRoleLensActive ? cvData.certifications : (ov.certifications ?? cvData.certifications),
+      languages: isRoleLensActive ? cvData.languages : (ov.languages ?? cvData.languages),
+      strengths: isRoleLensActive ? cvData.strengths : (ov.strengths ?? cvData.strengths),
+      customSections: isRoleLensActive ? cvData.customSections : (ov.customSections ?? cvData.customSections),
       contacts: cvData.contacts.map((c) => {
         if (c.type === 'email' && ov.email !== undefined) return { ...c, label: ov.email, url: `mailto:${ov.email}` };
         if (c.type === 'phone' && ov.phone !== undefined) return { ...c, label: ov.phone, url: `tel:${ov.phone}` };
@@ -2347,8 +2353,11 @@ export function WebPortfolioView({
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
                   <div className="lg:col-span-8 space-y-5">
                     {portfolioConfig.availabilityActive && (
-                      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/[0.08] dark:text-emerald-400">
-                        <CheckCircle className="w-4 h-4 shrink-0" />
+                      <div className="inline-flex items-center gap-2.5 rounded-full border border-emerald-200/90 bg-emerald-50/90 dark:border-emerald-500/30 dark:bg-emerald-500/[0.1] px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-500/10">
+                        <span className="relative flex h-2.5 w-2.5 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
                         <span className="leading-5">{portfolioConfig.availabilityText}</span>
                       </div>
                     )}
@@ -2427,6 +2436,32 @@ export function WebPortfolioView({
                               className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
                             >
                               <Globe className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" /> Website
+                            </a>
+                          </>
+                        )}
+                        {kaggle && (
+                          <>
+                            <span aria-hidden="true" className="text-stone-300 dark:text-stone-700">·</span>
+                            <a
+                              href={sanitizeHref(kaggle) || undefined}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
+                            >
+                              <BarChart3 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" /> Kaggle
+                            </a>
+                          </>
+                        )}
+                        {leetcode && (
+                          <>
+                            <span aria-hidden="true" className="text-stone-300 dark:text-stone-700">·</span>
+                            <a
+                              href={sanitizeHref(leetcode) || undefined}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
+                            >
+                              <Code2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> LeetCode
                             </a>
                           </>
                         )}
@@ -2593,8 +2628,11 @@ export function WebPortfolioView({
                   {/* Left Narrative & Interactive Specialization Focus */}
                   <div className="lg:col-span-7 flex flex-col justify-center space-y-4">
                     {portfolioConfig.availabilityActive && (
-                      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/[0.08] dark:text-emerald-400">
-                        <CheckCircle className="w-4 h-4 shrink-0" />
+                      <div className="inline-flex items-center gap-2.5 rounded-full border border-emerald-200/90 bg-emerald-50/90 dark:border-emerald-500/30 dark:bg-emerald-500/[0.1] px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-500/10">
+                        <span className="relative flex h-2.5 w-2.5 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
                         <span className="leading-5">{portfolioConfig.availabilityText}</span>
                       </div>
                     )}
@@ -2618,6 +2656,22 @@ export function WebPortfolioView({
                     <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-[15px] leading-relaxed text-left sm:text-justify max-w-2xl">
                       {siteData.summary}
                     </p>
+
+                    {/* Executive Pillars Quick Glance */}
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-500/10 dark:bg-blue-500/15 border border-blue-500/25 text-blue-700 dark:text-cyan-300 text-xs font-semibold">
+                        <Database className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        50k+ Records · SQL &amp; Power BI
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        80+ Test Cases · Postman REST API
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+                        <Server className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        100+ Users · Systems &amp; ERP Support
+                      </span>
+                    </div>
 
                     {/* Primary 2-CTA Anchor + Quiet Utility Links Row */}
                     <div className="pt-2 space-y-3.5">
@@ -2674,6 +2728,32 @@ export function WebPortfolioView({
                               className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
                             >
                               <Globe className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" /> Website
+                            </a>
+                          </>
+                        )}
+                        {kaggle && (
+                          <>
+                            <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+                            <a
+                              href={sanitizeHref(kaggle) || undefined}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
+                            >
+                              <BarChart3 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" /> Kaggle
+                            </a>
+                          </>
+                        )}
+                        {leetcode && (
+                          <>
+                            <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+                            <a
+                              href={sanitizeHref(leetcode) || undefined}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors"
+                            >
+                              <Code2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> LeetCode
                             </a>
                           </>
                         )}
@@ -3490,9 +3570,16 @@ export function WebPortfolioView({
                         </div>
                       )}
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className={`text-base sm:text-lg font-bold text-slate-900 dark:text-white transition-colors ${isEditorial ? displayHeadingFont : ''}`}>
-                          {isBlueprint ? `${String(idx + 1).padStart(2, '0')} · ${proj.title}` : proj.title}
-                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                          <h3 className={`text-base sm:text-lg font-bold text-slate-900 dark:text-white transition-colors ${isEditorial ? displayHeadingFont : ''}`}>
+                            {isBlueprint ? `${String(idx + 1).padStart(2, '0')} · ${proj.title}` : proj.title}
+                          </h3>
+                          {enh?.embedMediaUrl && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 border border-cyan-500/35 text-cyan-600 dark:text-cyan-300">
+                              <BarChart3 className="w-3 h-3" /> Live Embed
+                            </span>
+                          )}
+                        </div>
                         {proj.url && (
                           <a
                             href={sanitizeHref(proj.url) || undefined}
@@ -4199,6 +4286,34 @@ export function WebPortfolioView({
                             </p>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {projectEnhancements[selectedProject.id]?.embedMediaUrl && (
+                      <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-[11px] font-['JetBrains_Mono',monospace] uppercase tracking-wider text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
+                            <BarChart3 className="w-3.5 h-3.5" /> Interactive Dashboard / Demo Embed
+                          </div>
+                          <a
+                            href={sanitizeHref(projectEnhancements[selectedProject.id].embedMediaUrl || '') || undefined}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-semibold"
+                          >
+                            <span>Open Fullscreen</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                        <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-950 p-1 shadow-inner">
+                          <iframe
+                            src={sanitizeHref(projectEnhancements[selectedProject.id].embedMediaUrl || '') || undefined}
+                            title="Interactive Project Demo"
+                            className="w-full h-80 sm:h-96 rounded-lg border-0 bg-slate-900"
+                            loading="lazy"
+                            sandbox="allow-scripts allow-same-origin allow-popups"
+                          />
+                        </div>
                       </div>
                     )}
                   </div>

@@ -70,7 +70,7 @@ export interface CVData {
 export type PhotoPosition = 'right' | 'left' | 'center' | 'hide';
 export type BodyColumns = '1col' | '2col-left' | '2col-right';
 export type SectionHeadingStyle = 'accent-bar' | 'line' | 'pill' | 'solid' | 'double';
-export type SkillsMode = 'table' | 'pills' | 'grid' | 'bars';
+export type SkillsMode = 'table' | 'pills' | 'grid' | 'bars' | 'dots';
 export type BulletStyle = 'bullet-disc' | 'bullet-square' | 'bullet-arrow' | 'bullet-check' | 'bullet-dash';
 export type CVSectionId = 'summary' | 'skills' | 'experience' | 'projects' | 'credentials';
 export type CVTemplateKey =
@@ -85,7 +85,11 @@ export type CVTemplateKey =
   | 'exec-ats'
   | 'exec-sidebar'
   | 'swiss-grid'
-  | 'tech-mono';
+  | 'tech-mono'
+  | 'nordic-emerald'
+  | 'royal-indigo'
+  | 'elite-crimson'
+  | 'wallstreet-ats';
 
 export interface QRCodeSettings {
   enabled: boolean;
@@ -162,6 +166,8 @@ export interface WebsiteProjectEnhancement {
     language: string;
     code: string;
   };
+  embedMediaUrl?: string; // Power BI embed, YouTube demo, or live interactive preview
+  liveDemoLabel?: string;
 }
 
 export interface PublicInquiry {
@@ -229,6 +235,10 @@ export interface WebsiteContentOverrides {
   linkedin?: string;
   github?: string;
   website?: string;
+  kaggle?: string;
+  leetcode?: string;
+  hackerrank?: string;
+  devto?: string;
   heroPhotoSrc?: string;
   skillsIntro?: string;
   skills?: SkillRow[];
@@ -271,11 +281,18 @@ export interface StudioSettings {
   customTemplateId?: string;
   photoPosition: PhotoPosition;
   headerStyle: 'right' | 'left' | 'center' | 'dark-banner' | 'hide';
-  headerAlign?: 'auto' | 'left' | 'center';
+  headerAlign?: 'auto' | 'left' | 'center' | 'right' | 'split';
+  nameAlign?: 'auto' | 'left' | 'center' | 'right';
+  contactAlign?: 'auto' | 'left' | 'center' | 'right';
+  headerLayout?: 'stacked' | 'split';
   showHeader?: boolean;
   showHeaderDivider?: boolean;
   showTitle?: boolean;
   showContacts?: boolean;
+  showContactIcons?: boolean;
+  contactSeparator?: 'none' | 'dot' | 'pipe' | 'slash';
+  showTimelineRail?: boolean;
+  projectLayout?: 'cards' | 'compact-grid';
   bodyColumns: BodyColumns;
   sectionHeading: SectionHeadingStyle;
   skillsMode: SkillsMode;

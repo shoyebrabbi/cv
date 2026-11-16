@@ -1,0 +1,212 @@
+export interface BulletPhraseItem {
+  id: string;
+  category: 'data_bi' | 'sqa_testing' | 'netops_it' | 'leadership_ops' | 'general_impact';
+  categoryLabel: string;
+  rolePreset: string;
+  headline: string;
+  html: string;
+  plainText: string;
+  tags: string[];
+}
+
+export const BULLET_PHRASES: BulletPhraseItem[] = [
+  // ================= DATA ANALYTICS & POWER BI =================
+  {
+    id: 'b_data_01',
+    category: 'data_bi',
+    categoryLabel: 'Data Analytics & Power BI',
+    rolePreset: 'Data Analyst / BI Developer',
+    headline: 'Automated ETL Data Pipeline',
+    html: '<strong>Automated ETL Pipeline:</strong> Engineered scalable data pipelines in Python and PostgreSQL processing <strong>50,000+ daily transactions</strong> with <strong>99.8% data fidelity</strong>.',
+    plainText: 'Automated ETL Pipeline: Engineered scalable data pipelines in Python and PostgreSQL processing 50,000+ daily transactions with 99.8% data fidelity.',
+    tags: ['ETL', 'Python', 'PostgreSQL', 'Pipelines', 'Data Integrity'],
+  },
+  {
+    id: 'b_data_02',
+    category: 'data_bi',
+    categoryLabel: 'Data Analytics & Power BI',
+    rolePreset: 'Data Analyst / BI Developer',
+    headline: 'Star Schema & DAX Optimization',
+    html: '<strong>Star Schema Modeling:</strong> Architected dimensional Star Schema models and optimized complex DAX measures (CALCULATE, Time Intelligence), slashing report refresh latency by <strong>45%</strong>.',
+    plainText: 'Star Schema Modeling: Architected dimensional Star Schema models and optimized complex DAX measures (CALCULATE, Time Intelligence), slashing report refresh latency by 45%.',
+    tags: ['Power BI', 'DAX', 'Star Schema', 'Performance', 'Latency'],
+  },
+  {
+    id: 'b_data_03',
+    category: 'data_bi',
+    categoryLabel: 'Data Analytics & Power BI',
+    rolePreset: 'Data Analyst / BI Developer',
+    headline: 'Executive KPI Dashboards',
+    html: '<strong>Executive KPI Dashboards:</strong> Designed interactive, cross-filtered executive dashboards in Power BI and Metabase, enabling C-suite leaders to track revenue and retention metrics in real-time.',
+    plainText: 'Executive KPI Dashboards: Designed interactive, cross-filtered executive dashboards in Power BI and Metabase, enabling C-suite leaders to track revenue and retention metrics in real-time.',
+    tags: ['Dashboards', 'KPIs', 'Metabase', 'C-suite', 'Reporting'],
+  },
+  {
+    id: 'b_data_04',
+    category: 'data_bi',
+    categoryLabel: 'Data Analytics & Power BI',
+    rolePreset: 'Data Analyst / BI Developer',
+    headline: 'Advanced SQL Query Optimization',
+    html: '<strong>SQL Query Tuning:</strong> Refactored multi-table joins, subqueries, and window functions across <strong>1,000,000+ row datasets</strong>, reducing analytical query execution time from minutes to seconds.',
+    plainText: 'SQL Query Tuning: Refactored multi-table joins, subqueries, and window functions across 1,000,000+ row datasets, reducing analytical query execution time from minutes to seconds.',
+    tags: ['SQL', 'Query Optimization', 'PostgreSQL', 'Indexes', 'Big Data'],
+  },
+  {
+    id: 'b_data_05',
+    category: 'data_bi',
+    categoryLabel: 'Data Analytics & Power BI',
+    rolePreset: 'Data Analyst / BI Developer',
+    headline: 'Scheduled Automated Reporting',
+    html: '<strong>Automated Reporting Cadence:</strong> Automated scheduled weekly and monthly PDF/Excel data export workflows, saving <strong>12+ hours</strong> of manual compilation time each week.',
+    plainText: 'Automated Reporting Cadence: Automated scheduled weekly and monthly PDF/Excel data export workflows, saving 12+ hours of manual compilation time each week.',
+    tags: ['Automation', 'Reporting', 'Excel', 'Productivity'],
+  },
+
+  // ================= SOFTWARE QA & TESTING =================
+  {
+    id: 'b_sqa_01',
+    category: 'sqa_testing',
+    categoryLabel: 'Software QA & Testing',
+    rolePreset: 'Software QA / Test Engineer',
+    headline: 'Test Case Design (BVA & ECP)',
+    html: '<strong>Comprehensive Test Design:</strong> Authored and executed <strong>80+ rigorous test cases</strong> applying Boundary Value Analysis (BVA) and Equivalence Class Partitioning (ECP) with <strong>100% requirements traceability</strong>.',
+    plainText: 'Comprehensive Test Design: Authored and executed 80+ rigorous test cases applying Boundary Value Analysis (BVA) and Equivalence Class Partitioning (ECP) with 100% requirements traceability.',
+    tags: ['Test Cases', 'BVA', 'ECP', 'Traceability', 'Black Box'],
+  },
+  {
+    id: 'b_sqa_02',
+    category: 'sqa_testing',
+    categoryLabel: 'Software QA & Testing',
+    rolePreset: 'Software QA / Test Engineer',
+    headline: 'REST API Automation with Postman',
+    html: '<strong>REST API Validation:</strong> Automated end-to-end API testing suites in Postman with environment variables, dynamic assertion scripts, and token authentication for CRUD services.',
+    plainText: 'REST API Validation: Automated end-to-end API testing suites in Postman with environment variables, dynamic assertion scripts, and token authentication for CRUD services.',
+    tags: ['Postman', 'REST API', 'API Testing', 'JSON', 'Assertions'],
+  },
+  {
+    id: 'b_sqa_03',
+    category: 'sqa_testing',
+    categoryLabel: 'Software QA & Testing',
+    rolePreset: 'Software QA / Test Engineer',
+    headline: 'Defect Tracking & Jira Triage',
+    html: '<strong>Defect Lifecycle Triage:</strong> Logged, prioritized, and tracked <strong>45+ high-priority software defects</strong> in Jira with comprehensive logs, steps-to-reproduce, and verification re-testing.',
+    plainText: 'Defect Lifecycle Triage: Logged, prioritized, and tracked 45+ high-priority software defects in Jira with comprehensive logs, steps-to-reproduce, and verification re-testing.',
+    tags: ['Jira', 'Bug Tracking', 'Defect Triage', 'Reproducibility'],
+  },
+  {
+    id: 'b_sqa_04',
+    category: 'sqa_testing',
+    categoryLabel: 'Software QA & Testing',
+    rolePreset: 'Software QA / Test Engineer',
+    headline: 'End-to-End Regression Testing',
+    html: '<strong>Sprint Regression Cycles:</strong> Executed pre-release smoke and regression suites across bi-weekly sprint cycles, reducing critical post-launch production bugs by <strong>35%</strong>.',
+    plainText: 'Sprint Regression Cycles: Executed pre-release smoke and regression suites across bi-weekly sprint cycles, reducing critical post-launch production bugs by 35%.',
+    tags: ['Regression', 'Smoke Testing', 'Production Readiness', 'Sprints'],
+  },
+  {
+    id: 'b_sqa_05',
+    category: 'sqa_testing',
+    categoryLabel: 'Software QA & Testing',
+    rolePreset: 'Software QA / Test Engineer',
+    headline: 'Cross-Browser & Responsive QA',
+    html: '<strong>Cross-Platform UX Audits:</strong> Validated cross-browser compatibility across Chrome, Safari, Edge, and mobile viewports, uncovering <strong>20+ layout breakages</strong> prior to client rollout.',
+    plainText: 'Cross-Platform UX Audits: Validated cross-browser compatibility across Chrome, Safari, Edge, and mobile viewports, uncovering 20+ layout breakages prior to client rollout.',
+    tags: ['Cross-Browser', 'Mobile Responsive', 'UI/UX Testing'],
+  },
+
+  // ================= ENTERPRISE IT & NETWORK OPS =================
+  {
+    id: 'b_netops_01',
+    category: 'netops_it',
+    categoryLabel: 'Enterprise IT & NetOps',
+    rolePreset: 'IT Systems / Network Admin',
+    headline: 'Windows Server Active Directory & GPO',
+    html: '<strong>Active Directory & GPO Administration:</strong> Administered Windows Server Active Directory (AD), Group Policy Objects (GPO), and RBAC user provisioning for <strong>100+ enterprise workstations</strong>.',
+    plainText: 'Active Directory & GPO Administration: Administered Windows Server Active Directory (AD), Group Policy Objects (GPO), and RBAC user provisioning for 100+ enterprise workstations.',
+    tags: ['Active Directory', 'GPO', 'Windows Server', 'RBAC', 'SysAdmin'],
+  },
+  {
+    id: 'b_netops_02',
+    category: 'netops_it',
+    categoryLabel: 'Enterprise IT & NetOps',
+    rolePreset: 'IT Systems / Network Admin',
+    headline: 'MikroTik Router & VLAN Security',
+    html: '<strong>Network Infrastructure:</strong> Configured MikroTik and Cisco edge routers, managed switches, and VLAN network segmentation, maintaining an uninterrupted <strong>99.9% uptime</strong> SLA.',
+    plainText: 'Network Infrastructure: Configured MikroTik and Cisco edge routers, managed switches, and VLAN network segmentation, maintaining an uninterrupted 99.9% uptime SLA.',
+    tags: ['MikroTik', 'Cisco', 'VLAN', 'Routing', 'Firewall', 'Uptime'],
+  },
+  {
+    id: 'b_netops_03',
+    category: 'netops_it',
+    categoryLabel: 'Enterprise IT & NetOps',
+    rolePreset: 'IT Systems / Network Admin',
+    headline: 'Enterprise ERP & Disaster Recovery',
+    html: '<strong>ERP & Backup Operations:</strong> Managed enterprise ERP operational infrastructure, scheduled encrypted automated database backups, and validated disaster recovery protocols.',
+    plainText: 'ERP & Backup Operations: Managed enterprise ERP operational infrastructure, scheduled encrypted automated database backups, and validated disaster recovery protocols.',
+    tags: ['ERP', 'Backups', 'Disaster Recovery', 'Security'],
+  },
+  {
+    id: 'b_netops_04',
+    category: 'netops_it',
+    categoryLabel: 'Enterprise IT & NetOps',
+    rolePreset: 'IT Systems / Network Admin',
+    headline: 'Tier-2/3 Technical Incident Resolution',
+    html: '<strong>Incident Escalation Management:</strong> Resolved hardware, operating system, and network connectivity incidents with an average <strong>94% First-Contact Resolution (FCR)</strong> rate.',
+    plainText: 'Incident Escalation Management: Resolved hardware, operating system, and network connectivity incidents with an average 94% First-Contact Resolution (FCR) rate.',
+    tags: ['Helpdesk', 'FCR', 'Hardware', 'Troubleshooting'],
+  },
+
+  // ================= LEADERSHIP & OPERATIONS =================
+  {
+    id: 'b_lead_01',
+    category: 'leadership_ops',
+    categoryLabel: 'Leadership & Operations',
+    rolePreset: 'Team Lead / Project Manager',
+    headline: 'Agile Scrum & Cross-Functional Delivery',
+    html: '<strong>Agile Project Leadership:</strong> Facilitated sprint planning, daily standups, and backlog grooming across multi-disciplinary engineering and QA teams, delivering 100% of quarterly milestones on schedule.',
+    plainText: 'Agile Project Leadership: Facilitated sprint planning, daily standups, and backlog grooming across multi-disciplinary engineering and QA teams, delivering 100% of quarterly milestones on schedule.',
+    tags: ['Agile', 'Scrum', 'Milestones', 'Cross-Functional', 'Leadership'],
+  },
+  {
+    id: 'b_lead_02',
+    category: 'leadership_ops',
+    categoryLabel: 'Leadership & Operations',
+    rolePreset: 'Team Lead / Project Manager',
+    headline: 'Technical SOP Documentation & Onboarding',
+    html: '<strong>Standard Operating Procedures:</strong> Authored centralized SOP documentation and operational playbooks, reducing onboarding time for incoming engineers by <strong>40%</strong>.',
+    plainText: 'Standard Operating Procedures: Authored centralized SOP documentation and operational playbooks, reducing onboarding time for incoming engineers by 40%.',
+    tags: ['SOP', 'Playbooks', 'Documentation', 'Onboarding'],
+  },
+  {
+    id: 'b_lead_03',
+    category: 'leadership_ops',
+    categoryLabel: 'Leadership & Operations',
+    rolePreset: 'Team Lead / Project Manager',
+    headline: 'SLA Monitoring & Root Cause Analysis',
+    html: '<strong>Incident SLA Governance:</strong> Governed SLA delivery compliance and conducted post-incident Root Cause Analysis (RCA) meetings to implement preventative system safeguards.',
+    plainText: 'Incident SLA Governance: Governed SLA delivery compliance and conducted post-incident Root Cause Analysis (RCA) meetings to implement preventative system safeguards.',
+    tags: ['SLA', 'RCA', 'Governance', 'Continuous Improvement'],
+  },
+
+  // ================= GENERAL HIGH IMPACT =================
+  {
+    id: 'b_gen_01',
+    category: 'general_impact',
+    categoryLabel: 'General Impact & Efficiency',
+    rolePreset: 'General / Any Tech Role',
+    headline: 'Process Optimization & Automation',
+    html: '<strong>Process Modernization:</strong> Analyzed legacy workflows and replaced manual data entry with automated scripts, boosting departmental operational throughput by <strong>30%</strong>.',
+    plainText: 'Process Modernization: Analyzed legacy workflows and replaced manual data entry with automated scripts, boosting departmental operational throughput by 30%.',
+    tags: ['Efficiency', 'Productivity', 'Process Automation'],
+  },
+  {
+    id: 'b_gen_02',
+    category: 'general_impact',
+    categoryLabel: 'General Impact & Efficiency',
+    rolePreset: 'General / Any Tech Role',
+    headline: 'Compliance & Security Audits',
+    html: '<strong>Security & Policy Compliance:</strong> Conducted quarterly system access reviews and cybersecurity hygiene audits, ensuring <strong>100% compliance</strong> with organizational data policies.',
+    plainText: 'Security & Policy Compliance: Conducted quarterly system access reviews and cybersecurity hygiene audits, ensuring 100% compliance with organizational data policies.',
+    tags: ['Compliance', 'Security Audit', 'Policy'],
+  },
+];

@@ -457,6 +457,17 @@ export function OwnerLoginModal({
                         placeholder="Enter authorized owner email"
                       />
                     </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                      <span>Owner Admin ID:</span>
+                      <button
+                        type="button"
+                        onClick={() => setEmail('md.shoyeb.rabbi@gmail.com')}
+                        className="text-blue-400 hover:text-blue-300 font-mono text-[10.5px] hover:underline"
+                        title="Click to fill owner email"
+                      >
+                        md.shoyeb.rabbi@gmail.com
+                      </button>
+                    </div>
                   </div>
 
                   {mode !== 'forgot' && (

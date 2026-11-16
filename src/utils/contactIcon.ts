@@ -15,5 +15,11 @@ export function getDefaultContactIcon(type: ContactItem['type']): string {
 }
 
 export function getContactIcon(contact: Pick<ContactItem, 'type' | 'icon'>): string {
-  return contact.icon?.trim() || getDefaultContactIcon(contact.type);
+  if (contact.icon === '' || contact.icon === 'none') {
+    return '';
+  }
+  if (contact.icon !== undefined && contact.icon !== null) {
+    return contact.icon.trim();
+  }
+  return getDefaultContactIcon(contact.type);
 }

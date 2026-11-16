@@ -32,7 +32,7 @@ export const DEFAULT_AVATAR_SVG = `data:image/svg+xml;utf8,` + encodeURIComponen
 
 export const INITIAL_CV_DATA: CVData = {
   name: "MD SHOYEB RABBI",
-  title: "DATA ANALYST | SOFTWARE QA & IT SUPPORT SPECIALIST",
+  title: "MASTER EXECUTIVE (ALL-IN-ONE) | DATA ANALYTICS, SOFTWARE QA & IT OPERATIONS",
   contacts: [
     {
       id: "c1",
@@ -265,7 +265,14 @@ export const INITIAL_SETTINGS: StudioSettings = {
   showHeaderDivider: true,
   showTitle: true,
   showContacts: true,
+  showContactIcons: true,
+  contactSeparator: "none",
+  showTimelineRail: false,
+  projectLayout: "cards",
   headerAlign: "auto",
+  nameAlign: "auto",
+  contactAlign: "auto",
+  headerLayout: "stacked",
   showFooter: true,
   footerNote: "",
   footerRightText: "",
@@ -296,7 +303,12 @@ export const INITIAL_PROFILES = [
     name: "Master Executive (All-in-One)",
     rolePreset: "master" as const,
     description: "Balanced hybrid CV covering Data Analytics, SQA, and IT Systems.",
-    data: INITIAL_CV_DATA,
+    data: {
+      ...INITIAL_CV_DATA,
+      title: "MASTER EXECUTIVE (ALL-IN-ONE) | DATA ANALYTICS, SOFTWARE QA & IT OPERATIONS",
+      summary:
+        "Comprehensive Computer Science graduate with 2+ years of hands-on professional industry experience bridging Data Analytics, Software Quality Assurance (SQA), and Enterprise IT Systems. Proven track record reconciling 50,000+ operational records with Advanced SQL & Power BI, authoring 80+ REST API test cases in Postman/Jira, and providing Tier-2 IT systems support to 100+ business users across ERP and cloud environments.",
+    },
     settings: INITIAL_SETTINGS,
     updatedAt: new Date().toISOString(),
   },

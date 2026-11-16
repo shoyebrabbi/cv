@@ -23,6 +23,10 @@ import {
   EyeOff,
   ImagePlus,
   Send,
+  Columns,
+  Search,
+  Share2,
+  ExternalLink,
 } from 'lucide-react';
 import {
   CVData,
@@ -89,6 +93,7 @@ export function WebsiteEditorDrawer({
 }: WebsiteEditorDrawerProps) {
   const [activeTab, setActiveTab] = useState<WebsiteEditorTab>(initialTab);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
+  const [isSplitView, setIsSplitView] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -402,7 +407,8 @@ export function WebsiteEditorDrawer({
       !hasSteps &&
       !nextEntry.deliverables &&
       !hasBeforeAfter &&
-      !hasSnippet
+      !hasSnippet &&
+      !nextEntry.embedMediaUrl
     ) {
       const nextMap = { ...projectEnhancements };
       delete nextMap[projectId];
@@ -452,12 +458,18 @@ export function WebsiteEditorDrawer({
   return (
     <>
       <div
-        className="no-print fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm"
+        className={`no-print fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm ${
+          isSplitView ? 'hidden xl:hidden' : ''
+        }`}
         onClick={onClose}
       />
       <aside
         aria-label="Website Content Editor"
-        className="no-print fixed inset-y-0 right-0 z-50 w-[96vw] sm:w-full max-w-2xl rounded-l-3xl sm:rounded-none overflow-y-auto border-l border-slate-800 bg-[#090E1A] text-slate-100 shadow-2xl flex flex-col"
+        className={`no-print fixed inset-y-0 right-0 z-50 overflow-y-auto border-l border-slate-800 bg-[#090E1A] text-slate-100 shadow-2xl flex flex-col transition-all duration-200 ${
+          isSplitView
+            ? 'w-[96vw] xl:w-[460px] 2xl:w-[520px]'
+            : 'w-[96vw] sm:w-full max-w-2xl rounded-l-3xl sm:rounded-none'
+        }`}
       >
         {/* Sticky Top Header + Tabs */}
         <div className="sticky top-0 z-10 bg-[#080D1A]/95 backdrop-blur border-b border-slate-800/90">
@@ -471,14 +483,29 @@ export function WebsiteEditorDrawer({
                 এখানের পরিবর্তন শুধু ওয়েবসাইটে সেভ হবে — A4 CV বা PDF বদলাবে না
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-xl bg-slate-900 border border-slate-800 p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-center shrink-0"
-              aria-label="Close Website Content Editor"
-            >
-              <X className="w-5 h-5 sm:w-4 sm:h-4" />
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSplitView(!isSplitView)}
+                className={`hidden xl:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition ${
+                  isSplitView
+                    ? 'bg-blue-600 border-blue-500 text-white'
+                    : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
+                }`}
+                title={isSplitView ? 'Full Drawer Mode' : 'Live Side-by-Side Split View'}
+              >
+                <Columns className="w-3.5 h-3.5" />
+                <span>{isSplitView ? 'Split: ON' : 'Split View'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-xl bg-slate-900 border border-slate-800 p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-center shrink-0"
+                aria-label="Close Website Content Editor"
+              >
+                <X className="w-5 h-5 sm:w-4 sm:h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Non-Destructive Layer Explanation + Global CV Merge Bar */}
@@ -773,6 +800,26 @@ export function WebsiteEditorDrawer({
                       value={ov.github ?? cvGithub}
                       onChange={(e) => patchOverrides({ github: e.target.value })}
                       className="w-full min-h-[38px] rounded-lg bg-[#080D1A] border border-slate-700 px-2.5 text-xs text-slate-200 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] text-slate-400 mb-1">Kaggle URL (Data Science / BI)</label>
+                    <input
+                      type="text"
+                      value={ov.kaggle || ''}
+                      onChange={(e) => patchOverrides({ kaggle: e.target.value })}
+                      placeholder="https://kaggle.com/..."
+                      className="w-full min-h-[38px] rounded-lg bg-[#080D1A] border border-slate-700 px-2.5 text-xs text-cyan-300 font-mono placeholder-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] text-slate-400 mb-1">LeetCode / QA Testing URL</label>
+                    <input
+                      type="text"
+                      value={ov.leetcode || ''}
+                      onChange={(e) => patchOverrides({ leetcode: e.target.value })}
+                      placeholder="https://leetcode.com/..."
+                      className="w-full min-h-[38px] rounded-lg bg-[#080D1A] border border-slate-700 px-2.5 text-xs text-amber-300 font-mono placeholder-slate-600"
                     />
                   </div>
                 </div>
@@ -1692,6 +1739,27 @@ export function WebsiteEditorDrawer({
                             className="w-full rounded-lg bg-[#080D1A] border border-slate-700/80 p-2 text-[11px] font-mono text-emerald-200 placeholder-slate-500 leading-relaxed"
                           />
                         </div>
+
+                        {/* Interactive Media Embed / Live Dashboard URL */}
+                        <div>
+                          <label className="block text-[10.5px] font-semibold text-slate-300 mb-1">
+                            Interactive Demo or Power BI / Video Embed URL (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            value={enh.embedMediaUrl || ''}
+                            onChange={(e) =>
+                              updateProjectEnhancement(proj.id, {
+                                embedMediaUrl: e.target.value,
+                              })
+                            }
+                            placeholder="e.g. https://app.powerbi.com/... or https://youtube.com/embed/..."
+                            className="w-full min-h-[34px] rounded-lg bg-[#080D1A] border border-slate-700/80 px-2.5 text-[11px] text-cyan-300 font-mono placeholder-slate-500"
+                          />
+                          <p className="text-[10px] text-slate-500 mt-1">
+                            পাওয়ার বিআই রিপোর্ট, লাইভ ড্যাশবোর্ড বা ভিডিও ডেমো লিংক দিলে ভিজিটররা সরাসরি ইন্টারঅ্যাক্ট করতে পারবে।
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2048,6 +2116,53 @@ export function WebsiteEditorDrawer({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Live SEO & Social Card Preview */}
+              <div className="rounded-xl bg-[#0D1424] border border-slate-800 p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-white text-xs flex items-center gap-1.5">
+                    <Share2 className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Social Media &amp; Google Search Preview</span>
+                  </div>
+                  <span className="text-[10px] text-cyan-300 font-mono">OpenGraph Ready</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  LinkedIn, WhatsApp বা Google-এ আপনার লাইভ পোর্টফোলিও শেয়ার করলে যেভাবে প্রিভিউ কার্ডটি দেখাবে:
+                </p>
+
+                {/* Google Search Result Mockup */}
+                <div className="rounded-lg bg-[#080D1A] border border-slate-700/80 p-3 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10.5px] text-slate-400">
+                    <Search className="w-3 h-3 text-slate-500" />
+                    <span className="text-emerald-400 font-mono truncate">https://shoyebrabbi.github.io/cv</span>
+                  </div>
+                  <div className="text-xs font-bold text-blue-400 hover:underline cursor-pointer truncate">
+                    {ov.name || cvData.name} — {ov.title || cvData.title} | Technical Portfolio
+                  </div>
+                  <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">
+                    {ov.summary || cvData.summary}
+                  </p>
+                </div>
+
+                {/* Social Share Card Mockup */}
+                <div className="rounded-lg bg-[#080D1A] border border-slate-700/80 overflow-hidden">
+                  <div className="h-20 bg-gradient-to-r from-blue-900/60 via-indigo-900/40 to-slate-900 flex items-center justify-between px-4 border-b border-slate-800">
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-white truncate">{ov.name || cvData.name}</div>
+                      <div className="text-[10.5px] text-cyan-300 truncate">{ov.title || cvData.title}</div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[9.5px] font-bold bg-blue-600/30 border border-blue-500/40 text-blue-300">
+                      Live Portfolio
+                    </span>
+                  </div>
+                  <div className="p-2.5 bg-[#0B1221] text-[10.5px] text-slate-400 flex items-center justify-between">
+                    <span className="font-mono">shoyebrabbi.github.io/cv</span>
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Rich Preview
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

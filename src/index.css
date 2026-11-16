@@ -402,6 +402,146 @@ body:not(.page-split-view) .force-page-break::after {
   padding: 8px 11px;
 }
 
+/* Template 13: Nordic Emerald FinTech */
+.tpl-nordic-emerald .cv-section-title {
+  color: #065f46 !important;
+  border-bottom: 2px solid #059669 !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.tpl-nordic-emerald .cv-side-col {
+  background-color: #f0fdf4 !important;
+  border-right: 2px solid #a7f3d0 !important;
+  border-radius: 8px;
+  padding: 12px !important;
+}
+.tpl-nordic-emerald .experience-item {
+  border-left: 2.5px solid #10b981;
+  padding-left: 10px;
+  margin-bottom: 10px;
+}
+
+/* Template 14: Royal Indigo Tech Visionary */
+.tpl-royal-indigo #cvHeader {
+  border-bottom: 2.5px solid #4338ca;
+  padding-bottom: 12px;
+}
+.tpl-royal-indigo .cv-section-title {
+  color: #4338ca !important;
+  background-color: #eef2ff;
+  border-radius: 6px;
+  padding: 4px 10px !important;
+  font-weight: 800;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+.tpl-royal-indigo .cv-section-title::before {
+  display: none !important;
+}
+.tpl-royal-indigo .experience-item,
+.tpl-royal-indigo .project-item {
+  border-bottom: 1px solid #e0e7ff;
+  padding-bottom: 9px;
+  margin-bottom: 9px;
+}
+.tpl-royal-indigo .experience-item:last-child,
+.tpl-royal-indigo .project-item:last-child {
+  border-bottom: none;
+}
+
+/* Template 15: Elite Crimson Leadership */
+.tpl-elite-crimson #cvHeader {
+  border-bottom: 3px double #991b1b !important;
+  padding-bottom: 14px;
+}
+.tpl-elite-crimson .cv-section-title {
+  color: #991b1b !important;
+  border-bottom: 3px double #991b1b !important;
+  font-family: 'Merriweather', serif !important;
+  letter-spacing: 0.06em;
+  padding-bottom: 4px;
+}
+.tpl-elite-crimson .cv-section-title::before {
+  display: none !important;
+}
+.tpl-elite-crimson .exp-role,
+.tpl-elite-crimson .proj-title {
+  font-family: 'Merriweather', serif;
+  font-weight: 700;
+}
+
+/* Template 16: Pure Minimalist Wall-Street ATS */
+.tpl-wallstreet-ats #cvHeader {
+  border-bottom: 1.5px solid #1e293b !important;
+  padding-bottom: 10px;
+}
+.tpl-wallstreet-ats .contact-icon {
+  display: none !important;
+}
+.tpl-wallstreet-ats .cv-section-title {
+  color: #1e293b !important;
+  border-bottom: 1.5px solid #1e293b !important;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding-bottom: 3px;
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+.tpl-wallstreet-ats .cv-section-title::before {
+  display: none !important;
+}
+.tpl-wallstreet-ats .skills-table td:first-child {
+  background-color: transparent !important;
+  border-left: 2px solid #1e293b !important;
+  font-weight: 700;
+}
+.tpl-wallstreet-ats .experience-item {
+  margin-bottom: 10px;
+}
+
+/* Universal Career Timeline Rail */
+.cv-timeline-rail .experience-item {
+  position: relative;
+  padding-left: 15px !important;
+  border-left: 2px solid var(--theme-border) !important;
+  margin-left: 5px;
+  margin-bottom: 12px;
+}
+.cv-timeline-rail .experience-item::before {
+  content: "";
+  position: absolute;
+  left: -5.5px;
+  top: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background-color: var(--theme-primary);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px var(--theme-primary);
+}
+
+/* Projects Compact 2-Column Grid */
+.projects-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+@media (max-width: 640px) {
+  .projects-compact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.projects-compact-grid .project-item {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
 /* Photo Styling */
 #photoWrapper {
   width: var(--photo-width);
@@ -601,11 +741,11 @@ body.exporting-cv #cvHeader.cv-header-left {
 }
 body.exporting-cv #cvHeader.cv-header-right #headerTextContainer,
 body.exporting-cv #cvHeader.cv-header-left #headerTextContainer {
-  text-align: left !important;
+  text-align: inherit;
 }
 body.exporting-cv #cvHeader.cv-header-right #contactItemsList,
 body.exporting-cv #cvHeader.cv-header-left #contactItemsList {
-  justify-content: flex-start !important;
+  align-items: center;
 }
 body.exporting-cv #credentialsGrid {
   display: grid !important;
@@ -723,11 +863,11 @@ body.exporting-cv .cv-references-grid {
   }
   #cvHeader.cv-header-right #headerTextContainer,
   #cvHeader.cv-header-left #headerTextContainer {
-    text-align: left !important;
+    text-align: inherit;
   }
   #cvHeader.cv-header-right #contactItemsList,
   #cvHeader.cv-header-left #contactItemsList {
-    justify-content: flex-start !important;
+    align-items: center;
   }
   #credentialsGrid {
     display: grid !important;
@@ -808,11 +948,11 @@ body.exporting-cv .cv-references-grid {
 }
 .print-preview-stage #cvHeader.cv-header-right #headerTextContainer,
 .print-preview-stage #cvHeader.cv-header-left #headerTextContainer {
-  text-align: left !important;
+  text-align: inherit;
 }
 .print-preview-stage #cvHeader.cv-header-right #contactItemsList,
 .print-preview-stage #cvHeader.cv-header-left #contactItemsList {
-  justify-content: flex-start !important;
+  align-items: center;
 }
 .print-preview-stage #credentialsGrid {
   display: grid !important;

@@ -17,6 +17,11 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
+  Sparkles,
+  ShieldCheck,
+  Smile,
+  Ban,
+  GripVertical,
 } from 'lucide-react';
 import { CVData, CVSectionId, StudioSettings } from '../types/cv';
 import { compressImageFileToDataUrl } from '../utils/imageCompress';
@@ -35,6 +40,8 @@ interface CVDocumentProps {
   onOpenLinkModalForContact: (contactId: string, currentText: string, currentUrl: string) => void;
   onOpenLinkModalForProject: (projectId: string, currentTitle: string, currentUrl: string) => void;
   onOpenSignatureModal: () => void;
+  onOpenAddSectionModal?: () => void;
+  onOpenBulletLibraryModal?: (expIdx: number, roleTitle: string) => void;
 }
 
 export function CVDocument({
@@ -48,9 +55,19 @@ export function CVDocument({
   onOpenLinkModalForContact,
   onOpenLinkModalForProject,
   onOpenSignatureModal,
+  onOpenAddSectionModal,
+  onOpenBulletLibraryModal,
 }: CVDocumentProps) {
   const isHighlightActive = jdHighlightKeywords.length > 0;
   const effectiveEditMode = settings.isEditMode && !isHighlightActive;
+
+  // Drag and Drop States
+  const [draggingExpIdx, setDraggingExpIdx] = useState<number | null>(null);
+  const [dragOverExpIdx, setDragOverExpIdx] = useState<number | null>(null);
+  const [draggingSecId, setDraggingSecId] = useState<CVSectionId | null>(null);
+  const [dragOverSecId, setDragOverSecId] = useState<CVSectionId | null>(null);
+  const [draggingCsIdx, setDraggingCsIdx] = useState<number | null>(null);
+  const [dragOverCsIdx, setDragOverCsIdx] = useState<number | null>(null);
 
   function highlightTextHtml(raw: string, isHtml = false): string {
     const base = isHtml
@@ -106,6 +123,14 @@ export function CVDocument({
       ? 'tpl-swiss'
       : settings.template === 'tech-mono'
       ? 'tpl-mono'
+      : settings.template === 'nordic-emerald'
+      ? 'tpl-nordic-emerald'
+      : settings.template === 'royal-indigo'
+      ? 'tpl-royal-indigo'
+      : settings.template === 'elite-crimson'
+      ? 'tpl-elite-crimson'
+      : settings.template === 'wallstreet-ats'
+      ? 'tpl-wallstreet-ats'
       : '';
 
   const headerDarkBanner = settings.headerStyle === 'dark-banner' ? 'header-dark-banner' : '';
@@ -276,6 +301,38 @@ export function CVDocument({
     });
   }
 
+  function autoHighlightKeyMetrics() {
+    const targetPhrases = [
+      '50,000+',
+      '80+',
+      '100+',
+      '4+',
+      '99.9%',
+      '100%',
+      'REST API',
+      'Power BI',
+      'PostgreSQL',
+      'Star Schema',
+      'Jira',
+      'Postman',
+    ];
+    onUpdateCVData((prev) => {
+      const updatedExperiences = prev.experiences.map((exp) => ({
+        ...exp,
+        bullets: exp.bullets.map((b) => {
+          let text = b.text;
+          targetPhrases.forEach((phrase) => {
+            if (text.includes(phrase) && !text.includes(`<strong>${phrase}</strong>`)) {
+              text = text.split(phrase).join(`<strong>${phrase}</strong>`);
+            }
+          });
+          return { ...b, text };
+        }),
+      }));
+      return { ...prev, experiences: updatedExperiences };
+    });
+  }
+
   // Projects operations
   function moveProject(index: number, direction: -1 | 1) {
     onUpdateCVData((prev) => {
@@ -347,7 +404,45 @@ export function CVDocument({
     }));
   }
 
-  // Header alignment classes based on photoPosition and headerAlign override (consistent across all A4 viewports)
+  // Effective Header & Name Alignment (Supports Left, Center, Right, and Split Corporate)
+  const isHeaderSplit = settings.headerLayout === 'split' || settings.headerAlign === 'split';
+
+  const effectiveNameAlign: 'left' | 'center' | 'right' =
+    settings.nameAlign && settings.nameAlign !== 'auto'
+      ? settings.nameAlign
+      : isHeaderSplit
+      ? 'left'
+      : settings.headerAlign === 'center' || settings.headerAlign === 'right' || settings.headerAlign === 'left'
+      ? settings.headerAlign
+      : settings.photoPosition === 'center'
+      ? 'center'
+      : 'left';
+
+  const effectiveContactAlign: 'left' | 'center' | 'right' =
+    settings.contactAlign && settings.contactAlign !== 'auto'
+      ? settings.contactAlign
+      : isHeaderSplit
+      ? 'right'
+      : settings.headerAlign === 'center' || settings.headerAlign === 'right' || settings.headerAlign === 'left'
+      ? settings.headerAlign
+      : settings.photoPosition === 'center'
+      ? 'center'
+      : 'left';
+
+  const nameTextAlignClass =
+    effectiveNameAlign === 'center'
+      ? 'text-center'
+      : effectiveNameAlign === 'right'
+      ? 'text-right'
+      : 'text-left';
+
+  const contactJustifyClass =
+    effectiveContactAlign === 'center'
+      ? 'justify-center'
+      : effectiveContactAlign === 'right'
+      ? 'justify-end'
+      : 'justify-start';
+
   const headerLayoutClass =
     settings.photoPosition === 'right'
       ? 'cv-header-right flex-row-reverse items-start justify-between'
@@ -355,23 +450,27 @@ export function CVDocument({
       ? 'cv-header-left flex-row items-start justify-between'
       : settings.photoPosition === 'center'
       ? 'flex-col items-center text-center'
+      : isHeaderSplit
+      ? 'flex-row items-start justify-between'
+      : effectiveNameAlign === 'center'
+      ? 'flex-col items-center'
+      : effectiveNameAlign === 'right'
+      ? 'flex-col items-end'
       : 'flex-col items-start';
 
-  const effectiveAlign = settings.headerAlign && settings.headerAlign !== 'auto'
-    ? settings.headerAlign
-    : settings.photoPosition === 'center'
-    ? 'center'
-    : 'left';
+  const textAlignmentClass = isHeaderSplit
+    ? 'flex flex-col sm:flex-row sm:items-end justify-between gap-3 w-full'
+    : `w-full flex flex-col ${
+        effectiveNameAlign === 'center'
+          ? 'items-center text-center'
+          : effectiveNameAlign === 'right'
+          ? 'items-end text-right'
+          : 'items-start text-left'
+      }`;
 
-  const textAlignmentClass =
-    effectiveAlign === 'center'
-      ? 'w-full text-center'
-      : 'flex-1 text-left';
-
-  const contactAlignmentClass =
-    effectiveAlign === 'center'
-      ? 'mt-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px]'
-      : 'mt-2.5 flex flex-wrap items-center justify-start gap-x-4 gap-y-1.5 text-[12px]';
+  const contactAlignmentClass = isHeaderSplit
+    ? `flex flex-wrap items-center ${contactJustifyClass} gap-x-3 gap-y-1.5 text-[12px] max-w-full sm:max-w-[62%]`
+    : `mt-2.5 flex flex-wrap items-center ${contactJustifyClass} gap-x-4 gap-y-1.5 text-[12px] w-full`;
 
   const customTextClass =
     settings.cvTextColor && settings.cvTextColor !== '#1e293b' ? 'custom-text-color' : '';
@@ -404,10 +503,93 @@ export function CVDocument({
       {settings.showHeader !== false && (
       <header
         id="cvHeader"
-        className={`flex gap-5 transition-all ${
+        className={`relative group/hdr flex gap-5 transition-all ${
           settings.showHeaderDivider !== false ? 'pb-3.5 border-b-2 theme-border' : 'pb-2'
         } ${headerLayoutClass}`}
       >
+        {/* Quick Floating Alignment Bar (Direct on Canvas in Edit Mode, neatly at top-right of Header) */}
+        {effectiveEditMode && (
+          <div className="builder-control no-print hidden group-hover/hdr:flex absolute right-0 -top-5 items-center gap-1 bg-slate-900/95 text-white px-2 py-0.5 rounded-md shadow-xl text-[10px] z-40 border border-slate-700/80">
+            <span className="text-slate-400 font-medium mr-0.5">Align:</span>
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateSettings({
+                  headerAlign: 'left',
+                  nameAlign: 'left',
+                  contactAlign: 'left',
+                  headerLayout: 'stacked',
+                })
+              }
+              className={`px-1.5 py-0.5 rounded transition ${
+                effectiveNameAlign === 'left' && !isHeaderSplit
+                  ? 'bg-blue-600 text-white font-bold'
+                  : 'hover:bg-slate-800 text-slate-300'
+              }`}
+              title="Align Header Left"
+            >
+              Left
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateSettings({
+                  headerAlign: 'center',
+                  nameAlign: 'center',
+                  contactAlign: 'center',
+                  headerLayout: 'stacked',
+                })
+              }
+              className={`px-1.5 py-0.5 rounded transition ${
+                effectiveNameAlign === 'center' && !isHeaderSplit
+                  ? 'bg-blue-600 text-white font-bold'
+                  : 'hover:bg-slate-800 text-slate-300'
+              }`}
+              title="Align Header Center"
+            >
+              Center
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateSettings({
+                  headerAlign: 'right',
+                  nameAlign: 'right',
+                  contactAlign: 'right',
+                  headerLayout: 'stacked',
+                })
+              }
+              className={`px-1.5 py-0.5 rounded transition ${
+                effectiveNameAlign === 'right' && !isHeaderSplit
+                  ? 'bg-blue-600 text-white font-bold'
+                  : 'hover:bg-slate-800 text-slate-300'
+              }`}
+              title="Align Header Right"
+            >
+              Right
+            </button>
+            <span className="text-slate-600">|</span>
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateSettings({
+                  headerAlign: 'split',
+                  headerLayout: 'split',
+                  nameAlign: 'left',
+                  contactAlign: 'right',
+                })
+              }
+              className={`px-1.5 py-0.5 rounded transition ${
+                isHeaderSplit
+                  ? 'bg-blue-600 text-white font-bold'
+                  : 'hover:bg-slate-800 text-slate-300'
+              }`}
+              title="Corporate Split: Name on Left, Contacts on Right"
+            >
+              Split (L+R)
+            </button>
+          </div>
+        )}
         {/* QR Code in Header (if enabled) */}
         {settings.qrCode?.enabled && settings.qrCode?.position === 'header' && qrDataUrl && (
           <div className="shrink-0 flex flex-col items-center justify-center p-1.5 rounded-lg border border-slate-200 bg-white shadow-sm text-center">
@@ -484,121 +666,183 @@ export function CVDocument({
         )}
 
         {/* Identity & Movable Contact Bar */}
-        <div id="headerTextContainer" className={textAlignmentClass}>
-          <h1
-            id="cvName"
-            contentEditable={effectiveEditMode}
-            suppressContentEditableWarning
-            onBlur={(e) => handleTextBlur('name', e.currentTarget.innerText)}
-            className="text-[28px] font-extrabold tracking-tight text-slate-900 uppercase leading-tight"
+        <div id="headerTextContainer" className={`relative ${textAlignmentClass}`}>
+          <div
+            className={`identity-block ${
+              isHeaderSplit ? 'min-w-[200px] shrink-0 text-left' : `w-full ${nameTextAlignClass}`
+            }`}
           >
-            {cvData.name}
-          </h1>
-          {settings.showTitle !== false && (
-            <p
-              id="cvTitle"
+            <h1
+              id="cvName"
               contentEditable={effectiveEditMode}
               suppressContentEditableWarning
-              onBlur={(e) => handleTextBlur('title', e.currentTarget.innerText)}
-              className="text-[13.5px] font-bold theme-text tracking-wide uppercase mt-0.5"
+              onBlur={(e) => handleTextBlur('name', e.currentTarget.innerText)}
+              className="text-[28px] font-extrabold tracking-tight text-slate-900 uppercase leading-tight"
             >
-              {cvData.title}
-            </p>
-          )}
+              {cvData.name}
+            </h1>
+            {settings.showTitle !== false && (
+              <p
+                id="cvTitle"
+                contentEditable={effectiveEditMode}
+                suppressContentEditableWarning
+                onBlur={(e) => handleTextBlur('title', e.currentTarget.innerText)}
+                className="text-[13.5px] font-bold theme-text tracking-wide uppercase mt-0.5"
+              >
+                {cvData.title}
+              </p>
+            )}
+          </div>
 
           {/* Granular Contact Items */}
           {settings.showContacts !== false && (
           <div id="contactItemsList" className={contactAlignmentClass}>
-            {cvData.contacts.map((item, index) => (
-              <div
-                key={item.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (effectiveEditMode) setActiveTouchKey(`c:${item.id}`);
-                }}
-                className={`contact-item relative group/citem inline-flex items-center gap-1.5 ${
-                  activeTouchKey === `c:${item.id}` ? 'cv-touch-active' : ''
-                }`}
-                data-type={item.type}
-              >
-                <span
-                  className="contact-icon theme-text"
-                  contentEditable={effectiveEditMode}
-                  suppressContentEditableWarning
-                  onBlur={(e) => {
-                    const icon = e.currentTarget.innerText.trim();
-                    onUpdateCVData((prev) => ({
-                      ...prev,
-                      contacts: prev.contacts.map((contact) =>
-                        contact.id === item.id ? { ...contact, icon } : contact
-                      ),
-                    }));
-                  }}
-                  title={effectiveEditMode ? 'Edit contact icon' : undefined}
-                  aria-label={`Icon for ${item.label}`}
-                >
-                  {getContactIcon(item)}
-                </span>
-                <a
-                  href={sanitizeHref(item.url) || undefined}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="contact-link font-medium"
-                  contentEditable={effectiveEditMode}
-                  suppressContentEditableWarning
-                  onBlur={(e) => {
-                    const newText = e.currentTarget.innerText.trim();
-                    onUpdateCVData((prev) => {
-                      const newContacts = [...prev.contacts];
-                      newContacts[index] = { ...newContacts[index], label: newText };
-                      return { ...prev, contacts: newContacts };
-                    });
-                  }}
-                >
-                  {item.label}
-                </a>
+            {cvData.contacts.map((item, index) => {
+              const showIcons =
+                settings.showContactIcons !== false &&
+                settings.template !== 'strict-ats' &&
+                settings.template !== 'wallstreet-ats';
+              const rawIcon = getContactIcon(item);
+              const iconText = showIcons ? rawIcon : '';
 
-                {/* Individual Contact Controls */}
-                <div
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="builder-control no-print hidden group-hover/citem:flex absolute -top-4 left-0 items-center gap-0.5 bg-slate-900/95 text-white px-1.5 py-0.5 rounded text-[9px] shadow-md z-30"
-                >
-                  <button
-                    type="button"
-                    onClick={() => moveContact(index, -1)}
-                    title="Move Left"
-                    className="hover:text-blue-300"
+              return (
+                <React.Fragment key={item.id}>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (effectiveEditMode) setActiveTouchKey(`c:${item.id}`);
+                    }}
+                    className={`contact-item relative group/citem inline-flex items-center ${
+                      iconText ? 'gap-1.5' : 'gap-0'
+                    } ${activeTouchKey === `c:${item.id}` ? 'cv-touch-active' : ''}`}
+                    data-type={item.type}
                   >
-                    <ChevronLeft className="w-3 h-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveContact(index, 1)}
-                    title="Move Right"
-                    className="hover:text-blue-300"
-                  >
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onOpenLinkModalForContact(item.id, item.label, item.url)}
-                    className="text-blue-300 hover:text-blue-200"
-                    title="Edit Link"
-                  >
-                    <LinkIcon className="w-3 h-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteContact(item.id)}
-                    className="text-rose-400 hover:text-rose-300"
-                    title="Delete entire contact item (icon, label, and link)"
-                    aria-label={`Delete entire contact item: ${item.label}`}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
+                    {Boolean(iconText) && (
+                      <span
+                        className="contact-icon theme-text"
+                        contentEditable={effectiveEditMode}
+                        suppressContentEditableWarning
+                        onBlur={(e) => {
+                          const icon = e.currentTarget.innerText.trim();
+                          onUpdateCVData((prev) => ({
+                            ...prev,
+                            contacts: prev.contacts.map((contact) =>
+                              contact.id === item.id ? { ...contact, icon: icon || '' } : contact
+                            ),
+                          }));
+                        }}
+                        title={effectiveEditMode ? 'Edit contact icon' : undefined}
+                        aria-label={`Icon for ${item.label}`}
+                      >
+                        {iconText}
+                      </span>
+                    )}
+                    <a
+                      href={sanitizeHref(item.url) || undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => {
+                        if (effectiveEditMode) e.preventDefault();
+                      }}
+                      className="contact-link font-medium"
+                      contentEditable={effectiveEditMode}
+                      suppressContentEditableWarning
+                      onBlur={(e) => {
+                        const newText = e.currentTarget.innerText.trim();
+                        onUpdateCVData((prev) => {
+                          const newContacts = [...prev.contacts];
+                          newContacts[index] = { ...newContacts[index], label: newText };
+                          return { ...prev, contacts: newContacts };
+                        });
+                      }}
+                    >
+                      {item.label}
+                    </a>
+
+                    {/* Individual Contact Controls (positioned safely below contact text) */}
+                    <div
+                      onMouseDown={(e) => e.preventDefault()}
+                      className="builder-control no-print hidden group-hover/citem:flex absolute -bottom-5 left-0 items-center gap-0.5 bg-slate-900/95 text-white px-1.5 py-0.5 rounded text-[9px] shadow-md z-30"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => moveContact(index, -1)}
+                        title="Move Left"
+                        className="hover:text-blue-300"
+                      >
+                        <ChevronLeft className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveContact(index, 1)}
+                        title="Move Right"
+                        className="hover:text-blue-300"
+                      >
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenLinkModalForContact(item.id, item.label, item.url)}
+                        className="text-blue-300 hover:text-blue-200"
+                        title="Edit Link"
+                      >
+                        <LinkIcon className="w-3 h-3" />
+                      </button>
+                      {showIcons && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onUpdateCVData((prev) => ({
+                              ...prev,
+                              contacts: prev.contacts.map((c) =>
+                                c.id === item.id
+                                  ? { ...c, icon: (c.icon === '' || c.icon === 'none') ? undefined : '' }
+                                  : c
+                              ),
+                            }));
+                          }}
+                          className="hover:text-amber-300"
+                          title={
+                            item.icon === '' || item.icon === 'none'
+                              ? 'Restore Icon'
+                              : 'Remove Icon (Zero Ghost Space)'
+                          }
+                        >
+                          {item.icon === '' || item.icon === 'none' ? (
+                            <Smile className="w-3 h-3 text-emerald-400" />
+                          ) : (
+                            <Ban className="w-3 h-3 text-amber-300" />
+                          )}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => deleteContact(item.id)}
+                        className="text-rose-400 hover:text-rose-300"
+                        title="Delete entire contact item (icon, label, and link)"
+                        aria-label={`Delete entire contact item: ${item.label}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                  {index < cvData.contacts.length - 1 &&
+                    settings.contactSeparator &&
+                    settings.contactSeparator !== 'none' && (
+                      <span
+                        aria-hidden="true"
+                        className="contact-separator text-slate-400 font-normal select-none px-0.5"
+                      >
+                        {settings.contactSeparator === 'dot'
+                          ? '·'
+                          : settings.contactSeparator === 'pipe'
+                          ? '|'
+                          : '/'}
+                      </span>
+                    )}
+                </React.Fragment>
+              );
+            })}
           </div>
           )}
         </div>
@@ -731,6 +975,24 @@ export function CVDocument({
                           />
                         </div>
                       )}
+                      {settings.skillsMode === 'dots' && (() => {
+                        const rating = index === 0 ? 5 : index <= 2 ? 5 : 4;
+                        return (
+                          <div className="flex items-center gap-1 mt-1 mb-0.5" title={`Proficiency: ${rating}/5`}>
+                            {[1, 2, 3, 4, 5].map((dot) => {
+                              const isFilled = dot <= rating;
+                              return (
+                                <span
+                                  key={dot}
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isFilled ? 'theme-bg' : 'bg-slate-300'
+                                  }`}
+                                />
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="relative">
                       {isHighlightActive ? (
@@ -784,6 +1046,14 @@ export function CVDocument({
             <div className="cv-section-header-bar builder-control no-print hidden group-hover/sec:flex absolute right-0 -top-5 items-center gap-1 bg-slate-900/95 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-30">
               <button
                 type="button"
+                onClick={autoHighlightKeyMetrics}
+                className="text-amber-300 hover:text-amber-200 px-1 font-semibold flex items-center gap-1 transition"
+                title="Auto-bold quantifiable metrics (50,000+, 80+, 100+, etc.) for ATS & recruiters"
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" /> Auto-Bold Metrics
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   onUpdateCVData((prev) => ({
                     ...prev,
@@ -827,17 +1097,55 @@ export function CVDocument({
               {settings.sectionTitles?.experience || 'PROFESSIONAL EXPERIENCE'}
             </h2>
 
-            <div id="experienceList" className="space-y-3.5">
+            <div
+              id="experienceList"
+              className={`space-y-3.5 ${settings.showTimelineRail ? 'cv-timeline-rail' : ''}`}
+            >
               {cvData.experiences.map((exp, expIdx) => (
                 <div
                   key={exp.id}
+                  draggable={effectiveEditMode}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/exp-idx', String(expIdx));
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDraggingExpIdx(expIdx);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOverExpIdx !== expIdx) setDragOverExpIdx(expIdx);
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverExpIdx === expIdx) setDragOverExpIdx(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const srcStr = e.dataTransfer.getData('text/exp-idx');
+                    const srcIdx = parseInt(srcStr, 10);
+                    if (!isNaN(srcIdx) && srcIdx !== expIdx) {
+                      onUpdateCVData((prev) => {
+                        const nextExp = [...prev.experiences];
+                        const [moved] = nextExp.splice(srcIdx, 1);
+                        nextExp.splice(expIdx, 0, moved);
+                        return { ...prev, experiences: nextExp };
+                      });
+                    }
+                    setDraggingExpIdx(null);
+                    setDragOverExpIdx(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingExpIdx(null);
+                    setDragOverExpIdx(null);
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (effectiveEditMode) setActiveTouchKey(`e:${exp.id}`);
                   }}
                   className={`experience-item relative group/item rounded-lg transition ${
                     exp.forcePageBreak ? 'force-page-break' : ''
-                  } ${activeTouchKey === `e:${exp.id}` ? 'cv-touch-active' : ''}`}
+                  } ${activeTouchKey === `e:${exp.id}` ? 'cv-touch-active' : ''} ${
+                    draggingExpIdx === expIdx ? 'opacity-40 scale-[0.99] border-2 border-dashed border-blue-400' : ''
+                  } ${dragOverExpIdx === expIdx && draggingExpIdx !== expIdx ? 'border-t-2 border-blue-500 bg-blue-50/20' : ''}`}
                 >
                   <div className="flex flex-wrap justify-between items-baseline gap-2">
                     <div className="font-bold text-slate-900 text-[1.05em]">
@@ -970,6 +1278,20 @@ export function CVDocument({
                       activeTouchKey === `e:${exp.id}` ? '!flex' : ''
                     }`}
                   >
+                    <span
+                      className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-white p-0.5 inline-flex items-center"
+                      title="Drag to reorder role position"
+                    >
+                      <GripVertical className="w-3.5 h-3.5" />
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onOpenBulletLibraryModal?.(expIdx, `${exp.role} (${exp.company})`)}
+                      className="text-amber-300 hover:text-amber-200 font-semibold flex items-center gap-1"
+                      title="Open Pre-written action bullet points library"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-400" /> Bullets Library
+                    </button>
                     <button type="button" onClick={() => addBullet(expIdx)} className="text-emerald-300 hover:underline font-semibold">
                       + Bullet
                     </button>
@@ -1035,7 +1357,14 @@ export function CVDocument({
               {settings.sectionTitles?.projects || 'KEY TECHNICAL PROJECTS & CASE STUDIES'}
             </h2>
 
-            <div id="projectsList" className="space-y-2.5">
+            <div
+              id="projectsList"
+              className={
+                settings.projectLayout === 'compact-grid'
+                  ? 'projects-compact-grid gap-3'
+                  : 'space-y-2.5'
+              }
+            >
               {cvData.projects.map((proj, pIdx) => (
                 <div
                   key={proj.id}
@@ -1053,6 +1382,9 @@ export function CVDocument({
                         href={sanitizeHref(proj.url) || undefined}
                         target="_blank"
                         rel="noreferrer"
+                        onClick={(e) => {
+                          if (effectiveEditMode) e.preventDefault();
+                        }}
                         className="proj-link underline hover:text-blue-600"
                         contentEditable={effectiveEditMode}
                         suppressContentEditableWarning
@@ -1341,12 +1673,47 @@ export function CVDocument({
         const customSectionsBlock = cvData.customSections.map((sec, secIdx) => (
           <section
             key={sec.id}
+            draggable={effectiveEditMode}
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/cs-idx', String(secIdx));
+              e.dataTransfer.effectAllowed = 'move';
+              setDraggingCsIdx(secIdx);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (dragOverCsIdx !== secIdx) setDragOverCsIdx(secIdx);
+            }}
+            onDragLeave={() => {
+              if (dragOverCsIdx === secIdx) setDragOverCsIdx(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const srcStr = e.dataTransfer.getData('text/cs-idx');
+              const srcIdx = parseInt(srcStr, 10);
+              if (!isNaN(srcIdx) && srcIdx !== secIdx) {
+                onUpdateCVData((prev) => {
+                  const next = [...prev.customSections];
+                  const [m] = next.splice(srcIdx, 1);
+                  next.splice(secIdx, 0, m);
+                  return { ...prev, customSections: next };
+                });
+              }
+              setDraggingCsIdx(null);
+              setDragOverCsIdx(null);
+            }}
+            onDragEnd={() => {
+              setDraggingCsIdx(null);
+              setDragOverCsIdx(null);
+            }}
             onClick={(e) => {
               e.stopPropagation();
               if (effectiveEditMode) setActiveTouchKey(`cs:${sec.id}`);
             }}
-            className={`cv-section group/sec ${sec.forcePageBreak ? 'force-page-break' : ''} ${
+            className={`cv-section group/sec transition ${sec.forcePageBreak ? 'force-page-break' : ''} ${
               activeTouchKey === `cs:${sec.id}` ? 'cv-touch-active' : ''
+            } ${draggingCsIdx === secIdx ? 'opacity-40 scale-[0.99] border-2 border-dashed border-cyan-400' : ''} ${
+              dragOverCsIdx === secIdx && draggingCsIdx !== secIdx ? 'border-t-2 border-cyan-500 bg-cyan-50/20' : ''
             }`}
           >
             <div
@@ -1356,6 +1723,12 @@ export function CVDocument({
               }}
               className="cv-section-header-bar builder-control no-print hidden group-hover/sec:flex absolute right-0 -top-5 items-center gap-1 bg-slate-900/95 text-white px-2 py-0.5 rounded-md shadow-lg text-[10px] z-30"
             >
+              <span
+                className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-white p-0.5 inline-flex items-center"
+                title="Drag to reorder custom section"
+              >
+                <GripVertical className="w-3.5 h-3.5" />
+              </span>
               <select
                 value={sec.type}
                 onChange={(e) =>
@@ -1697,18 +2070,60 @@ export function CVDocument({
                   return (
                     <div
                       key={secId}
+                      draggable={effectiveEditMode}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/sec-id', secId);
+                        e.dataTransfer.effectAllowed = 'move';
+                        setDraggingSecId(secId);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        if (dragOverSecId !== secId) setDragOverSecId(secId);
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverSecId === secId) setDragOverSecId(null);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const srcId = e.dataTransfer.getData('text/sec-id') as CVSectionId;
+                        if (srcId && srcId !== secId) {
+                          const from = currentOrder.indexOf(srcId);
+                          const to = currentOrder.indexOf(secId);
+                          if (from >= 0 && to >= 0) {
+                            const next = [...currentOrder];
+                            const [m] = next.splice(from, 1);
+                            next.splice(to, 0, m);
+                            onUpdateSettings({ sectionOrder: next });
+                          }
+                        }
+                        setDraggingSecId(null);
+                        setDragOverSecId(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggingSecId(null);
+                        setDragOverSecId(null);
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (effectiveEditMode) setActiveTouchKey(`wrap:${secId}`);
                       }}
-                      className={`relative group/wrap ${
+                      className={`relative group/wrap transition ${
                         activeTouchKey === `wrap:${secId}` ? 'cv-touch-active' : ''
+                      } ${draggingSecId === secId ? 'opacity-40 scale-[0.99] border-2 border-dashed border-blue-400 rounded-lg' : ''} ${
+                        dragOverSecId === secId && draggingSecId !== secId ? 'border-t-2 border-blue-500 bg-blue-50/20' : ''
                       }`}
                     >
                       <div
                         onMouseDown={(e) => e.preventDefault()}
-                        className="builder-control no-print hidden group-hover/wrap:flex absolute right-0 -top-5 md:-left-7 md:right-auto md:top-0 flex-row md:flex-col gap-0.5 bg-slate-900/95 text-white p-0.5 rounded shadow-md z-30 text-[9px]"
+                        className="builder-control no-print hidden group-hover/wrap:flex absolute right-0 -top-5 md:-left-7 md:right-auto md:top-0 flex-row md:flex-col items-center gap-0.5 bg-slate-900/95 text-white p-0.5 rounded shadow-md z-30 text-[9px]"
                       >
+                        <span
+                          className="cursor-grab active:cursor-grabbing p-0.5 text-slate-400 hover:text-white"
+                          title="Drag to reorder section"
+                        >
+                          <GripVertical className="w-3.5 h-3.5" />
+                        </span>
                         <button
                           type="button"
                           disabled={sIdx === 0}
@@ -1741,6 +2156,20 @@ export function CVDocument({
                   );
                 })}
                 {customSectionsBlock}
+
+                {/* 1-Click Pre-Built Section Adder */}
+                {effectiveEditMode && (
+                  <div className="builder-control no-print my-4 pt-3 border-t border-dashed border-slate-300 flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={onOpenAddSectionModal}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold flex items-center gap-2 shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Add Pre-Built Section Template (Awards, References, Languages...)</span>
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -1814,18 +2243,23 @@ export function CVDocument({
             {settings.footerNote || `${cvData.name} - Executive Master Technical CV`}
           </span>
 
-          {/* QR Code in Footer (if enabled) */}
+          {/* Digital Verification QR Badge in Footer (if enabled) */}
           {settings.qrCode?.enabled && settings.qrCode?.position === 'footer' && qrDataUrl && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-2 py-1 rounded-md border border-slate-200 bg-white/90 shadow-2xs">
               <img
                 src={qrDataUrl}
-                alt="QR Code"
-                style={{ width: '42px', height: '42px' }}
-                className="object-contain"
+                alt="Verification QR Code"
+                style={{ width: '38px', height: '38px' }}
+                className="object-contain shrink-0"
               />
-              <span className="text-[9px] font-bold text-slate-500 uppercase">
-                {settings.qrCode.label || 'Scan Portfolio'}
-              </span>
+              <div className="flex flex-col text-left">
+                <span className="text-[8.5px] font-extrabold uppercase tracking-tight theme-text flex items-center gap-0.5">
+                  <ShieldCheck className="w-2.5 h-2.5 inline" /> {settings.qrCode.label || 'Verified Credentials'}
+                </span>
+                <span className="text-[7.5px] text-slate-400 font-medium">
+                  Scan to view live profile
+                </span>
+              </div>
             </div>
           )}
 

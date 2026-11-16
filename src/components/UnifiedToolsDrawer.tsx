@@ -20,6 +20,7 @@ import {
   Inbox,
   BarChart3,
   CheckCircle2,
+  Send,
 } from 'lucide-react';
 import {
   CVData,
@@ -180,14 +181,29 @@ export function UnifiedToolsDrawer({
 
   if (!isOpen) return null;
 
-  // JD Keyword analysis
+  // JD Keyword analysis (Scans entire CV including skills, certifications, education & custom sections)
   const cvFullText = [
     cvData.name,
     cvData.title,
     cvData.summary,
-    ...cvData.skills.map((s) => s.category + ' ' + s.competencies),
-    ...cvData.experiences.flatMap((e) => [e.role, e.company, ...e.bullets.map((b) => b.text)]),
-    ...cvData.projects.map((p) => p.title + ' ' + p.technologies + ' ' + p.description),
+    ...cvData.contacts.map((c) => c.label),
+    ...cvData.skills.flatMap((s) => [s.category, s.competencies]),
+    ...cvData.experiences.flatMap((e) => [
+      e.role,
+      e.company,
+      ...e.bullets.map((b) => b.text.replace(/<[^>]*>/g, '')),
+    ]),
+    ...cvData.projects.flatMap((p) => [p.title, p.technologies, p.description]),
+    cvData.education.degree,
+    cvData.education.school,
+    cvData.education.modules,
+    ...cvData.certifications,
+    cvData.languages,
+    cvData.strengths,
+    ...cvData.customSections.flatMap((cs) => [
+      cs.title,
+      ...cs.content.map((c) => c.replace(/<[^>]*>/g, '')),
+    ]),
   ]
     .join(' ')
     .toLowerCase();
@@ -1486,14 +1502,42 @@ Graduated with a B.Sc. in CSIT (2020) and certified in Google Data Analytics, Ap
                             }
                             className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold inline-flex items-center gap-1"
                           >
-                            <Mail className="w-3 h-3" /> Reply
+                            <Mail className="w-3 h-3" /> Mail
+                          </a>
+                          <a
+                            href={
+                              sanitizeHref(
+                                `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(inq.senderEmail)}&su=${encodeURIComponent(`Re: ${inq.subject || 'Opportunity Discussion'}`)}&body=${encodeURIComponent(
+                                  `Dear ${inq.senderName},\n\nThank you for reaching out regarding "${inq.subject}". I appreciate your interest in my profile as a Data Analyst & SQA Engineer.\n\nI am currently available for immediate joining and technical discussions. You can also view my live interactive portfolio and verified credentials at:\nhttps://shoyebrabbi.github.io/cv/\n\nLooking forward to speaking with you.\n\nBest regards,\nMd Shoyeb Rabbi\nPhone: +8801622517200\nEmail: shoyebrabbi@gmail.com`
+                                )}`
+                              ) || undefined
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2.5 py-1 rounded bg-rose-600/90 hover:bg-rose-600 text-white text-[11px] font-semibold inline-flex items-center gap-1"
+                            title="Open pre-drafted response in Gmail Web"
+                          >
+                            <Send className="w-3 h-3" /> Gmail Draft
                           </a>
                           <button
                             type="button"
-                            onClick={() => handleCopyText(inq.senderEmail, 'Sender Email')}
-                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold inline-flex items-center gap-1"
+                            onClick={() =>
+                              handleCopyText(
+                                `Dear ${inq.senderName},\n\nThank you for reaching out regarding "${inq.subject}". I appreciate your interest in my profile as a Data Analyst & SQA Engineer.\n\nI am currently available for immediate joining and technical discussions. You can also view my live interactive portfolio and verified credentials at:\nhttps://shoyebrabbi.github.io/cv/\n\nLooking forward to speaking with you.\n\nBest regards,\nMd Shoyeb Rabbi\nPhone: +8801622517200\nEmail: shoyebrabbi@gmail.com`,
+                                'Recruiter Quick Reply Draft'
+                              )
+                            }
+                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 text-[11px] font-semibold inline-flex items-center gap-1"
+                            title="Copy professional ready-to-send reply template"
                           >
-                            <Copy className="w-3 h-3" /> Copy Contact
+                            <Copy className="w-3 h-3" /> Copy Draft
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(inq.senderEmail, 'Sender Email')}
+                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold inline-flex items-center gap-1"
+                          >
+                            Copy Email
                           </button>
                         </div>
 

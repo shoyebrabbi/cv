@@ -56,6 +56,10 @@ const TEMPLATE_DISPLAY_NAMES: Record<CVTemplateKey, string> = {
   'exec-sidebar': 'Dark Sidebar',
   'swiss-grid': 'Swiss Grid',
   'tech-mono': 'Tech Mono',
+  'nordic-emerald': 'Nordic Emerald',
+  'royal-indigo': 'Royal Indigo',
+  'elite-crimson': 'Elite Crimson',
+  'wallstreet-ats': 'Wall Street ATS',
 };
 
 interface MobileCVEditorProps {
