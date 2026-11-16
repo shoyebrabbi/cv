@@ -222,7 +222,7 @@ Share customized views with recruiters using dedicated query parameters:
 ## 🔒 Enterprise Security Architecture
 
 - **Strict Identity Separation:**
-  - **Owner Admin Login:** `md.shoyeb.rabbi@gmail.com` (Secured gateway for cloud saving and profile publishing).
+  - **Owner Admin Login:** `abc@gmail.com` (Secured gateway for cloud saving and profile publishing).
   - **Public CV & Recruiter Contact:** `shoyebrabbi@gmail.com` (Displayed publicly for inquiries and communication).
 - **Firestore Security Rules:** Zero-trust architecture with verified UID and admin email checks preventing unauthorized writes.
 - **Zero Secrets Leakage:** No private API keys or server credentials stored in client code.
